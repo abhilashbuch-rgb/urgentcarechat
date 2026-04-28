@@ -15,7 +15,6 @@ interface Clinic {
   services: string[];
   insurance: string[];
   rating: number;
-  featured: boolean;
   directionsUrl: string;
 }
 
@@ -28,7 +27,6 @@ interface UIMessage {
   id: number;
   type: "bot" | "user" | "alert-911" | "alert-988" | "clinics" | "typing";
   text?: string;
-  html?: string;
   quickReplies?: string[];
   alertTitle?: string;
   alertBody?: string;
@@ -39,7 +37,8 @@ interface UIMessage {
 
 // ============================================================
 // Red-flag detection (client-side defense-in-depth)
-// Mirrors the system prompt — server-side LLM also enforces these.
+// Fires BEFORE the API call to catch obvious cases instantly.
+// The server-side LLM also enforces these via the system prompt.
 // ============================================================
 const RED_FLAGS_911 = [
   /chest pain|chest pressure|crushing chest|tight chest/i,
@@ -68,13 +67,17 @@ function checkRedFlags(text: string): "911" | "988" | "pediatric" | null {
   return null;
 }
 
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+// ============================================================
+// Session ID for analytics (anonymous, random per browser session)
+// ============================================================
+function getSessionId(): string {
+  if (typeof window === "undefined") return "ssr";
+  let id = sessionStorage.getItem("uc_session");
+  if (!id) {
+    id = crypto.randomUUID();
+    sessionStorage.setItem("uc_session", id);
+  }
+  return id;
 }
 
 // ============================================================
@@ -87,11 +90,10 @@ export default function Home() {
   );
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const nextId = useRef(0);
 
-  const addMessage = useCallback((msg: Omit<UIMessage, "id">) => {
+  const addMessage = useCallback((msg: Omit<UIMessage, "id">): number => {
     const id = nextId.current++;
     setMessages((prev) => [...prev, { ...msg, id }]);
     return id;
@@ -133,18 +135,26 @@ export default function Home() {
         body: JSON.stringify({
           clinicName,
           action,
-          sessionId:
-            sessionStorage.getItem("uc_session") ||
-            (() => {
-              const id = crypto.randomUUID();
-              sessionStorage.setItem("uc_session", id);
-              return id;
-            })(),
+          sessionId: getSessionId(),
         }),
       });
     } catch {
       // Analytics failure should never block the user
     }
+  };
+
+  // Fetch clinics from the real API
+  const fetchClinics = async (
+    zip: string,
+    insurance: string | null
+  ): Promise<Clinic[]> => {
+    const params = new URLSearchParams({ zip });
+    if (insurance) params.set("insurance", insurance);
+
+    const res = await fetch(`/api/clinics?${params}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.clinics || [];
   };
 
   const handleSend = async (overrideText?: string) => {
@@ -157,11 +167,11 @@ export default function Home() {
     // Show user message
     addMessage({ type: "user", text });
 
-    // Client-side red flag check (defense-in-depth)
+    // Client-side red flag check (defense-in-depth — fires instantly)
     const redFlag = checkRedFlags(text);
     if (redFlag) {
       const typingId = addMessage({ type: "typing" });
-      await new Promise((r) => setTimeout(r, 800));
+      await new Promise((r) => setTimeout(r, 600));
       removeMessage(typingId);
 
       if (redFlag === "911") {
@@ -192,6 +202,12 @@ export default function Home() {
           alertHref: "tel:911",
         });
       }
+
+      // Still add to conversation history so the LLM has context if they continue
+      setConversationHistory((prev) => [
+        ...prev,
+        { role: "user", content: text },
+      ]);
 
       setIsLoading(false);
       inputRef.current?.focus();
@@ -230,8 +246,11 @@ export default function Home() {
 
       removeMessage(typingId);
 
-      // Check if the LLM response mentions 911 or 988 (server-side red flag)
-      if (/call 911/i.test(assistantText) && /emergency/i.test(assistantText)) {
+      // Check if the LLM response is a red-flag alert (server-side detection)
+      if (
+        /call 911/i.test(assistantText) &&
+        /emergency|ER|serious/i.test(assistantText)
+      ) {
         addMessage({
           type: "alert-911",
           alertTitle: "This may be a medical emergency.",
@@ -239,7 +258,10 @@ export default function Home() {
           alertCta: "Call 911",
           alertHref: "tel:911",
         });
-      } else if (/988/i.test(assistantText) && /suicid|crisis|safe/i.test(assistantText)) {
+      } else if (
+        /988/i.test(assistantText) &&
+        /suicid|crisis|safe/i.test(assistantText)
+      ) {
         addMessage({
           type: "alert-988",
           alertTitle: "I want you to be safe.",
@@ -248,13 +270,24 @@ export default function Home() {
           alertHref: "tel:988",
         });
       } else {
+        // Normal bot message
         addMessage({ type: "bot", text: assistantText });
       }
 
-      // Check if the assistant is asking for a zip code or just gave one
-      // If the response contains clinic results, render them
-      if (data.clinics && data.clinics.length > 0) {
-        addMessage({ type: "clinics", clinics: data.clinics });
+      // If the LLM triggered a clinic search, fetch and display results
+      if (data.clinicSearch) {
+        const { zip: searchZip, insurance: searchInsurance } =
+          data.clinicSearch;
+        const clinics = await fetchClinics(searchZip, searchInsurance);
+
+        if (clinics.length > 0) {
+          addMessage({ type: "clinics", clinics });
+        } else {
+          addMessage({
+            type: "bot",
+            text: "I wasn't able to find urgent care clinics near that zip code. Could you double-check the zip, or try a nearby one?",
+          });
+        }
       }
     } catch (err) {
       removeMessage(typingId);
@@ -273,7 +306,8 @@ export default function Home() {
     <>
       <header className="site-header">
         <div className="brand">
-          <span className="dot"></span>urgentcare<span className="tld">.chat</span>
+          <span className="dot"></span>urgentcare
+          <span className="tld">.chat</span>
         </div>
         <div className="tagline">Care, nearby. Right now.</div>
       </header>
@@ -281,15 +315,15 @@ export default function Home() {
       <main className="app">
         <div className="disclaimer">
           <strong>Not a doctor.</strong> If this is a life-threatening emergency,
-          call <strong>911</strong> immediately. For mental health crisis, call or
-          text <strong>988</strong>.
+          call <strong>911</strong> immediately. For mental health crisis, call
+          or text <strong>988</strong>.
         </div>
 
-        <div className="chat" ref={chatRef}>
+        <div className="chat" role="log" aria-label="Chat conversation" aria-live="polite">
           {messages.map((msg) => {
             if (msg.type === "typing") {
               return (
-                <div key={msg.id} className="msg bot">
+                <div key={msg.id} className="msg bot" role="status" aria-label="Assistant is typing">
                   <div className="msg-label">Assistant</div>
                   <div className="msg-bubble">
                     <div className="typing">
@@ -315,7 +349,7 @@ export default function Home() {
               const cssClass =
                 msg.type === "alert-988" ? "alert-988" : "alert-911";
               return (
-                <div key={msg.id} className="msg bot">
+                <div key={msg.id} className="msg bot" role="alert">
                   <div className="msg-label">Assistant</div>
                   <div className={cssClass}>
                     <div className="alert-title">{msg.alertTitle}</div>
@@ -335,56 +369,60 @@ export default function Home() {
                   <div className="msg-bubble">
                     Here are the closest options:
                   </div>
-                  <div className="clinic-list">
+                  <div className="clinic-list" role="list" aria-label="Urgent care clinics near you">
                     {msg.clinics.map((c, i) => (
-                      <div
-                        key={i}
-                        className={`clinic-card${c.featured ? " featured" : ""}`}
-                      >
-                        {c.featured && (
-                          <span className="featured-tag">Featured</span>
-                        )}
+                      <div key={i} className="clinic-card" role="listitem">
                         <div className="clinic-name">{c.name}</div>
                         <div className="clinic-meta">
                           <span>{c.distance}</span>
-                          <span>&middot;</span>
+                          <span aria-hidden="true">&middot;</span>
                           <span className={c.open ? "open" : "closed"}>
                             {c.hours}
                           </span>
-                          <span>&middot;</span>
-                          <span>&#9733; {c.rating}</span>
+                          {c.rating > 0 && (
+                            <>
+                              <span aria-hidden="true">&middot;</span>
+                              <span aria-label={`Rating: ${c.rating} out of 5`}>
+                                &#9733; {c.rating}
+                              </span>
+                            </>
+                          )}
                         </div>
-                        <div className="clinic-tags">
-                          {c.services.map((s) => (
-                            <span key={s} className="tag">
-                              {s}
-                            </span>
-                          ))}
-                          {c.insurance.map((ins) => (
-                            <span key={ins} className="tag insurance">
-                              {ins}
-                            </span>
-                          ))}
-                        </div>
+                        {(c.services.length > 0 || c.insurance.length > 0) && (
+                          <div className="clinic-tags">
+                            {c.services.map((s) => (
+                              <span key={s} className="tag">
+                                {s}
+                              </span>
+                            ))}
+                            {c.insurance.map((ins) => (
+                              <span key={ins} className="tag insurance">
+                                {ins}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         <div className="clinic-actions">
                           <a
                             className="clinic-btn"
                             href={c.directionsUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            onClick={() =>
-                              logClick(c.name, "directions")
-                            }
+                            onClick={() => logClick(c.name, "directions")}
+                            aria-label={`Get directions to ${c.name}`}
                           >
                             Directions
                           </a>
-                          <a
-                            className="clinic-btn secondary"
-                            href={`tel:${c.phone.replace(/\D/g, "")}`}
-                            onClick={() => logClick(c.name, "call")}
-                          >
-                            Call {c.phone}
-                          </a>
+                          {c.phone && (
+                            <a
+                              className="clinic-btn secondary"
+                              href={`tel:${c.phone.replace(/\D/g, "")}`}
+                              onClick={() => logClick(c.name, "call")}
+                              aria-label={`Call ${c.name} at ${c.phone}`}
+                            >
+                              Call {c.phone}
+                            </a>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -438,17 +476,20 @@ export default function Home() {
               if (e.key === "Enter") handleSend();
             }}
             disabled={isLoading}
+            aria-label="Describe your symptoms"
           />
           <button
             id="send-btn"
             onClick={() => handleSend()}
             disabled={isLoading || !inputValue.trim()}
+            aria-label="Send message"
           >
             Send
           </button>
         </div>
         <div className="footer-note">
-          NOT A SUBSTITUTE FOR MEDICAL ADVICE &middot; NO PHI STORED
+          Free public service &middot; Not affiliated with any clinic &middot;
+          No personal data stored
         </div>
       </div>
     </>
