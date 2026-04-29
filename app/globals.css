@@ -114,7 +114,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding-bottom: 100px;
+  padding-bottom: 160px;
 }
 
 .msg {
@@ -425,6 +425,25 @@ body {
 
 #send-btn:hover { background: var(--accent); }
 #send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.geo-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  color: var(--ink-soft);
+  transition: color 0.15s;
+  display: flex;
+  align-items: center;
+}
+
+.geo-btn:hover { color: var(--accent); }
+.geo-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.geo-btn svg {
+  width: 20px;
+  height: 20px;
+}
 
 .footer-note {
   text-align: center;

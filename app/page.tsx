@@ -90,6 +90,7 @@ export default function Home() {
   );
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [geoLoading, setGeoLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const nextId = useRef(0);
 
@@ -155,6 +156,72 @@ export default function Home() {
     if (!res.ok) return [];
     const data = await res.json();
     return data.clinics || [];
+  };
+
+  const handleGeolocate = async () => {
+    if (!navigator.geolocation) {
+      addMessage({
+        type: "bot",
+        text: "Your browser doesn't support location services. You can type your zip code instead.",
+      });
+      return;
+    }
+
+    setGeoLoading(true);
+    addMessage({ type: "user", text: "Find urgent care near me" });
+    const typingId = addMessage({ type: "typing" });
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          const params = new URLSearchParams({
+            lat: latitude.toString(),
+            lng: longitude.toString(),
+          });
+          const res = await fetch(`/api/clinics?${params}`);
+          removeMessage(typingId);
+
+          if (res.ok) {
+            const data = await res.json();
+            const clinics = data.clinics || [];
+            if (clinics.length > 0) {
+              addMessage({
+                type: "bot",
+                text: "Here are the closest urgent care clinics to your location:",
+              });
+              addMessage({ type: "clinics", clinics });
+            } else {
+              addMessage({
+                type: "bot",
+                text: "I couldn't find urgent care clinics near your location. Try entering your zip code instead.",
+              });
+            }
+          } else {
+            addMessage({
+              type: "bot",
+              text: "Something went wrong finding clinics near you. Try entering your zip code instead.",
+            });
+          }
+        } catch {
+          removeMessage(typingId);
+          addMessage({
+            type: "bot",
+            text: "Something went wrong. Please try typing your zip code instead.",
+          });
+        }
+        setGeoLoading(false);
+      },
+      () => {
+        removeMessage(typingId);
+        addMessage({
+          type: "bot",
+          text: "I wasn't able to access your location. You can type your zip code and I'll find clinics near you.",
+        });
+        setGeoLoading(false);
+      },
+      { timeout: 10000, enableHighAccuracy: false }
+    );
   };
 
   const handleSend = async (overrideText?: string) => {
@@ -475,9 +542,21 @@ export default function Home() {
             onKeyDown={(e) => {
               if (e.key === "Enter") handleSend();
             }}
-            disabled={isLoading}
             aria-label="Describe your symptoms"
           />
+          <button
+            className="geo-btn"
+            onClick={handleGeolocate}
+            disabled={geoLoading}
+            aria-label="Find clinics near my location"
+            title="Use my location"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 2v3m0 14v3M2 12h3m14 0h3" />
+              <circle cx="12" cy="12" r="8" />
+            </svg>
+          </button>
           <button
             id="send-btn"
             onClick={() => handleSend()}
