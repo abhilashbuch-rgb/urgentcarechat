@@ -318,6 +318,12 @@ body {
 .clinic-meta .open { color: var(--safe); font-weight: 600; }
 .clinic-meta .closed { color: var(--accent); font-weight: 600; }
 
+.clinic-address {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-bottom: 8px;
+}
+
 .clinic-tags {
   display: flex;
   flex-wrap: wrap;

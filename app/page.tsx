@@ -16,6 +16,7 @@ interface Clinic {
   insurance: string[];
   rating: number;
   directionsUrl: string;
+  websiteUrl: string;
 }
 
 interface ChatMessage {
@@ -117,6 +118,7 @@ export default function Home() {
       addMessage({
         type: "bot",
         text: "Hi \u2014 I'm an AI assistant, not a doctor. If this is a life-threatening emergency, please call 911 right now.\n\nOtherwise, tell me what's going on and I'll help you find a nearby urgent care.",
+        quickReplies: ["Find clinics near me", "I have a symptom question"],
       });
     }, 300);
     return () => clearTimeout(timer);
@@ -227,6 +229,12 @@ export default function Home() {
   const handleSend = async (overrideText?: string) => {
     const text = (overrideText || inputValue).trim();
     if (!text || isLoading) return;
+
+    // Intercept geolocation quick reply
+    if (text === "Find clinics near me") {
+      handleGeolocate();
+      return;
+    }
 
     setInputValue("");
     setIsLoading(true);
@@ -455,11 +463,14 @@ export default function Home() {
                             </>
                           )}
                         </div>
+                        {c.address && (
+                          <div className="clinic-address">{c.address}</div>
+                        )}
                         {(c.services.length > 0 || c.insurance.length > 0) && (
                           <div className="clinic-tags">
                             {c.services.map((s) => (
                               <span key={s} className="tag">
-                                {s}
+                                {s.replace(/_/g, " ")}
                               </span>
                             ))}
                             {c.insurance.map((ins) => (
@@ -488,6 +499,18 @@ export default function Home() {
                               aria-label={`Call ${c.name} at ${c.phone}`}
                             >
                               Call {c.phone}
+                            </a>
+                          )}
+                          {c.websiteUrl && (
+                            <a
+                              className="clinic-btn secondary"
+                              href={c.websiteUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={() => logClick(c.name, "website")}
+                              aria-label={`Visit ${c.name} website`}
+                            >
+                              Website
                             </a>
                           )}
                         </div>

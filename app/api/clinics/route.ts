@@ -21,7 +21,16 @@ interface PlaceResult {
   services: string[];
   insurance: string[];
   directionsUrl: string;
+  websiteUrl: string;
 }
+
+// Default services that most urgent care clinics offer
+const DEFAULT_URGENT_CARE_SERVICES = [
+  "x-ray",
+  "lab",
+  "covid_testing",
+  "vaccinations",
+];
 
 // In-memory cache: zip → { results, timestamp }
 const cache = new Map<
@@ -166,7 +175,7 @@ export async function GET(req: NextRequest) {
           "Content-Type": "application/json",
           "X-Goog-Api-Key": apiKey,
           "X-Goog-FieldMask":
-            "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.rating,places.currentOpeningHours,places.location",
+            "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.rating,places.currentOpeningHours,places.location,places.websiteUri",
         },
         body: JSON.stringify({
           textQuery: "urgent care",
@@ -206,6 +215,7 @@ export async function GET(req: NextRequest) {
           weekdayDescriptions?: string[];
         };
         location?: { latitude?: number; longitude?: number };
+        websiteUri?: string;
       }) => {
         const placeLat = place.location?.latitude || 0;
         const placeLng = place.location?.longitude || 0;
@@ -223,11 +233,12 @@ export async function GET(req: NextRequest) {
           hours: hoursInfo.hours,
           placeId: place.id || "",
           distance: `${dist.toFixed(1)} mi`,
-          services: [], // Will be enriched from Supabase overrides
-          insurance: [], // Will be enriched from Supabase overrides
+          services: [...DEFAULT_URGENT_CARE_SERVICES],
+          insurance: [],
           directionsUrl: `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
             place.formattedAddress || ""
           )}&destination_place_id=${place.id || ""}`,
+          websiteUrl: place.websiteUri || "",
         };
       }
     );
