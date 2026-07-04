@@ -712,7 +712,15 @@ export default function Home({ embed = false }: { embed?: boolean }) {
               Powered by urgentcare.chat
             </a>
           ) : (
-            t.footerNote
+            <>
+              {t.footerNote}
+              {" · "}
+              <Link href="/terms">Terms</Link>
+              {" · "}
+              <Link href="/privacy">Privacy</Link>
+              {" · "}
+              <Link href="/disclaimer">Disclaimer</Link>
+            </>
           )}
         </div>
       </div>

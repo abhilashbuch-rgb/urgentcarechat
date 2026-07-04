@@ -7,6 +7,17 @@ import { toE164 } from "@/lib/phone";
 // /api/telehealth/checkout — Start a paid doctor-connect request
 // Charges a platform/tech fee via Stripe Checkout. The medical
 // visit itself is billed separately by the practice, not us.
+//
+// Payment methods: Apple Pay / Google Pay need no extra code — Stripe
+// Checkout auto-offers them as wallet UI on top of "card" whenever the
+// visitor's browser/device supports them. HSA/FSA cards run on normal
+// card rails too, but card issuers auto-approve based on the merchant's
+// category code (MCC). ACTION NEEDED IN STRIPE DASHBOARD (not code):
+// under Settings → Business settings, make sure the account's MCC is
+// set to a healthcare-related code (e.g. 8099 "Health Practitioners,
+// Medical Services" or 8011 "Doctors"). Without that, some HSA/FSA
+// cards will decline even though the charge itself succeeds fine on a
+// regular card.
 // ============================================================
 
 export async function POST(req: NextRequest) {
@@ -76,6 +87,11 @@ export async function POST(req: NextRequest) {
       success_url: `${origin}/telehealth/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/telehealth`,
       metadata: { providerId: provider.id, stateAttested },
+      payment_intent_data: {
+        // Helps HSA/FSA card issuers recognize this as a healthcare charge.
+        // Stripe caps statement_descriptor at 22 characters.
+        statement_descriptor: "URGENTCARE TELEHEALTH",
+      },
     });
 
     const { error: insertErr } = await supabase.from("telehealth_requests").insert({

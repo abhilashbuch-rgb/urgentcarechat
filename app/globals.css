@@ -751,6 +751,9 @@ body {
   margin-top: 10px;
 }
 
+.footer-note a { color: var(--ink-soft); text-decoration: underline; }
+.footer-note a:hover { color: var(--accent-deep); }
+
 /* ========== TELEHEALTH (shared bits reused inside the lux theme) ========== */
 .telehealth-sub {
   font-size: 15px;
@@ -1091,11 +1094,90 @@ body {
 
 .lux-back:hover { color: var(--lux-gold); }
 
+.lux-legal-links {
+  font-size: 11px;
+  color: var(--lux-text-soft);
+  text-align: center;
+  margin-top: 12px;
+  line-height: 1.5;
+}
+
+.lux-legal-links a { color: var(--lux-text-soft); text-decoration: underline; }
+.lux-legal-links a:hover { color: var(--lux-gold); }
+
 @media (max-width: 600px) {
   .lux-main { padding: 24px 16px 48px; }
   .lux-title { font-size: 27px; }
   .lux-doctor-grid { grid-template-columns: 1fr; }
 }
+
+/* ========== LEGAL PAGES ========== */
+.legal-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.legal-main {
+  max-width: 680px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 32px 20px 60px;
+}
+
+.legal-draft-banner {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--accent-deep);
+  background: rgba(216,58,44,.08);
+  border-left: 2px solid var(--accent);
+  padding: 12px 14px;
+  margin-bottom: 28px;
+}
+
+.legal-title {
+  font-family: var(--serif);
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 4px;
+}
+
+.legal-updated {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 28px;
+}
+
+.legal-section { margin-bottom: 24px; }
+
+.legal-section h2 {
+  font-family: var(--serif);
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.legal-section p {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+
+.legal-links {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-top: 36px;
+  padding-top: 20px;
+  border-top: 1px solid var(--rule);
+}
+
+.legal-links a { color: var(--ink-soft); text-decoration: underline; }
+.legal-links a:hover { color: var(--accent-deep); }
 
 /* ========== WIDGET DOCS ========== */
 .widget-docs {

@@ -359,6 +359,12 @@ export default function TelehealthIntake() {
             <button className="lux-btn" onClick={handleConnect} disabled={!canSubmit}>
               {loading ? "Starting checkout…" : `Pay $${feeDollars} & connect`}
             </button>
+            <p className="lux-legal-links">
+              By continuing you agree to our{" "}
+              <Link href="/terms">Terms</Link>,{" "}
+              <Link href="/privacy">Privacy Policy</Link>, and{" "}
+              <Link href="/disclaimer">Platform Disclaimer</Link>.
+            </p>
           </div>
         )}
 
