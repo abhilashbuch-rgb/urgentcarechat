@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { isValidNpiFormat, lookupNpi } from "@/lib/npi";
+import { distanceMiles } from "@/lib/geo";
 
 // ============================================================
 // /api/telehealth/providers — Public-safe doctor directory
@@ -18,7 +19,7 @@ import { isValidNpiFormat, lookupNpi } from "@/lib/npi";
 // ============================================================
 
 const SELECT_FIELDS =
-  "id, name, credentials, specialty, bio, photo_url, practice_name, platform_fee_cents";
+  "id, name, credentials, specialty, bio, photo_url, practice_name, platform_fee_cents, years_experience, lat, lng";
 
 async function seedDefaultProvider(
   supabase: ReturnType<typeof createServerClient>,
@@ -74,6 +75,11 @@ async function seedDefaultProvider(
 
 export async function GET(req: NextRequest) {
   const state = req.nextUrl.searchParams.get("state") || "PA";
+  const latParam = req.nextUrl.searchParams.get("lat");
+  const lngParam = req.nextUrl.searchParams.get("lng");
+  const patientLat = latParam ? parseFloat(latParam) : null;
+  const patientLng = lngParam ? parseFloat(lngParam) : null;
+  const hasGeo = patientLat !== null && patientLng !== null && !isNaN(patientLat) && !isNaN(patientLng);
 
   try {
     const supabase = createServerClient();
@@ -86,12 +92,31 @@ export async function GET(req: NextRequest) {
 
     if (error) throw error;
 
-    if (data && data.length > 0) {
-      return NextResponse.json({ providers: data });
+    let providers = data || [];
+
+    if (providers.length === 0) {
+      const seeded = await seedDefaultProvider(supabase, state);
+      providers = seeded ? [seeded] : [];
     }
 
-    const seeded = await seedDefaultProvider(supabase, state);
-    return NextResponse.json({ providers: seeded ? [seeded] : [] });
+    // Sort by proximity when the patient shared their location and a
+    // provider has a practice location on file. Providers without a
+    // lat/lng sort last rather than being dropped.
+    if (hasGeo) {
+      providers = [...providers].sort((a, b) => {
+        const distA =
+          a.lat != null && a.lng != null
+            ? distanceMiles(patientLat!, patientLng!, a.lat, a.lng)
+            : Infinity;
+        const distB =
+          b.lat != null && b.lng != null
+            ? distanceMiles(patientLat!, patientLng!, b.lat, b.lng)
+            : Infinity;
+        return distA - distB;
+      });
+    }
+
+    return NextResponse.json({ providers });
   } catch (err) {
     console.error("[telehealth/providers] error:", err);
     return NextResponse.json({ providers: [] });

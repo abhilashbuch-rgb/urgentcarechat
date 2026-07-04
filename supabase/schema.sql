@@ -87,6 +87,9 @@ alter table providers add column if not exists credentials text;      -- e.g. "M
 alter table providers add column if not exists specialty   text;      -- e.g. "Family Medicine"
 alter table providers add column if not exists bio          text;     -- one-line blurb shown on the doctor card
 alter table providers add column if not exists photo_url    text;     -- optional headshot; falls back to initials avatar
+alter table providers add column if not exists lat float8;            -- practice location, for proximity routing once there are multiple providers
+alter table providers add column if not exists lng float8;
+alter table providers add column if not exists years_experience integer;
 
 -- NPI verification — a provider can't go live (is_active) until their NPI
 -- checks out as Active in the real NPPES registry for their license_state.

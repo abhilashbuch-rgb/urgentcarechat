@@ -850,6 +850,31 @@ body {
   max-width: 52ch;
 }
 
+.lux-trust-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.lux-trust-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--lux-text-soft);
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--lux-rule);
+  border-radius: 999px;
+  padding: 5px 11px;
+}
+
+.lux-founder-line {
+  font-size: 12px;
+  color: var(--lux-text-soft);
+  margin-bottom: 24px;
+  font-style: italic;
+}
+
 .lux-card {
   background: var(--lux-card);
   border: 1px solid var(--lux-rule);
@@ -879,6 +904,24 @@ body {
   color: var(--lux-text-soft);
   text-align: center;
 }
+
+.lux-geo-btn {
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: 1px dashed var(--lux-rule);
+  color: var(--lux-text-soft);
+  font-family: var(--sans);
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 14px;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.lux-geo-btn:hover:not(:disabled) { border-color: var(--lux-gold); color: var(--lux-gold); }
+.lux-geo-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .lux-doctor-grid {
   display: grid;

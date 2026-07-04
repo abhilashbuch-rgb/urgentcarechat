@@ -13,6 +13,7 @@ interface Provider {
   photo_url: string | null;
   practice_name: string | null;
   platform_fee_cents: number;
+  years_experience: number | null;
 }
 
 type Step = "select" | "intake" | "emergency" | "payment";
@@ -37,6 +38,7 @@ function DoctorAvatar({ provider }: { provider: Provider }) {
 
 export default function TelehealthIntake() {
   const [loadingProviders, setLoadingProviders] = useState(true);
+  const [geoLoading, setGeoLoading] = useState(false);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [step, setStep] = useState<Step>("select");
@@ -52,19 +54,41 @@ export default function TelehealthIntake() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const fetchProviders = async (lat?: number, lng?: number) => {
+    const params = new URLSearchParams({ state: "PA" });
+    if (lat !== undefined && lng !== undefined) {
+      params.set("lat", String(lat));
+      params.set("lng", String(lng));
+    }
+    const res = await fetch(`/api/telehealth/providers?${params}`);
+    const data = await res.json();
+    const list: Provider[] = data.providers || [];
+    setProviders(list);
+    if (list.length === 1) {
+      setSelectedId(list[0].id);
+      setStep("intake");
+    }
+    return list;
+  };
+
+  const handleUseLocation = () => {
+    if (!navigator.geolocation) return;
+    setGeoLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        await fetchProviders(position.coords.latitude, position.coords.longitude);
+        setGeoLoading(false);
+      },
+      () => setGeoLoading(false),
+      { timeout: 10000, enableHighAccuracy: false }
+    );
+  };
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/telehealth/providers?state=PA");
-        const data = await res.json();
-        if (cancelled) return;
-        const list: Provider[] = data.providers || [];
-        setProviders(list);
-        if (list.length === 1) {
-          setSelectedId(list[0].id);
-          setStep("intake");
-        }
+        await fetchProviders();
       } catch {
         if (!cancelled) setProviders([]);
       } finally {
@@ -154,6 +178,15 @@ export default function TelehealthIntake() {
           and a direct connection. Apple Pay, Google Pay, card, or HSA/FSA.
         </p>
 
+        <div className="lux-trust-row">
+          <span className="lux-trust-badge">🔒 HIPAA-compliant connection</span>
+          <span className="lux-trust-badge">✓ NPI-verified providers</span>
+          <span className="lux-trust-badge">📍 PA-licensed</span>
+        </div>
+        <p className="lux-founder-line">
+          Built by a team with 15+ years in healthcare.
+        </p>
+
         {loadingProviders && (
           <div className="lux-card lux-loading">Finding available doctors…</div>
         )}
@@ -172,27 +205,35 @@ export default function TelehealthIntake() {
         )}
 
         {step === "select" && !loadingProviders && providers.length > 1 && (
-          <div className="lux-doctor-grid">
-            {providers.map((p) => (
-              <button
-                key={p.id}
-                className="lux-doctor-card"
-                onClick={() => selectProvider(p.id)}
-              >
-                <DoctorAvatar provider={p} />
-                <div className="lux-doctor-name">
-                  {p.name}
-                  {p.credentials ? `, ${p.credentials}` : ""}
-                </div>
-                {p.specialty && <div className="lux-doctor-specialty">{p.specialty}</div>}
-                {p.practice_name && <div className="lux-doctor-practice">{p.practice_name}</div>}
-                {p.bio && <div className="lux-doctor-bio">{p.bio}</div>}
-                <div className="lux-available-badge">
-                  <span className="lux-pulse-dot"></span>Available
-                </div>
-              </button>
-            ))}
-          </div>
+          <>
+            <button className="lux-geo-btn" onClick={handleUseLocation} disabled={geoLoading}>
+              {geoLoading ? "Finding the closest doctor…" : "📍 Find the doctor nearest me"}
+            </button>
+            <div className="lux-doctor-grid">
+              {providers.map((p) => (
+                <button
+                  key={p.id}
+                  className="lux-doctor-card"
+                  onClick={() => selectProvider(p.id)}
+                >
+                  <DoctorAvatar provider={p} />
+                  <div className="lux-doctor-name">
+                    {p.name}
+                    {p.credentials ? `, ${p.credentials}` : ""}
+                  </div>
+                  {p.specialty && <div className="lux-doctor-specialty">{p.specialty}</div>}
+                  {p.practice_name && <div className="lux-doctor-practice">{p.practice_name}</div>}
+                  {p.years_experience && (
+                    <div className="lux-doctor-practice">{p.years_experience}+ years in practice</div>
+                  )}
+                  {p.bio && <div className="lux-doctor-bio">{p.bio}</div>}
+                  <div className="lux-available-badge">
+                    <span className="lux-pulse-dot"></span>Available
+                  </div>
+                </button>
+              ))}
+            </div>
+          </>
         )}
 
         {step === "intake" && selected && (
