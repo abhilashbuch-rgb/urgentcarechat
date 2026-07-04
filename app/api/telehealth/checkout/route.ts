@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripeClient } from "@/lib/stripe";
 import { createServerClient } from "@/lib/supabase";
+import { toE164 } from "@/lib/phone";
 
 // ============================================================
 // /api/telehealth/checkout — Start a paid doctor-connect request
@@ -10,7 +11,7 @@ import { createServerClient } from "@/lib/supabase";
 
 export async function POST(req: NextRequest) {
   try {
-    const { stateAttested, providerId } = await req.json();
+    const { stateAttested, providerId, patientPhone, symptomSummary } = await req.json();
 
     if (stateAttested !== "PA") {
       return NextResponse.json(
@@ -18,6 +19,14 @@ export async function POST(req: NextRequest) {
           error:
             "This service is currently only available to patients physically located in Pennsylvania.",
         },
+        { status: 400 }
+      );
+    }
+
+    const patientE164 = toE164(String(patientPhone || ""));
+    if (!patientE164) {
+      return NextResponse.json(
+        { error: "A valid phone number is required so the doctor can call you." },
         { status: 400 }
       );
     }
@@ -73,6 +82,8 @@ export async function POST(req: NextRequest) {
       provider_id: provider.id,
       stripe_session_id: session.id,
       patient_state_attested: stateAttested,
+      patient_phone: patientE164,
+      symptom_summary: String(symptomSummary || "").slice(0, 500),
       amount_cents: provider.platform_fee_cents,
       status: "pending",
     });

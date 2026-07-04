@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { checkRedFlags } from "@/lib/red-flags";
 
 interface Provider {
   id: string;
@@ -13,6 +14,8 @@ interface Provider {
   practice_name: string | null;
   platform_fee_cents: number;
 }
+
+type Step = "select" | "intake" | "emergency" | "payment";
 
 function initials(name: string): string {
   return name
@@ -36,6 +39,12 @@ export default function TelehealthIntake() {
   const [loadingProviders, setLoadingProviders] = useState(true);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [step, setStep] = useState<Step>("select");
+
+  const [symptomText, setSymptomText] = useState("");
+  const [duration, setDuration] = useState("");
+  const [phone, setPhone] = useState("");
+  const [emergencyType, setEmergencyType] = useState<"911" | "988" | "pediatric" | null>(null);
 
   const [locationConfirmed, setLocationConfirmed] = useState(false);
   const [feeUnderstood, setFeeUnderstood] = useState(false);
@@ -52,7 +61,10 @@ export default function TelehealthIntake() {
         if (cancelled) return;
         const list: Provider[] = data.providers || [];
         setProviders(list);
-        if (list.length === 1) setSelectedId(list[0].id);
+        if (list.length === 1) {
+          setSelectedId(list[0].id);
+          setStep("intake");
+        }
       } catch {
         if (!cancelled) setProviders([]);
       } finally {
@@ -65,8 +77,26 @@ export default function TelehealthIntake() {
   }, []);
 
   const selected = providers.find((p) => p.id === selectedId) || null;
+  const phoneDigits = phone.replace(/\D/g, "");
+  const canContinueIntake = symptomText.trim().length > 3 && phoneDigits.length >= 10;
   const canSubmit =
     !!selected && locationConfirmed && feeUnderstood && notEmergency && !loading;
+
+  const selectProvider = (id: string) => {
+    setSelectedId(id);
+    setStep("intake");
+  };
+
+  const submitIntake = () => {
+    if (!canContinueIntake) return;
+    const flag = checkRedFlags(`${symptomText} ${duration}`);
+    if (flag) {
+      setEmergencyType(flag);
+      setStep("emergency");
+      return;
+    }
+    setStep("payment");
+  };
 
   const handleConnect = async () => {
     if (!canSubmit || !selected) return;
@@ -77,7 +107,12 @@ export default function TelehealthIntake() {
       const res = await fetch("/api/telehealth/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stateAttested: "PA", providerId: selected.id }),
+        body: JSON.stringify({
+          stateAttested: "PA",
+          providerId: selected.id,
+          patientPhone: phoneDigits,
+          symptomSummary: `${symptomText}${duration ? ` (duration: ${duration})` : ""}`,
+        }),
       });
       const data = await res.json();
 
@@ -114,8 +149,9 @@ export default function TelehealthIntake() {
 
         <h1 className="lux-title">Talk to a doctor, right now.</h1>
         <p className="lux-subtitle">
-          A live 30-minute connection to a physician credentialed and licensed
-          in Pennsylvania — no waiting room, no appointment three weeks out.
+          Tell us what&apos;s happening — we screen out emergencies first, so
+          your time and money go to the right care. Then it&apos;s a flat fee
+          and a direct connection. Apple Pay, Google Pay, card, or HSA/FSA.
         </p>
 
         {loadingProviders && (
@@ -135,13 +171,13 @@ export default function TelehealthIntake() {
           </div>
         )}
 
-        {!loadingProviders && providers.length > 1 && (
+        {step === "select" && !loadingProviders && providers.length > 1 && (
           <div className="lux-doctor-grid">
             {providers.map((p) => (
               <button
                 key={p.id}
-                className={`lux-doctor-card${selectedId === p.id ? " selected" : ""}`}
-                onClick={() => setSelectedId(p.id)}
+                className="lux-doctor-card"
+                onClick={() => selectProvider(p.id)}
               >
                 <DoctorAvatar provider={p} />
                 <div className="lux-doctor-name">
@@ -159,27 +195,114 @@ export default function TelehealthIntake() {
           </div>
         )}
 
-        {selected && (
+        {step === "intake" && selected && (
           <div className="lux-card">
-            {providers.length === 1 && (
-              <div className="lux-doctor-summary">
-                <DoctorAvatar provider={selected} />
-                <div>
-                  <div className="lux-doctor-name">
-                    {selected.name}
-                    {selected.credentials ? `, ${selected.credentials}` : ""}
-                  </div>
-                  {selected.specialty && (
-                    <div className="lux-doctor-specialty">{selected.specialty}</div>
-                  )}
-                  {selected.practice_name && (
-                    <div className="lux-doctor-practice">{selected.practice_name}</div>
-                  )}
+            <div className="lux-doctor-summary">
+              <DoctorAvatar provider={selected} />
+              <div>
+                <div className="lux-doctor-name">
+                  {selected.name}
+                  {selected.credentials ? `, ${selected.credentials}` : ""}
                 </div>
+                {selected.specialty && (
+                  <div className="lux-doctor-specialty">{selected.specialty}</div>
+                )}
               </div>
-            )}
+            </div>
 
-            <h2 className="lux-price">${feeDollars} · 30 minutes</h2>
+            <h2 className="lux-card-title">What&apos;s happening?</h2>
+            <p className="lux-card-sub">
+              A quick description so we can screen for emergencies before
+              anything is charged.
+            </p>
+
+            <textarea
+              className="lux-textarea"
+              placeholder="What's going on?"
+              value={symptomText}
+              onChange={(e) => setSymptomText(e.target.value)}
+              rows={3}
+              aria-label="Describe what's going on"
+            />
+            <input
+              type="text"
+              className="lux-input"
+              placeholder="How long has this been going on? (e.g. 2 days)"
+              value={duration}
+              onChange={(e) => setDuration(e.target.value)}
+              aria-label="Duration"
+            />
+            <input
+              type="tel"
+              className="lux-input"
+              placeholder="Your phone number (for the call — never shared with the doctor)"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              aria-label="Your phone number"
+            />
+
+            <button className="lux-btn" onClick={submitIntake} disabled={!canContinueIntake}>
+              Continue
+            </button>
+          </div>
+        )}
+
+        {step === "emergency" && (
+          <div className="lux-card lux-emergency-card">
+            {emergencyType === "988" ? (
+              <>
+                <h2 className="lux-card-title">I want you to be safe.</h2>
+                <p className="lux-card-sub">
+                  Please reach out to the 988 Suicide &amp; Crisis Lifeline right
+                  now — call or text 988. Free, confidential, available 24/7.
+                  You have not been charged.
+                </p>
+                <a className="lux-btn" style={{ display: "block", textAlign: "center", textDecoration: "none" }} href="tel:988">
+                  Call or text 988
+                </a>
+              </>
+            ) : (
+              <>
+                <h2 className="lux-card-title">This needs ER-level care.</h2>
+                <p className="lux-card-sub">
+                  What you described could be a medical emergency. Please call
+                  911 or get to the nearest emergency room now — this isn&apos;t
+                  something a scheduled telehealth call should handle. You have
+                  not been charged.
+                </p>
+                <a className="lux-btn" style={{ display: "block", textAlign: "center", textDecoration: "none" }} href="tel:911">
+                  Call 911
+                </a>
+              </>
+            )}
+            <Link className="lux-back" href="/">
+              &larr; Back to chat
+            </Link>
+          </div>
+        )}
+
+        {step === "payment" && selected && (
+          <div className="lux-card">
+            <div className="lux-doctor-summary">
+              <DoctorAvatar provider={selected} />
+              <div>
+                <div className="lux-doctor-name">
+                  {selected.name}
+                  {selected.credentials ? `, ${selected.credentials}` : ""}
+                </div>
+                {selected.specialty && (
+                  <div className="lux-doctor-specialty">{selected.specialty}</div>
+                )}
+                {selected.practice_name && (
+                  <div className="lux-doctor-practice">{selected.practice_name}</div>
+                )}
+              </div>
+            </div>
+
+            <h2 className="lux-price">${feeDollars} flat · 30 minutes</h2>
+            <p className="lux-card-sub" style={{ marginTop: -10 }}>
+              Apple Pay, Google Pay, card, or HSA/FSA. No insurance needed.
+            </p>
 
             <ul className="lux-terms">
               <li>
@@ -192,6 +315,11 @@ export default function TelehealthIntake() {
                 Available only to patients physically located in{" "}
                 <strong>Pennsylvania</strong>, where this doctor is licensed to
                 practice.
+              </li>
+              <li>
+                The doctor calls you through an encrypted bridge — your real
+                phone number is never shared with them, and theirs is never
+                shared with you.
               </li>
               <li>Non-refundable once the doctor has been notified and is available.</li>
             </ul>

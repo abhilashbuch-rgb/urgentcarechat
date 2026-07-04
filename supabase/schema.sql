@@ -96,6 +96,8 @@ create table if not exists telehealth_requests (
   provider_id           uuid references providers(id),
   stripe_session_id     text unique not null,
   patient_state_attested text,
+  patient_phone         text,     -- E.164; used only for the masked call bridge, never shown to the provider
+  symptom_summary        text,    -- free text from the pre-payment screening step
   status                text not null default 'pending', -- pending | paid | notified
   amount_cents          integer not null,
   created_at            timestamptz default now(),
@@ -104,6 +106,12 @@ create table if not exists telehealth_requests (
 );
 
 create index if not exists idx_telehealth_requests_session on telehealth_requests(stripe_session_id);
+
+-- Idempotent for anyone who already ran the table above without these columns.
+alter table telehealth_requests add column if not exists patient_phone text;
+alter table telehealth_requests add column if not exists symptom_summary text;
+alter table telehealth_requests add column if not exists proxy_session_sid text;
+alter table telehealth_requests add column if not exists provider_proxy_number text;
 
 -- CLINIC_CLAIMS — a clinic owner/manager asking to claim & verify their
 -- listing. Reviewed manually (for now) before flipping clinics.is_featured

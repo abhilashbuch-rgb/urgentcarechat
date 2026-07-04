@@ -6,6 +6,7 @@ import Link from "next/link";
 import { STRINGS, getStoredLanguage, type Language } from "@/lib/i18n";
 import FollowUpOptIn from "./components/FollowUpOptIn";
 import ClaimListing from "./components/ClaimListing";
+import { checkRedFlags } from "@/lib/red-flags";
 
 // ============================================================
 // Types
@@ -50,33 +51,8 @@ interface UIMessage {
 // Red-flag detection (client-side defense-in-depth)
 // Fires BEFORE the API call to catch obvious cases instantly.
 // The server-side LLM also enforces these via the system prompt.
+// Shared with the telehealth intake screen — see lib/red-flags.ts.
 // ============================================================
-const RED_FLAGS_911 = [
-  /chest pain|chest pressure|crushing chest|tight chest/i,
-  /can'?t breathe|cannot breathe|trouble breathing|short(ness)? of breath|gasping/i,
-  /face drooping|one[- ]sided weakness|slurred speech|sudden confusion/i,
-  /severe (head|abdominal) (injury|pain)/i,
-  /severe (allergic|bleeding)|anaphylaxis|throat swelling|can'?t swallow/i,
-  /coughing up blood|vomiting blood/i,
-  /unresponsive|seizure|overdose/i,
-  /pregnan(t|cy).*(bleeding|severe pain)/i,
-];
-
-const RED_FLAGS_988 = [
-  /kill myself|suicid(e|al)|end my life|want to die|hurt myself|self.?harm/i,
-];
-
-const RED_FLAGS_PED = [
-  /(baby|infant|newborn|month old|weeks old).*fever/i,
-  /fever.*(baby|infant|newborn|month old|weeks old)/i,
-];
-
-function checkRedFlags(text: string): "911" | "988" | "pediatric" | null {
-  if (RED_FLAGS_988.some((r) => r.test(text))) return "988";
-  if (RED_FLAGS_911.some((r) => r.test(text))) return "911";
-  if (RED_FLAGS_PED.some((r) => r.test(text))) return "pediatric";
-  return null;
-}
 
 // ============================================================
 // Session ID for analytics (anonymous, random per browser session)

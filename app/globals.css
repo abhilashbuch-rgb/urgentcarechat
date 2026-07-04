@@ -1025,6 +1025,43 @@ body {
 
 .lux-check input { margin-top: 3px; flex-shrink: 0; }
 
+.lux-textarea,
+.lux-input {
+  width: 100%;
+  font-family: var(--sans);
+  font-size: 14px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  border: 1px solid var(--lux-rule);
+  border-radius: 6px;
+  background: rgba(255,255,255,.03);
+  color: var(--lux-text);
+  resize: vertical;
+}
+
+.lux-textarea::placeholder,
+.lux-input::placeholder { color: var(--lux-text-soft); opacity: 0.8; }
+
+.lux-textarea:focus,
+.lux-input:focus { outline: none; border-color: var(--lux-gold); }
+
+.lux-emergency-card {
+  border-color: var(--accent);
+}
+
+.lux-callout {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--lux-text-soft);
+  background: var(--lux-gold-soft);
+  border-left: 2px solid var(--lux-gold);
+  padding: 12px 14px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+.lux-callout strong { color: var(--lux-text); }
+
 .lux-btn {
   width: 100%;
   background: var(--lux-gold);

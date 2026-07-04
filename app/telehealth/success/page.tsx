@@ -6,7 +6,7 @@ import Link from "next/link";
 
 type ConfirmState =
   | { status: "checking" }
-  | { status: "ready"; roomUrl: string; providerName: string }
+  | { status: "ready"; roomUrl: string; providerName: string; expectCallFrom: string | null }
   | { status: "error"; message: string };
 
 function ConfirmPanel() {
@@ -39,6 +39,7 @@ function ConfirmPanel() {
             status: "ready",
             roomUrl: data.roomUrl,
             providerName: data.providerName,
+            expectCallFrom: data.expectCallFrom || null,
           });
           return;
         }
@@ -110,6 +111,14 @@ function ConfirmPanel() {
       <p className="lux-card-sub">
         {state.providerName} has been notified and is expecting you.
       </p>
+      {state.expectCallFrom && (
+        <div className="lux-callout">
+          <strong>Answer your phone</strong> in the next few minutes — the
+          doctor will call from <strong>{state.expectCallFrom}</strong>, a
+          private line. Your real number was never shared with them, and
+          theirs was never shared with you.
+        </div>
+      )}
       <a
         className="lux-btn"
         style={{ display: "block", textAlign: "center", textDecoration: "none" }}
@@ -117,7 +126,7 @@ function ConfirmPanel() {
         target="_blank"
         rel="noopener noreferrer"
       >
-        Join the chat now
+        Or join by video instead
       </a>
       <Link className="lux-back" href="/">
         &larr; Back to chat

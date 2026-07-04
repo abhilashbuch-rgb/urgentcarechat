@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
+import { toE164 } from "@/lib/phone";
 
 // ============================================================
 // /api/follow-up/schedule — Opt-in only.
@@ -8,17 +9,10 @@ import { createServerClient } from "@/lib/supabase";
 // Nothing here runs without this explicit opt-in.
 // ============================================================
 
-function toE164(digits: string): string | null {
-  if (digits.length === 10) return `+1${digits}`;
-  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
-  return null;
-}
-
 export async function POST(req: NextRequest) {
   try {
     const { phone, clinicName, sessionId } = await req.json();
-    const digits = String(phone || "").replace(/\D/g, "");
-    const e164 = toE164(digits);
+    const e164 = toE164(String(phone || ""));
 
     if (!e164 || !clinicName) {
       return NextResponse.json(
