@@ -74,7 +74,7 @@ create table if not exists providers (
   practice_name   text,                      -- e.g. "AFC Urgent Care Narberth"
   doxy_room_url   text not null,             -- HIPAA-compliant video/chat room (BAA required with vendor)
   notify_phone    text not null,             -- E.164 format, e.g. "+12155551234"
-  platform_fee_cents integer not null default 15000, -- total charged to the patient (platform's take = this minus provider_payout_cents)
+  platform_fee_cents integer not null default 10000, -- total charged to the patient ($100); platform's take = this minus provider_payout_cents
   is_active       boolean not null default false, -- stays false until NPI-verified — see /api/admin/providers/verify-npi
   created_at      timestamptz default now()
 );
@@ -93,11 +93,11 @@ alter table providers add column if not exists photo_url    text;     -- optiona
 alter table providers add column if not exists npi text;                    -- 10-digit NPI, required before verification
 alter table providers add column if not exists npi_verified_at timestamptz; -- set by /api/admin/providers/verify-npi on success
 
--- Stripe Connect — where the provider's $50 cut is transferred once a
+-- Stripe Connect — where the provider's $30 cut is transferred once a
 -- connected call actually completes. See /api/admin/providers/connect-onboard.
 alter table providers add column if not exists stripe_account_id text;
 alter table providers add column if not exists stripe_onboarded boolean not null default false;
-alter table providers add column if not exists provider_payout_cents integer not null default 5000;
+alter table providers add column if not exists provider_payout_cents integer not null default 3000; -- $30 of the $100 total ($70 platform take)
 
 -- TELEHEALTH_REQUESTS — one row per paid connection request.
 -- Created when a Stripe Checkout Session starts, marked paid once
@@ -123,6 +123,13 @@ alter table telehealth_requests add column if not exists patient_phone text;
 alter table telehealth_requests add column if not exists symptom_summary text;
 alter table telehealth_requests add column if not exists proxy_session_sid text;
 alter table telehealth_requests add column if not exists provider_proxy_number text;
+
+-- Provider payout tracking — set by /api/webhooks/twilio-proxy once the
+-- masked call actually completes. 'pending' until then; never re-paid
+-- once 'paid' (idempotency guard against duplicate webhook deliveries).
+alter table telehealth_requests add column if not exists payout_status text not null default 'pending'; -- pending | paid | failed | skipped
+alter table telehealth_requests add column if not exists payout_transfer_id text;
+alter table telehealth_requests add column if not exists payout_error text;
 
 -- CLINIC_CLAIMS — a clinic owner/manager asking to claim & verify their
 -- listing. Reviewed manually (for now) before flipping clinics.is_featured
@@ -338,8 +345,13 @@ on conflict (google_place_id) do update set
 
 -- ============================================================
 -- 5. TELEHEALTH PROVIDER SETUP (run manually, once per doctor)
--- Fill in the real values below and run in the SQL editor.
--- Do NOT commit real license numbers or phone numbers to this file.
+-- Fill in the real values below and run in the SQL editor. The row
+-- inserts as is_active=false — it won't appear in the marketplace or
+-- accept payments until you call POST /api/admin/providers/verify-npi
+-- with this row's id (requires ADMIN_SECRET), which checks the NPI
+-- against the live NPPES registry and flips is_active=true on success.
+-- Do NOT commit real license numbers, NPIs, or phone numbers to this file.
 -- ============================================================
--- insert into providers (name, license_state, license_number, practice_name, doxy_room_url, notify_phone, platform_fee_cents)
--- values ('Dr. FULL NAME, MD', 'PA', 'PA LICENSE NUMBER', 'AFC Urgent Care Narberth', 'https://doxy.me/YOUR_ROOM_NAME', '+1XXXXXXXXXX', 10000);
+-- insert into providers (name, license_state, license_number, npi, practice_name, doxy_room_url, notify_phone)
+-- values ('Dr. FULL NAME, MD', 'PA', 'PA LICENSE NUMBER', 'NPI NUMBER', 'AFC Urgent Care Narberth', 'https://doxy.me/YOUR_ROOM_NAME', '+1XXXXXXXXXX');
+-- (platform_fee_cents defaults to 10000 / $100, provider_payout_cents to 3000 / $30 — override either if this doctor's split differs)

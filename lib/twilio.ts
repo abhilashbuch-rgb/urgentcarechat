@@ -60,6 +60,12 @@ export interface MaskedCallSession {
 // hasn't been exercised against a live account from this environment —
 // test it end-to-end with a Twilio trial account before relying on it
 // for real patients.
+//
+// For the provider payout to trigger automatically (see
+// /api/webhooks/twilio-proxy), the Proxy Service's Callback URL must be
+// set to https://<your-domain>/api/webhooks/twilio-proxy — this is a
+// Service-level setting (Console → Proxy → your Service → Callback URL),
+// not something this code can set per-session via the API.
 // ============================================================
 export async function createMaskedCallSession(
   patientPhone: string,
