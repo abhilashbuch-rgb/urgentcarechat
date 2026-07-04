@@ -539,6 +539,104 @@ body {
   margin-top: 10px;
 }
 
+/* ========== TELEHEALTH ========== */
+.telehealth-card {
+  background: var(--bg-card);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 28px 26px;
+  box-shadow: var(--shadow);
+  margin-top: 8px;
+}
+
+.telehealth-title {
+  font-family: var(--serif);
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 8px;
+}
+
+.telehealth-sub {
+  font-size: 15px;
+  color: var(--ink-soft);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.telehealth-terms {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 22px;
+  padding: 16px 18px;
+  background: rgba(0,0,0,.03);
+  border-radius: 6px;
+}
+
+.telehealth-terms li {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.telehealth-terms strong { color: var(--ink); }
+
+.telehealth-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--ink);
+  margin-bottom: 14px;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.telehealth-check input {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.telehealth-error {
+  font-size: 13px;
+  color: var(--accent-deep);
+  background: rgba(216,58,44,.08);
+  border-left: 2px solid var(--accent);
+  padding: 10px 14px;
+  margin-bottom: 16px;
+}
+
+.telehealth-btn {
+  width: 100%;
+  background: var(--ink);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 14px 18px;
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-top: 6px;
+}
+
+.telehealth-btn:hover:not(:disabled) { background: var(--accent); }
+.telehealth-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.telehealth-back {
+  display: block;
+  text-align: center;
+  margin-top: 18px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+
+.telehealth-back:hover { color: var(--accent-deep); }
+
 /* mobile */
 @media (max-width: 600px) {
   .site-header { padding: 14px 18px; }

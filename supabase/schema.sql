@@ -61,6 +61,43 @@ create table if not exists conversations (
 
 create index if not exists idx_conversations_ttl on conversations(ttl_expires_at);
 
+-- PROVIDERS — doctors available for a paid instant telehealth chat.
+-- Each row is one doctor: their state license, their HIPAA-compliant
+-- video/chat room (e.g. a Doxy.me personal room URL), and the phone
+-- number that gets a text when a patient pays and is waiting.
+-- Add more rows here to onboard more doctors — no code changes needed.
+create table if not exists providers (
+  id              uuid primary key default gen_random_uuid(),
+  name            text not null,             -- e.g. "Dr. Jane Smith, MD"
+  license_state   text not null,             -- e.g. "PA" — patient must attest to being in this state
+  license_number  text,
+  practice_name   text,                      -- e.g. "AFC Urgent Care Narberth"
+  doxy_room_url   text not null,             -- HIPAA-compliant video/chat room (BAA required with vendor)
+  notify_phone    text not null,             -- E.164 format, e.g. "+12155551234"
+  platform_fee_cents integer not null default 10000, -- $100 tech/platform fee; practice bills the visit separately
+  is_active       boolean not null default true,
+  created_at      timestamptz default now()
+);
+
+create index if not exists idx_providers_state_active on providers(license_state, is_active);
+
+-- TELEHEALTH_REQUESTS — one row per paid connection request.
+-- Created when a Stripe Checkout Session starts, marked paid once
+-- confirmed, and used to make the doctor-notify SMS idempotent.
+create table if not exists telehealth_requests (
+  id                    uuid primary key default gen_random_uuid(),
+  provider_id           uuid references providers(id),
+  stripe_session_id     text unique not null,
+  patient_state_attested text,
+  status                text not null default 'pending', -- pending | paid | notified
+  amount_cents          integer not null,
+  created_at            timestamptz default now(),
+  paid_at               timestamptz,
+  notified_at           timestamptz
+);
+
+create index if not exists idx_telehealth_requests_session on telehealth_requests(stripe_session_id);
+
 -- ============================================================
 -- 2. ROW LEVEL SECURITY
 -- ============================================================
@@ -68,6 +105,12 @@ create index if not exists idx_conversations_ttl on conversations(ttl_expires_at
 alter table clinics enable row level security;
 alter table clicks enable row level security;
 alter table conversations enable row level security;
+alter table providers enable row level security;
+alter table telehealth_requests enable row level security;
+
+-- Providers and telehealth_requests: service_role only (no anon policy).
+-- All reads/writes go through server routes using the service_role key —
+-- room URLs and phone numbers must never reach the browser directly.
 
 -- Clinics: anyone can read (the API needs this), only service_role can write
 create policy "Public can read clinics"
@@ -222,3 +265,11 @@ on conflict (google_place_id) do update set
 -- Done! You should see "Success. No rows returned" for the
 -- CREATE statements and "Success. 24 rows affected" for the INSERT.
 -- ============================================================
+
+-- ============================================================
+-- 5. TELEHEALTH PROVIDER SETUP (run manually, once per doctor)
+-- Fill in the real values below and run in the SQL editor.
+-- Do NOT commit real license numbers or phone numbers to this file.
+-- ============================================================
+-- insert into providers (name, license_state, license_number, practice_name, doxy_room_url, notify_phone, platform_fee_cents)
+-- values ('Dr. FULL NAME, MD', 'PA', 'PA LICENSE NUMBER', 'AFC Urgent Care Narberth', 'https://doxy.me/YOUR_ROOM_NAME', '+1XXXXXXXXXX', 10000);

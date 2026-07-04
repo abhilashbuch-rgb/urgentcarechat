@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 
 // ============================================================
 // Types
@@ -95,11 +96,15 @@ export default function Home() {
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const nextId = useRef(0);
+  const router = useRouter();
 
   // Show the full disclaimer modal once per browser session
   useEffect(() => {
-    const ack = sessionStorage.getItem("uc_disclaimer_ack");
-    if (!ack) setShowDisclaimer(true);
+    const timer = setTimeout(() => {
+      const ack = sessionStorage.getItem("uc_disclaimer_ack");
+      if (!ack) setShowDisclaimer(true);
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const acknowledgeDisclaimer = () => {
@@ -131,7 +136,11 @@ export default function Home() {
       addMessage({
         type: "bot",
         text: "Hi \u2014 I'm an AI assistant, not a doctor. If this is a life-threatening emergency, please call 911 right now.\n\nOtherwise, tell me what's going on and I'll help you find a nearby urgent care.",
-        quickReplies: ["Find clinics near me", "I have a symptom question"],
+        quickReplies: [
+          "Find clinics near me",
+          "I have a symptom question",
+          "Talk to a doctor now \u2014 $100",
+        ],
       });
     }, 300);
     return () => clearTimeout(timer);
@@ -246,6 +255,12 @@ export default function Home() {
     // Intercept geolocation quick reply
     if (text === "Find clinics near me") {
       handleGeolocate();
+      return;
+    }
+
+    // Intercept paid doctor-connect quick reply
+    if (text === "Talk to a doctor now — $100") {
+      router.push("/telehealth");
       return;
     }
 
