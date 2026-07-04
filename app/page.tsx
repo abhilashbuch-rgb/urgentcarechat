@@ -2,6 +2,10 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { STRINGS, getStoredLanguage, type Language } from "@/lib/i18n";
+import FollowUpOptIn from "./components/FollowUpOptIn";
+import ClaimListing from "./components/ClaimListing";
 
 // ============================================================
 // Types
@@ -18,12 +22,16 @@ interface Clinic {
   rating: number;
   directionsUrl: string;
   websiteUrl: string;
+  placeId?: string;
+  featured?: boolean;
 }
 
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
 }
+
+type CareLevel = "emergency" | "urgent" | "self_care";
 
 interface UIMessage {
   id: number;
@@ -35,6 +43,7 @@ interface UIMessage {
   alertCta?: string;
   alertHref?: string;
   clinics?: Clinic[];
+  careLevel?: CareLevel;
 }
 
 // ============================================================
@@ -84,8 +93,10 @@ function getSessionId(): string {
 
 // ============================================================
 // Main Chat Component
+// `embed` renders a chrome-less version for the /widget iframe:
+// no site header, no doctor CTA banner, just the chat itself.
 // ============================================================
-export default function Home() {
+export default function Home({ embed = false }: { embed?: boolean }) {
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [conversationHistory, setConversationHistory] = useState<ChatMessage[]>(
     []
@@ -94,9 +105,20 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [geoLoading, setGeoLoading] = useState(false);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
+  const [patientContext, setPatientContext] = useState<
+    "self" | "child" | "other" | null
+  >(null);
+  const [language, setLanguage] = useState<Language>("en");
   const inputRef = useRef<HTMLInputElement>(null);
   const nextId = useRef(0);
   const router = useRouter();
+  const t = STRINGS[language];
+
+  const toggleLanguage = () => {
+    const next: Language = language === "en" ? "es" : "en";
+    setLanguage(next);
+    localStorage.setItem("uc_lang", next);
+  };
 
   // Show the full disclaimer modal once per browser session
   useEffect(() => {
@@ -130,21 +152,32 @@ export default function Home() {
     }, 50);
   }, [messages]);
 
-  // Opening message
+  // Opening message \u2014 restores the saved language preference (if any) and
+  // asks who this is for first, so pediatric triage can be sharper from
+  // the very first symptom question.
   useEffect(() => {
     const timer = setTimeout(() => {
+      const lang = getStoredLanguage();
+      setLanguage(lang);
+      const strings = STRINGS[lang];
       addMessage({
         type: "bot",
-        text: "Hi \u2014 I'm an AI assistant, not a doctor. If this is a life-threatening emergency, please call 911 right now.\n\nOtherwise, tell me what's going on and I'll help you find a nearby urgent care.",
-        quickReplies: [
-          "Find clinics near me",
-          "I have a symptom question",
-          "Talk to a doctor now \u2014 $100",
-        ],
+        text: strings.openingWhoFor,
+        quickReplies: [strings.whoForMyself, strings.whoForChild, strings.whoForOther],
       });
     }, 300);
     return () => clearTimeout(timer);
   }, [addMessage]);
+
+  const showSymptomPrompt = useCallback(() => {
+    addMessage({
+      type: "bot",
+      text: t.symptomPrompt,
+      quickReplies: embed
+        ? [t.qrFindClinics, t.qrSymptomQuestion]
+        : [t.qrFindClinics, t.qrSymptomQuestion, t.qrTalkDoctor],
+    });
+  }, [addMessage, t, embed]);
 
   // Focus input on mount
   useEffect(() => {
@@ -184,15 +217,12 @@ export default function Home() {
 
   const handleGeolocate = async () => {
     if (!navigator.geolocation) {
-      addMessage({
-        type: "bot",
-        text: "Your browser doesn't support location services. You can type your zip code instead.",
-      });
+      addMessage({ type: "bot", text: t.geoNoSupport });
       return;
     }
 
     setGeoLoading(true);
-    addMessage({ type: "user", text: "Find urgent care near me" });
+    addMessage({ type: "user", text: t.geoUserBubble });
     const typingId = addMessage({ type: "typing" });
 
     navigator.geolocation.getCurrentPosition(
@@ -210,38 +240,23 @@ export default function Home() {
             const data = await res.json();
             const clinics = data.clinics || [];
             if (clinics.length > 0) {
-              addMessage({
-                type: "bot",
-                text: "Here are the closest urgent care clinics to your location:",
-              });
+              addMessage({ type: "bot", text: t.geoResultsIntro });
               addMessage({ type: "clinics", clinics });
             } else {
-              addMessage({
-                type: "bot",
-                text: "I couldn't find urgent care clinics near your location. Try entering your zip code instead.",
-              });
+              addMessage({ type: "bot", text: t.geoNoResults });
             }
           } else {
-            addMessage({
-              type: "bot",
-              text: "Something went wrong finding clinics near you. Try entering your zip code instead.",
-            });
+            addMessage({ type: "bot", text: t.geoApiError });
           }
         } catch {
           removeMessage(typingId);
-          addMessage({
-            type: "bot",
-            text: "Something went wrong. Please try typing your zip code instead.",
-          });
+          addMessage({ type: "bot", text: t.geoCatchError });
         }
         setGeoLoading(false);
       },
       () => {
         removeMessage(typingId);
-        addMessage({
-          type: "bot",
-          text: "I wasn't able to access your location. You can type your zip code and I'll find clinics near you.",
-        });
+        addMessage({ type: "bot", text: t.geoDenied });
         setGeoLoading(false);
       },
       { timeout: 10000, enableHighAccuracy: false }
@@ -252,14 +267,29 @@ export default function Home() {
     const text = (overrideText || inputValue).trim();
     if (!text || isLoading) return;
 
+    // Intercept the "who is this for" quick replies
+    if (text === t.whoForMyself || text === t.whoForChild || text === t.whoForOther) {
+      setInputValue("");
+      addMessage({ type: "user", text });
+      setPatientContext(
+        text === t.whoForMyself ? "self" : text === t.whoForChild ? "child" : "other"
+      );
+      const typingId = addMessage({ type: "typing" });
+      setTimeout(() => {
+        removeMessage(typingId);
+        showSymptomPrompt();
+      }, 500);
+      return;
+    }
+
     // Intercept geolocation quick reply
-    if (text === "Find clinics near me") {
+    if (text === t.qrFindClinics) {
       handleGeolocate();
       return;
     }
 
     // Intercept paid doctor-connect quick reply
-    if (text === "Talk to a doctor now — $100") {
+    if (text === t.qrTalkDoctor) {
       router.push("/telehealth");
       return;
     }
@@ -330,7 +360,7 @@ export default function Home() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newHistory }),
+        body: JSON.stringify({ messages: newHistory, patientContext, language }),
       });
 
       if (!res.ok) {
@@ -356,9 +386,9 @@ export default function Home() {
       ) {
         addMessage({
           type: "alert-911",
-          alertTitle: "This may be a medical emergency.",
+          alertTitle: t.alert911Title,
           alertBody: assistantText,
-          alertCta: "Call 911",
+          alertCta: t.alert911Cta,
           alertHref: "tel:911",
         });
       } else if (
@@ -367,14 +397,18 @@ export default function Home() {
       ) {
         addMessage({
           type: "alert-988",
-          alertTitle: "I want you to be safe.",
+          alertTitle: t.alert988Title,
           alertBody: assistantText,
-          alertCta: "Call or text 988",
+          alertCta: t.alert988Cta,
           alertHref: "tel:988",
         });
       } else {
         // Normal bot message
-        addMessage({ type: "bot", text: assistantText });
+        const careLevel: CareLevel | undefined =
+          data.careLevel === "urgent" || data.careLevel === "self_care"
+            ? data.careLevel
+            : undefined;
+        addMessage({ type: "bot", text: assistantText, careLevel });
       }
 
       // If the LLM triggered a clinic search, fetch and display results
@@ -386,19 +420,13 @@ export default function Home() {
         if (clinics.length > 0) {
           addMessage({ type: "clinics", clinics });
         } else {
-          addMessage({
-            type: "bot",
-            text: "I wasn't able to find urgent care clinics near that zip code. Could you double-check the zip, or try a nearby one?",
-          });
+          addMessage({ type: "bot", text: t.clinicSearchNoResults });
         }
       }
     } catch (err) {
       removeMessage(typingId);
       console.error("Chat error:", err);
-      addMessage({
-        type: "bot",
-        text: "Sorry, I'm having trouble connecting right now. If this is an emergency, please call 911. Otherwise, try again in a moment.",
-      });
+      addMessage({ type: "bot", text: t.chatConnectError });
     }
 
     setIsLoading(false);
@@ -417,31 +445,13 @@ export default function Home() {
             aria-describedby="disclaimer-body"
           >
             <div id="disclaimer-title" className="disclaimer-modal-title">
-              Before you continue
+              {t.disclaimerTitle}
             </div>
             <div id="disclaimer-body" className="disclaimer-modal-body">
               <ul>
-                <li>
-                  This chat is powered by AI, <strong>not a doctor</strong>. It
-                  does not diagnose, treat, or prescribe.
-                </li>
-                <li>
-                  Life-threatening emergency? Call <strong>911</strong> now.
-                  Mental health crisis? Call or text <strong>988</strong>.
-                </li>
-                <li>
-                  Nothing here is a substitute for professional medical
-                  advice, diagnosis, or treatment from a licensed provider.
-                </li>
-                <li>
-                  Clinic hours, insurance, and services shown are sourced from
-                  third parties and may be inaccurate — confirm directly
-                  with the clinic before relying on them.
-                </li>
-                <li>
-                  We don&apos;t collect or store personal health information
-                  beyond what&apos;s needed to show you nearby clinics.
-                </li>
+                {t.disclaimerItems.map((item, i) => (
+                  <li key={i}>{item}</li>
+                ))}
               </ul>
             </div>
             <button
@@ -449,25 +459,38 @@ export default function Home() {
               onClick={acknowledgeDisclaimer}
               autoFocus
             >
-              I understand — continue
+              {t.disclaimerBtn}
             </button>
           </div>
         </div>
       )}
 
-      <header className="site-header">
-        <div className="brand">
-          <span className="dot"></span>urgentcare
-          <span className="tld">.chat</span>
+      {embed ? (
+        <div className="embed-topbar">
+          <button className="lang-toggle" onClick={toggleLanguage}>
+            {t.langToggleLabel}
+          </button>
         </div>
-        <div className="tagline">Care, nearby. Right now.</div>
-      </header>
+      ) : (
+        <header className="site-header">
+          <div className="brand">
+            <span className="dot"></span>urgentcare
+            <span className="tld">.chat</span>
+          </div>
+          <div className="header-actions">
+            <button className="lang-toggle" onClick={toggleLanguage}>
+              {t.langToggleLabel}
+            </button>
+            <Link href="/telehealth" className="doctor-cta">
+              {t.doctorCta} <span className="doctor-cta-arrow">&rarr;</span>
+            </Link>
+          </div>
+        </header>
+      )}
 
-      <main className="app">
+      <main className={embed ? "app embed" : "app"}>
         <div className="disclaimer">
-          <strong>Not a doctor.</strong> If this is a life-threatening emergency,
-          call <strong>911</strong> immediately. For mental health crisis, call
-          or text <strong>988</strong>.
+          <strong>{t.disclaimerBannerNotDoctor}</strong> {t.disclaimerBannerBody}
         </div>
 
         <div className="chat" role="log" aria-label="Chat conversation" aria-live="polite">
@@ -522,7 +545,12 @@ export default function Home() {
                   </div>
                   <div className="clinic-list" role="list" aria-label="Urgent care clinics near you">
                     {msg.clinics.map((c, i) => (
-                      <div key={i} className="clinic-card" role="listitem">
+                      <div
+                        key={i}
+                        className={`clinic-card${c.featured ? " featured" : ""}`}
+                        role="listitem"
+                      >
+                        {c.featured && <div className="featured-tag">{t.featuredTag}</div>}
                         <div className="clinic-name">{c.name}</div>
                         <div className="clinic-meta">
                           <span>{c.distance}</span>
@@ -590,6 +618,33 @@ export default function Home() {
                             </a>
                           )}
                         </div>
+                        <div className="clinic-footer-row">
+                          <FollowUpOptIn
+                            clinicName={c.name}
+                            sessionId={getSessionId()}
+                            labels={{
+                              prompt: t.followUpPrompt,
+                              placeholder: t.followUpPlaceholder,
+                              submit: t.followUpSubmit,
+                              submitting: t.followUpSubmitting,
+                              success: t.followUpSuccess,
+                              error: t.followUpError,
+                            }}
+                          />
+                          <ClaimListing
+                            clinicName={c.name}
+                            placeId={c.placeId}
+                            labels={{
+                              prompt: t.claimPrompt,
+                              namePlaceholder: t.claimNamePlaceholder,
+                              emailPlaceholder: t.claimEmailPlaceholder,
+                              submit: t.claimSubmit,
+                              submitting: t.claimSubmitting,
+                              success: t.claimSuccess,
+                              error: t.claimError,
+                            }}
+                          />
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -601,6 +656,11 @@ export default function Home() {
             return (
               <div key={msg.id} className="msg bot">
                 <div className="msg-label">Assistant</div>
+                {msg.careLevel && (
+                  <div className={`care-badge care-badge-${msg.careLevel}`}>
+                    {msg.careLevel === "urgent" ? t.careUrgent : t.careSelf}
+                  </div>
+                )}
                 <div className="msg-bubble">
                   {msg.text?.split("\n").map((line, i) => (
                     <span key={i}>
@@ -634,7 +694,7 @@ export default function Home() {
             ref={inputRef}
             type="text"
             id="input"
-            placeholder="What's going on?"
+            placeholder={t.inputPlaceholder}
             autoComplete="off"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
@@ -666,8 +726,18 @@ export default function Home() {
           </button>
         </div>
         <div className="footer-note">
-          Free public service &middot; Not affiliated with any clinic &middot;
-          No personal data stored
+          {embed ? (
+            <a
+              href="https://urgentcare.chat"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="embed-attribution"
+            >
+              Powered by urgentcare.chat
+            </a>
+          ) : (
+            t.footerNote
+          )}
         </div>
       </div>
     </>

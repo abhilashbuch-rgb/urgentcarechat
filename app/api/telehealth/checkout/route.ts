@@ -10,7 +10,7 @@ import { createServerClient } from "@/lib/supabase";
 
 export async function POST(req: NextRequest) {
   try {
-    const { stateAttested } = await req.json();
+    const { stateAttested, providerId } = await req.json();
 
     if (stateAttested !== "PA") {
       return NextResponse.json(
@@ -23,13 +23,19 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = createServerClient();
-    const { data: provider, error: providerErr } = await supabase
+    let providerQuery = supabase
       .from("providers")
       .select("*")
       .eq("license_state", stateAttested)
-      .eq("is_active", true)
-      .limit(1)
-      .maybeSingle();
+      .eq("is_active", true);
+
+    // If the patient picked a specific doctor from the marketplace, use that
+    // one; otherwise fall back to the first active doctor for their state.
+    providerQuery = providerId
+      ? providerQuery.eq("id", providerId)
+      : providerQuery.limit(1);
+
+    const { data: provider, error: providerErr } = await providerQuery.maybeSingle();
 
     if (providerErr || !provider) {
       console.error("[telehealth/checkout] no active provider:", providerErr);

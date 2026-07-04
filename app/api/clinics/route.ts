@@ -22,6 +22,7 @@ interface PlaceResult {
   insurance: string[];
   directionsUrl: string;
   websiteUrl: string;
+  featured: boolean;
 }
 
 // Default services that most urgent care clinics offer
@@ -239,15 +240,10 @@ export async function GET(req: NextRequest) {
             place.formattedAddress || ""
           )}&destination_place_id=${place.id || ""}`,
           websiteUrl: place.websiteUri || "",
+          featured: false,
         };
       }
     );
-
-    // Sort: open clinics first, then by distance
-    results.sort((a, b) => {
-      if (a.open !== b.open) return a.open ? -1 : 1;
-      return parseFloat(a.distance) - parseFloat(b.distance);
-    });
 
     // Try to enrich with Supabase override data
     try {
@@ -262,7 +258,7 @@ export async function GET(req: NextRequest) {
           const overrideRes = await fetch(
             `${supabaseUrl}/rest/v1/clinics?google_place_id=in.(${placeIds
               .map((id) => `"${id}"`)
-              .join(",")})&select=google_place_id,services,insurance_tags`,
+              .join(",")})&select=google_place_id,services,insurance_tags,is_featured`,
             {
               headers: {
                 apikey: supabaseKey,
@@ -276,6 +272,7 @@ export async function GET(req: NextRequest) {
               google_place_id: string;
               services: string[];
               insurance_tags: string[];
+              is_featured: boolean | null;
             }[] = await overrideRes.json();
 
             for (const override of overrides) {
@@ -287,6 +284,7 @@ export async function GET(req: NextRequest) {
                   match.services = override.services;
                 if (override.insurance_tags?.length)
                   match.insurance = override.insurance_tags;
+                match.featured = !!override.is_featured;
               }
             }
           }
@@ -296,6 +294,13 @@ export async function GET(req: NextRequest) {
       // Supabase enrichment failure should not block results
       console.error("Supabase enrichment failed:", enrichErr);
     }
+
+    // Sort: featured clinics first, then open, then by distance
+    results.sort((a, b) => {
+      if (a.featured !== b.featured) return a.featured ? -1 : 1;
+      if (a.open !== b.open) return a.open ? -1 : 1;
+      return parseFloat(a.distance) - parseFloat(b.distance);
+    });
 
     // Cache raw results (before insurance filtering)
     cache.set(cacheKey, { results, timestamp: Date.now() });

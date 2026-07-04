@@ -68,10 +68,10 @@ function ConfirmPanel() {
 
   if (!sessionId) {
     return (
-      <div className="telehealth-card">
-        <h1 className="telehealth-title">Something went wrong</h1>
-        <p className="telehealth-sub">Missing checkout session.</p>
-        <Link className="telehealth-back" href="/telehealth">
+      <div className="lux-card">
+        <h1 className="lux-card-title">Something went wrong</h1>
+        <p className="lux-card-sub">Missing checkout session.</p>
+        <Link className="lux-back" href="/telehealth">
           &larr; Try again
         </Link>
       </div>
@@ -80,10 +80,10 @@ function ConfirmPanel() {
 
   if (state.status === "checking") {
     return (
-      <div className="telehealth-card">
-        <h1 className="telehealth-title">Confirming your payment…</h1>
-        <p className="telehealth-sub">This only takes a few seconds.</p>
-        <div className="typing" style={{ marginTop: 12 }}>
+      <div className="lux-card">
+        <h1 className="lux-card-title">Confirming your payment…</h1>
+        <p className="lux-card-sub">This only takes a few seconds.</p>
+        <div className="typing">
           <span></span>
           <span></span>
           <span></span>
@@ -94,10 +94,10 @@ function ConfirmPanel() {
 
   if (state.status === "error") {
     return (
-      <div className="telehealth-card">
-        <h1 className="telehealth-title">Something went wrong</h1>
-        <p className="telehealth-sub">{state.message}</p>
-        <Link className="telehealth-back" href="/telehealth">
+      <div className="lux-card">
+        <h1 className="lux-card-title">Something went wrong</h1>
+        <p className="lux-card-sub">{state.message}</p>
+        <Link className="lux-back" href="/telehealth">
           &larr; Try again
         </Link>
       </div>
@@ -105,13 +105,13 @@ function ConfirmPanel() {
   }
 
   return (
-    <div className="telehealth-card">
-      <h1 className="telehealth-title">You&apos;re connected</h1>
-      <p className="telehealth-sub">
+    <div className="lux-card">
+      <h1 className="lux-card-title">You&apos;re connected</h1>
+      <p className="lux-card-sub">
         {state.providerName} has been notified and is expecting you.
       </p>
       <a
-        className="telehealth-btn"
+        className="lux-btn"
         style={{ display: "block", textAlign: "center", textDecoration: "none" }}
         href={state.roomUrl}
         target="_blank"
@@ -119,7 +119,7 @@ function ConfirmPanel() {
       >
         Join the chat now
       </a>
-      <Link className="telehealth-back" href="/">
+      <Link className="lux-back" href="/">
         &larr; Back to chat
       </Link>
     </div>
@@ -128,26 +128,26 @@ function ConfirmPanel() {
 
 export default function TelehealthSuccess() {
   return (
-    <>
-      <header className="site-header">
-        <div className="brand">
+    <div className="lux-shell">
+      <header className="lux-header">
+        <div className="brand lux-brand">
           <span className="dot"></span>urgentcare
           <span className="tld">.chat</span>
         </div>
-        <div className="tagline">Talk to a doctor now</div>
+        <div className="lux-tagline">Concierge Care</div>
       </header>
 
-      <main className="app">
+      <main className="lux-main">
         <Suspense
           fallback={
-            <div className="telehealth-card">
-              <h1 className="telehealth-title">Loading…</h1>
+            <div className="lux-card">
+              <h1 className="lux-card-title">Loading…</h1>
             </div>
           }
         >
           <ConfirmPanel />
         </Suspense>
       </main>
-    </>
+    </div>
   );
 }

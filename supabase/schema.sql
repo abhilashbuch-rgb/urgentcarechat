@@ -81,6 +81,13 @@ create table if not exists providers (
 
 create index if not exists idx_providers_state_active on providers(license_state, is_active);
 
+-- Richer profile fields for the doctor-selection marketplace UI.
+-- Added via ALTER so this stays idempotent if the table already exists.
+alter table providers add column if not exists credentials text;      -- e.g. "MD"
+alter table providers add column if not exists specialty   text;      -- e.g. "Family Medicine"
+alter table providers add column if not exists bio          text;     -- one-line blurb shown on the doctor card
+alter table providers add column if not exists photo_url    text;     -- optional headshot; falls back to initials avatar
+
 -- TELEHEALTH_REQUESTS — one row per paid connection request.
 -- Created when a Stripe Checkout Session starts, marked paid once
 -- confirmed, and used to make the doctor-notify SMS idempotent.
@@ -98,6 +105,40 @@ create table if not exists telehealth_requests (
 
 create index if not exists idx_telehealth_requests_session on telehealth_requests(stripe_session_id);
 
+-- CLINIC_CLAIMS — a clinic owner/manager asking to claim & verify their
+-- listing. Reviewed manually (for now) before flipping clinics.is_featured
+-- or overwriting clinics.hours_json/services/insurance_tags.
+create table if not exists clinic_claims (
+  id              uuid primary key default gen_random_uuid(),
+  clinic_id       uuid references clinics(id),
+  google_place_id text,               -- easiest key to reconcile with clinics.google_place_id
+  clinic_name     text not null,
+  contact_name    text,
+  contact_email   text not null,
+  contact_phone   text,
+  message         text,
+  status          text not null default 'pending', -- pending | approved | rejected
+  created_at      timestamptz default now()
+);
+
+-- FOLLOW_UP_REQUESTS — opt-in only. A patient checks "text me later" after
+-- clicking a clinic's directions/call button and gives a phone number.
+-- A cron job (see /api/cron/send-follow-ups) texts them ~3 hours later
+-- asking how the visit went. Nothing here is created without explicit
+-- opt-in, and the phone number is never linked to symptom/chat content.
+create table if not exists follow_up_requests (
+  id              uuid primary key default gen_random_uuid(),
+  clinic_name     text not null,
+  phone           text not null,          -- E.164 format
+  session_id      text,
+  status          text not null default 'scheduled', -- scheduled | sent | failed
+  scheduled_for   timestamptz not null,
+  sent_at         timestamptz,
+  created_at      timestamptz default now()
+);
+
+create index if not exists idx_follow_up_due on follow_up_requests(status, scheduled_for);
+
 -- ============================================================
 -- 2. ROW LEVEL SECURITY
 -- ============================================================
@@ -107,6 +148,16 @@ alter table clicks enable row level security;
 alter table conversations enable row level security;
 alter table providers enable row level security;
 alter table telehealth_requests enable row level security;
+alter table clinic_claims enable row level security;
+alter table follow_up_requests enable row level security;
+
+-- Clinic claims: anyone can submit a claim request; only service_role reads/reviews.
+create policy "Anyone can submit a clinic claim"
+  on clinic_claims for insert to anon with check (true);
+
+-- Follow-up requests: anyone can opt in; only service_role reads (the cron job).
+create policy "Anyone can opt into a follow-up text"
+  on follow_up_requests for insert to anon with check (true);
 
 -- Providers and telehealth_requests: service_role only (no anon policy).
 -- All reads/writes go through server routes using the service_role key —

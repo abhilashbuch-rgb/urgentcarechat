@@ -73,6 +73,9 @@ export async function POST(req: NextRequest) {
     // Parse request
     const body = await req.json();
     const messages: ChatMessage[] = body.messages;
+    const patientContext: "self" | "child" | "other" | null =
+      body.patientContext || null;
+    const language: "en" | "es" = body.language === "es" ? "es" : "en";
 
     if (!messages || messages.length === 0) {
       return NextResponse.json(
@@ -84,13 +87,25 @@ export async function POST(req: NextRequest) {
     // Limit conversation length to prevent abuse (max 30 turns)
     const trimmedMessages = messages.slice(-30);
 
+    // Sharpen triage when the symptoms belong to someone other than the
+    // person typing — especially children, where red-flag thresholds differ.
+    let system = SYSTEM_PROMPT;
+    if (language === "es") {
+      system += `\n\n# Language\nRespond ONLY in natural, conversational Spanish (not machine-translated sounding). Keep the same tone, brevity, and safety rules. Still output [SEARCH_CLINICS ...] and [CARE_LEVEL ...] tags exactly as specified in English — those are machine-readable and must not be translated.`;
+    }
+    if (patientContext === "child") {
+      system += `\n\n# Current context\nThe user is describing symptoms for their CHILD, not themselves. Apply the pediatric red-flag protocols with extra care, and phrase responses accordingly (e.g. "your child" not "you").`;
+    } else if (patientContext === "other") {
+      system += `\n\n# Current context\nThe user is describing symptoms for someone else (not themselves, not their child). Phrase responses accordingly (e.g. "they"/"them" not "you").`;
+    }
+
     // Call Anthropic Claude
     const client = new Anthropic({ apiKey });
 
     const response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 512,
-      system: SYSTEM_PROMPT,
+      system,
       messages: trimmedMessages.map((m) => ({
         role: m.role,
         content: m.content,
@@ -120,6 +135,18 @@ export async function POST(req: NextRequest) {
         .trim();
     }
 
+    // Check for the [CARE_LEVEL] tag and strip it from the displayed text
+    const careLevelMatch = cleanContent.match(
+      /\[CARE_LEVEL\s+(emergency|urgent|self_care)\]/
+    );
+    let careLevel: "emergency" | "urgent" | "self_care" | null = null;
+    if (careLevelMatch) {
+      careLevel = careLevelMatch[1] as "emergency" | "urgent" | "self_care";
+      cleanContent = cleanContent
+        .replace(/\[CARE_LEVEL\s+(emergency|urgent|self_care)\]/, "")
+        .trim();
+    }
+
     // Log only metadata, never content
     console.log(
       `[chat] turns=${trimmedMessages.length} tokens_in=${response.usage.input_tokens} tokens_out=${response.usage.output_tokens}`
@@ -128,6 +155,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       content: cleanContent,
       clinicSearch: clinicSearchParams,
+      careLevel,
     });
   } catch (err: unknown) {
     console.error("Chat API error:", err instanceof Error ? err.message : "Unknown error");
