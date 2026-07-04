@@ -92,8 +92,21 @@ export default function Home() {
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [geoLoading, setGeoLoading] = useState(false);
+  const [showDisclaimer, setShowDisclaimer] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const nextId = useRef(0);
+
+  // Show the full disclaimer modal once per browser session
+  useEffect(() => {
+    const ack = sessionStorage.getItem("uc_disclaimer_ack");
+    if (!ack) setShowDisclaimer(true);
+  }, []);
+
+  const acknowledgeDisclaimer = () => {
+    sessionStorage.setItem("uc_disclaimer_ack", "1");
+    setShowDisclaimer(false);
+    inputRef.current?.focus();
+  };
 
   const addMessage = useCallback((msg: Omit<UIMessage, "id">): number => {
     const id = nextId.current++;
@@ -379,6 +392,54 @@ export default function Home() {
 
   return (
     <>
+      {showDisclaimer && (
+        <div className="disclaimer-overlay" role="presentation">
+          <div
+            className="disclaimer-modal"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="disclaimer-title"
+            aria-describedby="disclaimer-body"
+          >
+            <div id="disclaimer-title" className="disclaimer-modal-title">
+              Before you continue
+            </div>
+            <div id="disclaimer-body" className="disclaimer-modal-body">
+              <ul>
+                <li>
+                  This chat is powered by AI, <strong>not a doctor</strong>. It
+                  does not diagnose, treat, or prescribe.
+                </li>
+                <li>
+                  Life-threatening emergency? Call <strong>911</strong> now.
+                  Mental health crisis? Call or text <strong>988</strong>.
+                </li>
+                <li>
+                  Nothing here is a substitute for professional medical
+                  advice, diagnosis, or treatment from a licensed provider.
+                </li>
+                <li>
+                  Clinic hours, insurance, and services shown are sourced from
+                  third parties and may be inaccurate — confirm directly
+                  with the clinic before relying on them.
+                </li>
+                <li>
+                  We don&apos;t collect or store personal health information
+                  beyond what&apos;s needed to show you nearby clinics.
+                </li>
+              </ul>
+            </div>
+            <button
+              className="disclaimer-modal-btn"
+              onClick={acknowledgeDisclaimer}
+              autoFocus
+            >
+              I understand — continue
+            </button>
+          </div>
+        </div>
+      )}
+
       <header className="site-header">
         <div className="brand">
           <span className="dot"></span>urgentcare
