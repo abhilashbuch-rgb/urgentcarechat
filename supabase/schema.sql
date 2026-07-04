@@ -74,8 +74,8 @@ create table if not exists providers (
   practice_name   text,                      -- e.g. "AFC Urgent Care Narberth"
   doxy_room_url   text not null,             -- HIPAA-compliant video/chat room (BAA required with vendor)
   notify_phone    text not null,             -- E.164 format, e.g. "+12155551234"
-  platform_fee_cents integer not null default 10000, -- $100 tech/platform fee; practice bills the visit separately
-  is_active       boolean not null default true,
+  platform_fee_cents integer not null default 15000, -- total charged to the patient (platform's take = this minus provider_payout_cents)
+  is_active       boolean not null default false, -- stays false until NPI-verified — see /api/admin/providers/verify-npi
   created_at      timestamptz default now()
 );
 
@@ -87,6 +87,17 @@ alter table providers add column if not exists credentials text;      -- e.g. "M
 alter table providers add column if not exists specialty   text;      -- e.g. "Family Medicine"
 alter table providers add column if not exists bio          text;     -- one-line blurb shown on the doctor card
 alter table providers add column if not exists photo_url    text;     -- optional headshot; falls back to initials avatar
+
+-- NPI verification — a provider can't go live (is_active) until their NPI
+-- checks out as Active in the real NPPES registry for their license_state.
+alter table providers add column if not exists npi text;                    -- 10-digit NPI, required before verification
+alter table providers add column if not exists npi_verified_at timestamptz; -- set by /api/admin/providers/verify-npi on success
+
+-- Stripe Connect — where the provider's $50 cut is transferred once a
+-- connected call actually completes. See /api/admin/providers/connect-onboard.
+alter table providers add column if not exists stripe_account_id text;
+alter table providers add column if not exists stripe_onboarded boolean not null default false;
+alter table providers add column if not exists provider_payout_cents integer not null default 5000;
 
 -- TELEHEALTH_REQUESTS — one row per paid connection request.
 -- Created when a Stripe Checkout Session starts, marked paid once
