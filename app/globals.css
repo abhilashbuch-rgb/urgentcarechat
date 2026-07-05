@@ -1139,6 +1139,13 @@ body {
 
 .lux-check input { margin-top: 3px; flex-shrink: 0; }
 
+.lux-input-row {
+  display: flex;
+  gap: 10px;
+}
+
+.lux-input-row .lux-input { flex: 1; }
+
 .lux-textarea,
 .lux-input {
   width: 100%;

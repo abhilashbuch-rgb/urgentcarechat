@@ -36,10 +36,22 @@ export default function PrivacyPage() {
           <p>
             <strong>Paid telehealth connection:</strong> your phone number
             (used only to set up the masked call bridge — never shared with
-            the provider) and a brief description of what&apos;s going on
-            (used to screen for emergencies and to give the provider brief
-            context, then deleted once relayed). Payment is handled entirely
-            by Stripe — we never see or store your card details.
+            the provider), your name and date of birth (used only to match
+            your visit to your medical record with the provider&apos;s
+            practice — see below), and a brief description of what&apos;s
+            going on (used to screen for emergencies and to give the
+            provider brief context, then deleted once relayed). Payment is
+            handled entirely by Stripe — we never see or store your card
+            details.
+          </p>
+          <p>
+            <strong>Visit documentation:</strong> after a telehealth call,
+            the provider may submit a visit note, which we transmit to their
+            practice&apos;s medical record system so your visit is properly
+            documented. Once that transmission succeeds, we delete our own
+            copy of the note and your name/date of birth — the medical
+            record itself lives with the provider&apos;s practice, not with
+            us.
           </p>
           <p>
             <strong>Optional follow-up text:</strong> if you opt in after
@@ -56,10 +68,11 @@ export default function PrivacyPage() {
         <section className="legal-section">
           <h2>What we don&apos;t collect</h2>
           <p>
-            We do not ask for or knowingly store your full name, date of
-            birth, Social Security number, insurance member ID, home
-            address, or medical history beyond a symptom description used
-            transiently as described above.
+            We never ask for your Social Security number, insurance member
+            ID, or home address, in either the free chat or the paid
+            telehealth connection. The free chat never collects your name or
+            date of birth either — only the paid telehealth connection does,
+            and only because a real medical record requires it (see above).
           </p>
         </section>
 

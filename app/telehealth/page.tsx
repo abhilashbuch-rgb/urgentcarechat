@@ -46,6 +46,9 @@ export default function TelehealthIntake() {
   const [symptomText, setSymptomText] = useState("");
   const [duration, setDuration] = useState("");
   const [phone, setPhone] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [dob, setDob] = useState("");
   const [emergencyType, setEmergencyType] = useState<"911" | "988" | "pediatric" | null>(null);
 
   const [locationConfirmed, setLocationConfirmed] = useState(false);
@@ -102,7 +105,12 @@ export default function TelehealthIntake() {
 
   const selected = providers.find((p) => p.id === selectedId) || null;
   const phoneDigits = phone.replace(/\D/g, "");
-  const canContinueIntake = symptomText.trim().length > 3 && phoneDigits.length >= 10;
+  const canContinueIntake =
+    symptomText.trim().length > 3 &&
+    phoneDigits.length >= 10 &&
+    firstName.trim().length > 0 &&
+    lastName.trim().length > 0 &&
+    dob.length > 0;
   const canSubmit =
     !!selected && locationConfirmed && feeUnderstood && notEmergency && !loading;
 
@@ -135,6 +143,9 @@ export default function TelehealthIntake() {
           stateAttested: "PA",
           providerId: selected.id,
           patientPhone: phoneDigits,
+          patientFirstName: firstName.trim(),
+          patientLastName: lastName.trim(),
+          patientDob: dob,
           symptomSummary: `${symptomText}${duration ? ` (duration: ${duration})` : ""}`,
         }),
       });
@@ -296,7 +307,42 @@ export default function TelehealthIntake() {
               </div>
             </div>
 
-            <h2 className="lux-card-title">What&apos;s happening?</h2>
+            <h2 className="lux-card-title">A few details first</h2>
+            <p className="lux-card-sub">
+              Your name and date of birth are used only to document this
+              visit in your medical record — never your SSN or insurance ID.
+            </p>
+
+            <div className="lux-input-row">
+              <input
+                type="text"
+                className="lux-input"
+                placeholder="First name"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                aria-label="First name"
+              />
+              <input
+                type="text"
+                className="lux-input"
+                placeholder="Last name"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                aria-label="Last name"
+              />
+            </div>
+            <input
+              type="date"
+              className="lux-input"
+              value={dob}
+              onChange={(e) => setDob(e.target.value)}
+              aria-label="Date of birth"
+              max={new Date().toISOString().split("T")[0]}
+            />
+
+            <h2 className="lux-card-title" style={{ marginTop: 20 }}>
+              What&apos;s happening?
+            </h2>
             <p className="lux-card-sub">
               A quick description so we can screen for emergencies before
               anything is charged.

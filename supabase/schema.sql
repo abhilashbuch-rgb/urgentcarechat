@@ -134,6 +134,27 @@ alter table telehealth_requests add column if not exists payout_status text not 
 alter table telehealth_requests add column if not exists payout_transfer_id text;
 alter table telehealth_requests add column if not exists payout_error text;
 
+-- Patient demographics — collected ONLY for EMR/HIE patient matching
+-- (Carequality/CommonWell match on name+DOB+address/phone, never SSN;
+-- we still don't collect SSN, insurance ID, or address). Nulled out
+-- once successfully pushed to Metriport — see visit_note below.
+alter table telehealth_requests add column if not exists patient_first_name text;
+alter table telehealth_requests add column if not exists patient_last_name text;
+alter table telehealth_requests add column if not exists patient_dob date;
+
+-- Provider visit note — submitted post-call via a one-time token link
+-- (see /api/telehealth/note), then pushed to the EMR via Metriport and
+-- scrubbed from our own database once that push succeeds. If the push
+-- fails, the note stays so a retry has something to send.
+alter table telehealth_requests add column if not exists note_token text;              -- random, single-use link token
+alter table telehealth_requests add column if not exists note_requested_at timestamptz; -- when we texted the provider the note link (idempotency guard)
+alter table telehealth_requests add column if not exists visit_note text;
+alter table telehealth_requests add column if not exists visit_note_submitted_at timestamptz;
+alter table telehealth_requests add column if not exists emr_push_status text not null default 'not_applicable'; -- not_applicable | pending | pushed | failed
+alter table telehealth_requests add column if not exists emr_push_error text;
+
+create unique index if not exists idx_telehealth_requests_note_token on telehealth_requests(note_token);
+
 -- CLINIC_CLAIMS — a clinic owner/manager asking to claim & verify their
 -- listing. Reviewed manually (for now) before flipping clinics.is_featured
 -- or overwriting clinics.hours_json/services/insurance_tags.

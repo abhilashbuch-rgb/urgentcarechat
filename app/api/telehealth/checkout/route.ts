@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { getStripeClient } from "@/lib/stripe";
 import { createServerClient } from "@/lib/supabase";
 import { toE164 } from "@/lib/phone";
@@ -22,7 +23,15 @@ import { toE164 } from "@/lib/phone";
 
 export async function POST(req: NextRequest) {
   try {
-    const { stateAttested, providerId, patientPhone, symptomSummary } = await req.json();
+    const {
+      stateAttested,
+      providerId,
+      patientPhone,
+      symptomSummary,
+      patientFirstName,
+      patientLastName,
+      patientDob,
+    } = await req.json();
 
     if (stateAttested !== "PA") {
       return NextResponse.json(
@@ -38,6 +47,13 @@ export async function POST(req: NextRequest) {
     if (!patientE164) {
       return NextResponse.json(
         { error: "A valid phone number is required so the doctor can call you." },
+        { status: 400 }
+      );
+    }
+
+    if (!patientFirstName || !patientLastName || !patientDob) {
+      return NextResponse.json(
+        { error: "Name and date of birth are required so the visit can be documented in your medical record." },
         { status: 400 }
       );
     }
@@ -99,9 +115,13 @@ export async function POST(req: NextRequest) {
       stripe_session_id: session.id,
       patient_state_attested: stateAttested,
       patient_phone: patientE164,
+      patient_first_name: String(patientFirstName).slice(0, 100),
+      patient_last_name: String(patientLastName).slice(0, 100),
+      patient_dob: patientDob,
       symptom_summary: String(symptomSummary || "").slice(0, 500),
       amount_cents: provider.platform_fee_cents,
       status: "pending",
+      note_token: crypto.randomBytes(24).toString("hex"),
     });
 
     if (insertErr) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { getStripeClient } from "@/lib/stripe";
+import { sendSms } from "@/lib/twilio";
 import { verifyTwilioSignature } from "@/lib/twilio-signature";
 
 // ============================================================
@@ -78,7 +79,9 @@ export async function POST(req: NextRequest) {
     const supabase = createServerClient();
     const { data: request, error } = await supabase
       .from("telehealth_requests")
-      .select("id, payout_status, providers(stripe_account_id, stripe_onboarded, provider_payout_cents)")
+      .select(
+        "id, payout_status, note_token, note_requested_at, providers(name, notify_phone, stripe_account_id, stripe_onboarded, provider_payout_cents)"
+      )
       .eq("proxy_session_sid", sessionSid)
       .maybeSingle();
 
@@ -87,16 +90,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, skipped: true });
     }
 
-    if (request.payout_status !== "pending") {
-      // Already paid, failed, or skipped — never pay twice.
-      return NextResponse.json({ ok: true, alreadyProcessed: true });
-    }
-
     const provider = request.providers as unknown as {
+      name: string;
+      notify_phone: string;
       stripe_account_id: string | null;
       stripe_onboarded: boolean;
       provider_payout_cents: number;
     };
+
+    // Text the provider the visit-note link exactly once, regardless of
+    // how the payout below turns out — documenting the visit doesn't
+    // depend on Stripe Connect being set up yet.
+    if (!request.note_requested_at && request.note_token) {
+      try {
+        const origin = `${req.headers.get("x-forwarded-proto") || "https"}://${req.headers.get("host")}`;
+        await sendSms(
+          provider.notify_phone,
+          `urgentcare.chat: please document your visit — ${origin}/provider/note?token=${request.note_token}`
+        );
+        await supabase
+          .from("telehealth_requests")
+          .update({ note_requested_at: new Date().toISOString() })
+          .eq("id", request.id);
+      } catch (smsErr) {
+        console.error("[webhooks/twilio-proxy] note-request SMS failed:", smsErr);
+      }
+    }
+
+    if (request.payout_status !== "pending") {
+      // Already paid, failed, or skipped — never pay twice.
+      return NextResponse.json({ ok: true, alreadyProcessed: true });
+    }
 
     if (!provider.stripe_account_id || !provider.stripe_onboarded) {
       await supabase
