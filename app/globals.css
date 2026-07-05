@@ -836,13 +836,32 @@ body {
   width: 100%;
 }
 
+.lux-hero-photo-frame {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 24px;
+  mask-image: radial-gradient(120% 100% at 50% 30%, black 62%, transparent 100%);
+  -webkit-mask-image: radial-gradient(120% 100% at 50% 30%, black 62%, transparent 100%);
+}
+
+.lux-hero-photo-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(12,14,18,0) 0%, rgba(12,14,18,.85) 100%),
+    linear-gradient(100deg, rgba(59,58,110,.4) 0%, transparent 60%),
+    linear-gradient(0deg, rgba(178,34,52,.12) 0%, transparent 40%);
+  mix-blend-mode: multiply;
+}
+
 .lux-hero-photo {
+  display: block;
   width: 100%;
   aspect-ratio: 16 / 10;
   object-fit: cover;
-  border-radius: 12px;
-  margin-bottom: 24px;
-  box-shadow: 0 20px 60px -20px rgba(0,0,0,.5);
+  filter: saturate(0.8) contrast(1.08) brightness(0.92);
 }
 
 .lux-how-it-works {

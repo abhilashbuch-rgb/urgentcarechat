@@ -184,12 +184,14 @@ export default function TelehealthIntake() {
 
         <div className="lux-layout">
           <div className="lux-info-col">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              className="lux-hero-photo"
-              src="https://images.unsplash.com/photo-1758691463607-c1220b77aaaa?w=1200&q=80&auto=format&fit=crop"
-              alt="A doctor on a phone call with a patient"
-            />
+            <div className="lux-hero-photo-frame">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                className="lux-hero-photo"
+                src="https://images.unsplash.com/photo-1758691463607-c1220b77aaaa?w=1200&q=80&auto=format&fit=crop"
+                alt="A doctor on a phone call with a patient"
+              />
+            </div>
 
             <h1 className="lux-title">Talk to a doctor, right now.</h1>
             <p className="lux-subtitle">
