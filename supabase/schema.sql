@@ -61,6 +61,172 @@ create table if not exists conversations (
 
 create index if not exists idx_conversations_ttl on conversations(ttl_expires_at);
 
+-- PROVIDERS — doctors available for a paid instant telehealth chat.
+-- Each row is one doctor: their state license, their HIPAA-compliant
+-- video/chat room (e.g. a Doxy.me personal room URL), and the phone
+-- number that gets a text when a patient pays and is waiting.
+-- Add more rows here to onboard more doctors — no code changes needed.
+create table if not exists providers (
+  id              uuid primary key default gen_random_uuid(),
+  name            text not null,             -- e.g. "Dr. Jane Smith, MD"
+  license_state   text not null,             -- e.g. "PA" — patient must attest to being in this state
+  license_number  text,
+  practice_name   text,                      -- e.g. "AFC Urgent Care Narberth"
+  doxy_room_url   text not null,             -- HIPAA-compliant video/chat room (BAA required with vendor)
+  notify_phone    text not null,             -- E.164 format, e.g. "+12155551234"
+  platform_fee_cents integer not null default 10000, -- total charged to the patient ($100); platform's take = this minus provider_payout_cents
+  is_active       boolean not null default false, -- stays false until NPI-verified — see /api/admin/providers/verify-npi
+  created_at      timestamptz default now()
+);
+
+create index if not exists idx_providers_state_active on providers(license_state, is_active);
+
+-- Richer profile fields for the doctor-selection marketplace UI.
+-- Added via ALTER so this stays idempotent if the table already exists.
+alter table providers add column if not exists credentials text;      -- e.g. "MD"
+alter table providers add column if not exists specialty   text;      -- e.g. "Family Medicine"
+alter table providers add column if not exists bio          text;     -- one-line blurb shown on the doctor card
+alter table providers add column if not exists photo_url    text;     -- optional headshot; falls back to initials avatar
+alter table providers add column if not exists lat float8;            -- practice location, for proximity routing once there are multiple providers
+alter table providers add column if not exists lng float8;
+alter table providers add column if not exists years_experience integer;
+
+-- NPI verification — a provider can't go live (is_active) until their NPI
+-- checks out as Active in the real NPPES registry for their license_state.
+alter table providers add column if not exists npi text;                    -- 10-digit NPI, required before verification
+alter table providers add column if not exists npi_verified_at timestamptz; -- set by /api/admin/providers/verify-npi on success
+
+-- Stripe Connect — where the provider's $30 cut is transferred once a
+-- connected call actually completes. See /api/admin/providers/connect-onboard.
+alter table providers add column if not exists stripe_account_id text;
+alter table providers add column if not exists stripe_onboarded boolean not null default false;
+alter table providers add column if not exists provider_payout_cents integer not null default 3000; -- $30 of the $100 total ($70 platform take)
+
+-- Provider portal auth — a provider logs in via Supabase Auth magic
+-- link sent to this email; auth_user_id links to that auth.users row
+-- on their first successful login (see /provider/auth/callback). Set
+-- the email yourself when onboarding a provider (schema template at
+-- the bottom of this file); the provider never chooses their own email.
+alter table providers add column if not exists email text unique;
+alter table providers add column if not exists auth_user_id uuid unique references auth.users(id) on delete set null;
+
+-- is_active means "NPI-verified, allowed to take patients at all";
+-- is_available means "toggled on right now" — the marketplace only
+-- shows providers where BOTH are true.
+alter table providers add column if not exists is_available boolean not null default false;
+
+alter table providers enable row level security;
+
+-- Providers can read and update only their OWN row, matched via the
+-- auth_user_id linked at first login. This is in addition to the
+-- service_role-only access already used by admin/webhook routes.
+drop policy if exists "Providers can view their own row" on providers;
+create policy "Providers can view their own row"
+  on providers for select
+  using (auth.uid() = auth_user_id);
+
+drop policy if exists "Providers can update their own profile" on providers;
+create policy "Providers can update their own profile"
+  on providers for update
+  using (auth.uid() = auth_user_id)
+  with check (auth.uid() = auth_user_id);
+
+-- RLS controls WHICH ROW a provider can touch, not which COLUMNS —
+-- without this, a logged-in provider could set their own is_active,
+-- provider_payout_cents, stripe_account_id, etc. directly via the
+-- client SDK. Column-level grants close that: the `authenticated`
+-- role can only ever update this specific list, no matter what the
+-- request contains.
+revoke update on providers from authenticated;
+grant update (bio, credentials, specialty, years_experience, photo_url, is_available) on providers to authenticated;
+
+-- TELEHEALTH_REQUESTS — one row per paid connection request.
+-- Created when a Stripe Checkout Session starts, marked paid once
+-- confirmed, and used to make the doctor-notify SMS idempotent.
+create table if not exists telehealth_requests (
+  id                    uuid primary key default gen_random_uuid(),
+  provider_id           uuid references providers(id),
+  stripe_session_id     text unique not null,
+  patient_state_attested text,
+  patient_phone         text,     -- E.164; used only for the masked call bridge, never shown to the provider
+  symptom_summary        text,    -- free text from the pre-payment screening step
+  status                text not null default 'pending', -- pending | paid | notified
+  amount_cents          integer not null,
+  created_at            timestamptz default now(),
+  paid_at               timestamptz,
+  notified_at           timestamptz
+);
+
+create index if not exists idx_telehealth_requests_session on telehealth_requests(stripe_session_id);
+
+-- Idempotent for anyone who already ran the table above without these columns.
+alter table telehealth_requests add column if not exists patient_phone text;
+alter table telehealth_requests add column if not exists symptom_summary text;
+alter table telehealth_requests add column if not exists proxy_session_sid text;
+alter table telehealth_requests add column if not exists provider_proxy_number text;
+
+-- Provider payout tracking — set by /api/webhooks/twilio-proxy once the
+-- masked call actually completes. 'pending' until then; never re-paid
+-- once 'paid' (idempotency guard against duplicate webhook deliveries).
+alter table telehealth_requests add column if not exists payout_status text not null default 'pending'; -- pending | paid | failed | skipped
+alter table telehealth_requests add column if not exists payout_transfer_id text;
+alter table telehealth_requests add column if not exists payout_error text;
+
+-- Patient demographics — collected ONLY for EMR/HIE patient matching
+-- (Carequality/CommonWell match on name+DOB+address/phone, never SSN;
+-- we still don't collect SSN, insurance ID, or address). Nulled out
+-- once successfully pushed to Metriport — see visit_note below.
+alter table telehealth_requests add column if not exists patient_first_name text;
+alter table telehealth_requests add column if not exists patient_last_name text;
+alter table telehealth_requests add column if not exists patient_dob date;
+
+-- Provider visit note — submitted post-call via a one-time token link
+-- (see /api/telehealth/note), then pushed to the EMR via Metriport and
+-- scrubbed from our own database once that push succeeds. If the push
+-- fails, the note stays so a retry has something to send.
+alter table telehealth_requests add column if not exists note_token text;              -- random, single-use link token
+alter table telehealth_requests add column if not exists note_requested_at timestamptz; -- when we texted the provider the note link (idempotency guard)
+alter table telehealth_requests add column if not exists visit_note text;
+alter table telehealth_requests add column if not exists visit_note_submitted_at timestamptz;
+alter table telehealth_requests add column if not exists emr_push_status text not null default 'not_applicable'; -- not_applicable | pending | pushed | failed
+alter table telehealth_requests add column if not exists emr_push_error text;
+
+create unique index if not exists idx_telehealth_requests_note_token on telehealth_requests(note_token);
+
+-- CLINIC_CLAIMS — a clinic owner/manager asking to claim & verify their
+-- listing. Reviewed manually (for now) before flipping clinics.is_featured
+-- or overwriting clinics.hours_json/services/insurance_tags.
+create table if not exists clinic_claims (
+  id              uuid primary key default gen_random_uuid(),
+  clinic_id       uuid references clinics(id),
+  google_place_id text,               -- easiest key to reconcile with clinics.google_place_id
+  clinic_name     text not null,
+  contact_name    text,
+  contact_email   text not null,
+  contact_phone   text,
+  message         text,
+  status          text not null default 'pending', -- pending | approved | rejected
+  created_at      timestamptz default now()
+);
+
+-- FOLLOW_UP_REQUESTS — opt-in only. A patient checks "text me later" after
+-- clicking a clinic's directions/call button and gives a phone number.
+-- A cron job (see /api/cron/send-follow-ups) texts them ~3 hours later
+-- asking how the visit went. Nothing here is created without explicit
+-- opt-in, and the phone number is never linked to symptom/chat content.
+create table if not exists follow_up_requests (
+  id              uuid primary key default gen_random_uuid(),
+  clinic_name     text not null,
+  phone           text not null,          -- E.164 format
+  session_id      text,
+  status          text not null default 'scheduled', -- scheduled | sent | failed
+  scheduled_for   timestamptz not null,
+  sent_at         timestamptz,
+  created_at      timestamptz default now()
+);
+
+create index if not exists idx_follow_up_due on follow_up_requests(status, scheduled_for);
+
 -- ============================================================
 -- 2. ROW LEVEL SECURITY
 -- ============================================================
@@ -68,6 +234,22 @@ create index if not exists idx_conversations_ttl on conversations(ttl_expires_at
 alter table clinics enable row level security;
 alter table clicks enable row level security;
 alter table conversations enable row level security;
+alter table providers enable row level security;
+alter table telehealth_requests enable row level security;
+alter table clinic_claims enable row level security;
+alter table follow_up_requests enable row level security;
+
+-- Clinic claims: anyone can submit a claim request; only service_role reads/reviews.
+create policy "Anyone can submit a clinic claim"
+  on clinic_claims for insert to anon with check (true);
+
+-- Follow-up requests: anyone can opt in; only service_role reads (the cron job).
+create policy "Anyone can opt into a follow-up text"
+  on follow_up_requests for insert to anon with check (true);
+
+-- Providers and telehealth_requests: service_role only (no anon policy).
+-- All reads/writes go through server routes using the service_role key —
+-- room URLs and phone numbers must never reach the browser directly.
 
 -- Clinics: anyone can read (the API needs this), only service_role can write
 create policy "Public can read clinics"
@@ -222,3 +404,21 @@ on conflict (google_place_id) do update set
 -- Done! You should see "Success. No rows returned" for the
 -- CREATE statements and "Success. 24 rows affected" for the INSERT.
 -- ============================================================
+
+-- ============================================================
+-- 5. TELEHEALTH PROVIDER SETUP (run manually, once per doctor)
+-- Fill in the real values below and run in the SQL editor. The row
+-- inserts as is_active=false and is_available=false — it won't appear
+-- in the marketplace or accept payments until:
+--   1. You call POST /api/admin/providers/verify-npi with this row's
+--      id (requires ADMIN_SECRET) — checks NPI against NPPES, flips
+--      is_active=true on success.
+--   2. The provider logs into /provider/login with the email below
+--      (Supabase Auth magic link), which links their account on first
+--      login, and toggles "available" on their dashboard themselves.
+-- Do NOT commit real license numbers, NPIs, phone numbers, or emails
+-- to this file.
+-- ============================================================
+-- insert into providers (name, license_state, license_number, npi, practice_name, doxy_room_url, notify_phone, email)
+-- values ('Dr. FULL NAME, MD', 'PA', 'PA LICENSE NUMBER', 'NPI NUMBER', 'AFC Urgent Care Narberth', 'https://doxy.me/YOUR_ROOM_NAME', '+1XXXXXXXXXX', 'doctor@example.com');
+-- (platform_fee_cents defaults to 10000 / $100, provider_payout_cents to 3000 / $30 — override either if this doctor's split differs)
