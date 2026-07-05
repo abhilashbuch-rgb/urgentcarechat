@@ -1,15 +1,19 @@
 /* urgentcare.chat — global styles */
 
 :root {
-  --bg: #f7f4ee;
+  /* Red/white/blue — "Old Glory Red" and "Old Glory Blue" from the
+     official American flag color spec, on a clean white ground. */
+  --bg: #f8f9fb;
   --bg-card: #ffffff;
   --ink: #1a1a1a;
   --ink-soft: #555;
-  --accent: #d83a2c;
-  --accent-deep: #a52a1f;
+  --accent: #b22234;
+  --accent-deep: #8c1c29;
+  --blue: #3c3b6e;
+  --blue-deep: #2b2a52;
   --safe: #2d6a4f;
-  --warn: #d83a2c;
-  --rule: #e6e1d6;
+  --warn: #b22234;
+  --rule: #e2e5eb;
   --shadow: 0 1px 0 rgba(0,0,0,.04), 0 8px 28px -12px rgba(0,0,0,.12);
   --serif: var(--font-fraunces), Georgia, serif;
   --sans: var(--font-inter-tight), system-ui, sans-serif;
@@ -66,7 +70,7 @@ body {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--blue);
   margin-right: 8px;
   transform: translateY(-2px);
 }
@@ -103,7 +107,7 @@ body {
   transition: border-color 0.15s, color 0.15s;
 }
 
-.lang-toggle:hover { border-color: var(--accent); color: var(--accent-deep); }
+.lang-toggle:hover { border-color: var(--blue); color: var(--blue-deep); }
 
 .doctor-cta {
   display: inline-flex;
@@ -112,16 +116,16 @@ body {
   font-family: var(--sans);
   font-size: 13px;
   font-weight: 600;
-  color: #14171d;
-  background: linear-gradient(135deg, #c9a961, #ddc088);
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--blue), var(--blue-deep));
   padding: 8px 14px;
   border-radius: 999px;
   text-decoration: none;
   transition: transform 0.15s, box-shadow 0.15s;
-  box-shadow: 0 4px 14px -6px rgba(201,169,97,.6);
+  box-shadow: 0 4px 14px -6px rgba(60,59,110,.5);
 }
 
-.doctor-cta:hover { transform: translateY(-1px); box-shadow: 0 6px 18px -6px rgba(201,169,97,.75); }
+.doctor-cta:hover { transform: translateY(-1px); box-shadow: 0 6px 18px -6px rgba(60,59,110,.65); }
 .doctor-cta-arrow { transition: transform 0.15s; }
 .doctor-cta:hover .doctor-cta-arrow { transform: translateX(2px); }
 
@@ -142,7 +146,7 @@ body {
   text-decoration: none;
 }
 
-.embed-attribution:hover { color: var(--accent-deep); }
+.embed-attribution:hover { color: var(--blue-deep); }
 
 /* ========== MAIN ========== */
 .app {
@@ -411,8 +415,8 @@ body {
 }
 
 .quick-reply:hover {
-  border-color: var(--accent);
-  color: var(--accent-deep);
+  border-color: var(--blue);
+  color: var(--blue-deep);
   transform: translateY(-1px);
 }
 
@@ -440,7 +444,7 @@ body {
 }
 
 .clinic-card.featured {
-  border-color: var(--accent);
+  border-color: var(--blue);
   border-width: 1px;
 }
 
@@ -448,7 +452,7 @@ body {
   position: absolute;
   top: -7px;
   left: 14px;
-  background: var(--accent);
+  background: var(--blue);
   color: white;
   font-family: var(--mono);
   font-size: 9px;
@@ -532,8 +536,8 @@ body {
 }
 
 .clinic-btn:hover {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--blue);
+  border-color: var(--blue);
   color: white;
 }
 
@@ -557,7 +561,7 @@ body {
   cursor: pointer;
 }
 
-.claim-link:hover { opacity: 1; color: var(--accent-deep); }
+.claim-link:hover { opacity: 1; color: var(--blue-deep); }
 
 .claim-form {
   display: flex;
@@ -618,7 +622,7 @@ body {
   cursor: pointer;
 }
 
-.followup-link:hover { color: var(--accent-deep); }
+.followup-link:hover { color: var(--blue-deep); }
 
 .followup-form {
   display: flex;
@@ -690,7 +694,7 @@ body {
 }
 
 .input-wrap:focus-within {
-  border-color: var(--ink);
+  border-color: var(--blue);
 }
 
 #input {
@@ -720,7 +724,7 @@ body {
   transition: background 0.15s;
 }
 
-#send-btn:hover { background: var(--accent); }
+#send-btn:hover { background: var(--blue); }
 #send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .geo-btn {
@@ -734,7 +738,7 @@ body {
   align-items: center;
 }
 
-.geo-btn:hover { color: var(--accent); }
+.geo-btn:hover { color: var(--blue); }
 .geo-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .geo-btn svg {
@@ -752,7 +756,7 @@ body {
 }
 
 .footer-note a { color: var(--ink-soft); text-decoration: underline; }
-.footer-note a:hover { color: var(--accent-deep); }
+.footer-note a:hover { color: var(--blue-deep); }
 
 /* ========== TELEHEALTH (shared bits reused inside the lux theme) ========== */
 .telehealth-sub {
@@ -776,16 +780,16 @@ body {
   --lux-bg: #0c0e12;
   --lux-bg-alt: #14171d;
   --lux-card: #1a1e26;
-  --lux-gold: #c9a961;
-  --lux-gold-soft: rgba(201,169,97,.14);
+  --lux-blue: #5b7fd9;
+  --lux-blue-soft: rgba(91,127,217,.14);
   --lux-text: #f3f1ea;
   --lux-text-soft: #9b9a94;
   --lux-rule: rgba(255,255,255,.08);
 
   min-height: 100vh;
   background:
-    radial-gradient(circle at 20% 0%, rgba(201,169,97,.08), transparent 45%),
-    radial-gradient(circle at 85% 100%, rgba(201,169,97,.05), transparent 50%),
+    radial-gradient(circle at 20% 0%, rgba(178,34,52,.08), transparent 45%),
+    radial-gradient(circle at 85% 100%, rgba(91,127,217,.08), transparent 50%),
     var(--lux-bg);
   color: var(--lux-text);
   display: flex;
@@ -801,13 +805,13 @@ body {
 }
 
 .lux-brand { color: var(--lux-text); }
-.lux-brand .dot { background: var(--lux-gold); }
-.lux-brand .tld { color: var(--lux-gold); }
+.lux-brand .dot { background: var(--lux-blue); }
+.lux-brand .tld { color: var(--lux-blue); }
 
 .lux-tagline {
   font-family: var(--mono);
   font-size: 11px;
-  color: var(--lux-gold);
+  color: var(--lux-blue);
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -860,8 +864,8 @@ body {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: var(--lux-gold-soft);
-  color: var(--lux-gold);
+  background: var(--lux-blue-soft);
+  color: var(--lux-blue);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -988,7 +992,7 @@ body {
   transition: border-color 0.15s, color 0.15s;
 }
 
-.lux-geo-btn:hover:not(:disabled) { border-color: var(--lux-gold); color: var(--lux-gold); }
+.lux-geo-btn:hover:not(:disabled) { border-color: var(--lux-blue); color: var(--lux-blue); }
 .lux-geo-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .lux-doctor-grid {
@@ -1014,7 +1018,7 @@ body {
 }
 
 .lux-doctor-card:hover { transform: translateY(-2px); border-color: rgba(201,169,97,.4); }
-.lux-doctor-card.selected { border-color: var(--lux-gold); background: var(--lux-gold-soft); }
+.lux-doctor-card.selected { border-color: var(--lux-blue); background: var(--lux-blue-soft); }
 
 .lux-avatar {
   width: 44px;
@@ -1028,8 +1032,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--lux-gold-soft);
-  color: var(--lux-gold);
+  background: var(--lux-blue-soft);
+  color: var(--lux-blue);
   font-family: var(--serif);
   font-weight: 600;
   font-size: 16px;
@@ -1046,7 +1050,7 @@ body {
   font-size: 10px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--lux-gold);
+  color: var(--lux-blue);
 }
 
 .lux-doctor-practice {
@@ -1103,7 +1107,7 @@ body {
   font-family: var(--serif);
   font-size: 24px;
   font-weight: 600;
-  color: var(--lux-gold);
+  color: var(--lux-blue);
   margin-bottom: 18px;
 }
 
@@ -1164,7 +1168,7 @@ body {
 .lux-input::placeholder { color: var(--lux-text-soft); opacity: 0.8; }
 
 .lux-textarea:focus,
-.lux-input:focus { outline: none; border-color: var(--lux-gold); }
+.lux-input:focus { outline: none; border-color: var(--lux-blue); }
 
 .lux-emergency-card {
   border-color: var(--accent);
@@ -1220,8 +1224,8 @@ body {
   font-size: 13px;
   line-height: 1.5;
   color: var(--lux-text-soft);
-  background: var(--lux-gold-soft);
-  border-left: 2px solid var(--lux-gold);
+  background: var(--lux-blue-soft);
+  border-left: 2px solid var(--lux-blue);
   padding: 12px 14px;
   border-radius: 4px;
   margin-bottom: 20px;
@@ -1231,8 +1235,8 @@ body {
 
 .lux-btn {
   width: 100%;
-  background: var(--lux-gold);
-  color: #14171d;
+  background: var(--accent);
+  color: #ffffff;
   border: none;
   border-radius: 6px;
   padding: 15px 18px;
@@ -1256,7 +1260,7 @@ body {
   text-decoration: none;
 }
 
-.lux-back:hover { color: var(--lux-gold); }
+.lux-back:hover { color: var(--lux-blue); }
 
 .lux-legal-links {
   font-size: 11px;
@@ -1267,7 +1271,7 @@ body {
 }
 
 .lux-legal-links a { color: var(--lux-text-soft); text-decoration: underline; }
-.lux-legal-links a:hover { color: var(--lux-gold); }
+.lux-legal-links a:hover { color: var(--lux-blue); }
 
 @media (max-width: 600px) {
   .lux-main { padding: 24px 16px 48px; }
@@ -1341,7 +1345,7 @@ body {
 }
 
 .legal-links a { color: var(--ink-soft); text-decoration: underline; }
-.legal-links a:hover { color: var(--accent-deep); }
+.legal-links a:hover { color: var(--blue-deep); }
 
 /* ========== WIDGET DOCS ========== */
 .widget-docs {
@@ -1401,12 +1405,12 @@ body {
   padding: 7px 14px;
   border: none;
   border-radius: 4px;
-  background: var(--accent);
+  background: var(--blue);
   color: white;
   cursor: pointer;
 }
 
-.widget-copy-btn:hover { background: var(--accent-deep); }
+.widget-copy-btn:hover { background: var(--blue-deep); }
 
 .widget-preview-label {
   font-family: var(--mono);
