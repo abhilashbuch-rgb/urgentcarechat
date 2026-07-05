@@ -171,22 +171,67 @@ export default function TelehealthIntake() {
           <strong>911</strong> now.
         </div>
 
-        <h1 className="lux-title">Talk to a doctor, right now.</h1>
-        <p className="lux-subtitle">
-          Tell us what&apos;s happening — we screen out emergencies first, so
-          your time and money go to the right care. Then it&apos;s a flat fee
-          and a direct connection. Apple Pay, Google Pay, card, or HSA/FSA.
-        </p>
+        <div className="lux-layout">
+          <div className="lux-info-col">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              className="lux-hero-photo"
+              src="https://images.unsplash.com/photo-1758691463607-c1220b77aaaa?w=1200&q=80&auto=format&fit=crop"
+              alt="A doctor on a phone call with a patient"
+            />
 
-        <div className="lux-trust-row">
-          <span className="lux-trust-badge">🔒 HIPAA-compliant connection</span>
-          <span className="lux-trust-badge">✓ NPI-verified providers</span>
-          <span className="lux-trust-badge">📍 PA-licensed</span>
-        </div>
-        <p className="lux-founder-line">
-          Built by a team with 15+ years in healthcare.
-        </p>
+            <h1 className="lux-title">Talk to a doctor, right now.</h1>
+            <p className="lux-subtitle">
+              When it&apos;s after hours, the clinic is closed, or waiting
+              until morning isn&apos;t an option — a licensed provider is a
+              phone call away. No appointment, no waiting room.
+            </p>
 
+            <ol className="lux-how-it-works">
+              <li>
+                <span className="lux-step-num">1</span>
+                <div>
+                  <strong>Tell us what&apos;s happening</strong>
+                  <p>
+                    A quick description of your symptoms and how long
+                    it&apos;s been going on. We screen for emergencies before
+                    anything is charged.
+                  </p>
+                </div>
+              </li>
+              <li>
+                <span className="lux-step-num">2</span>
+                <div>
+                  <strong>Secure your connection</strong>
+                  <p>
+                    Apple Pay, Google Pay, card, or HSA/FSA. One flat fee —
+                    only charged once we&apos;ve confirmed a doctor can help.
+                  </p>
+                </div>
+              </li>
+              <li>
+                <span className="lux-step-num">3</span>
+                <div>
+                  <strong>Connected in seconds</strong>
+                  <p>
+                    The doctor calls you through an encrypted, masked line —
+                    your real number is never shared, and neither is theirs.
+                  </p>
+                </div>
+              </li>
+            </ol>
+
+            <div className="lux-trust-row">
+              <span className="lux-trust-badge">🔒 HIPAA-compliant connection</span>
+              <span className="lux-trust-badge">✓ NPI-verified providers</span>
+              <span className="lux-trust-badge">📍 PA-licensed</span>
+            </div>
+            <p className="lux-founder-line">
+              Built by a team with 15+ years in healthcare.
+            </p>
+          </div>
+
+          <div className="lux-app-col">
         {loadingProviders && (
           <div className="lux-card lux-loading">Finding available doctors…</div>
         )}
@@ -408,6 +453,9 @@ export default function TelehealthIntake() {
             </p>
           </div>
         )}
+
+          </div>
+        </div>
 
         <Link className="lux-back" href="/">
           &larr; Back to chat
