@@ -160,6 +160,10 @@ export default function Home({ embed = false }: { embed?: boolean }) {
     inputRef.current?.focus();
   }, []);
 
+  // The hero recedes as soon as the visitor actually engages, so it
+  // reads as a warm intro rather than something permanently in the way.
+  const hasStarted = messages.some((m) => m.type === "user");
+
   // Log clinic clicks for analytics
   const logClick = async (clinicName: string, action: string) => {
     try {
@@ -462,6 +466,36 @@ export default function Home({ embed = false }: { embed?: boolean }) {
             </Link>
           </div>
         </header>
+      )}
+
+      {!embed && !hasStarted && (
+        <section className="hero">
+          <div className="hero-blob hero-blob-a" aria-hidden="true" />
+          <div className="hero-blob hero-blob-b" aria-hidden="true" />
+          <div className="hero-inner">
+            <div className="hero-eyebrow">Free &middot; No signup &middot; 24/7</div>
+            <h1 className="hero-title">Care, the moment you need it.</h1>
+            <p className="hero-sub">
+              Describe what&apos;s going on and get AI-guided triage, real
+              clinics nearby, or a licensed doctor on the phone in seconds.
+            </p>
+            <svg className="hero-pulse" viewBox="0 0 300 40" preserveAspectRatio="none" aria-hidden="true">
+              <polyline
+                points="0,20 60,20 75,20 85,4 95,36 105,20 120,20 160,20 175,20 185,8 195,32 205,20 220,20 300,20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <div className="hero-trust-row">
+              <span className="hero-trust-badge">Not a diagnosis tool</span>
+              <span className="hero-trust-badge">NPI-verified doctors</span>
+              <span className="hero-trust-badge">Private &amp; secure</span>
+            </div>
+          </div>
+        </section>
       )}
 
       <main className={embed ? "app embed" : "app"}>
