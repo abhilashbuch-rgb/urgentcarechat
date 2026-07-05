@@ -102,6 +102,44 @@ alter table providers add column if not exists stripe_account_id text;
 alter table providers add column if not exists stripe_onboarded boolean not null default false;
 alter table providers add column if not exists provider_payout_cents integer not null default 3000; -- $30 of the $100 total ($70 platform take)
 
+-- Provider portal auth — a provider logs in via Supabase Auth magic
+-- link sent to this email; auth_user_id links to that auth.users row
+-- on their first successful login (see /provider/auth/callback). Set
+-- the email yourself when onboarding a provider (schema template at
+-- the bottom of this file); the provider never chooses their own email.
+alter table providers add column if not exists email text unique;
+alter table providers add column if not exists auth_user_id uuid unique references auth.users(id) on delete set null;
+
+-- is_active means "NPI-verified, allowed to take patients at all";
+-- is_available means "toggled on right now" — the marketplace only
+-- shows providers where BOTH are true.
+alter table providers add column if not exists is_available boolean not null default false;
+
+alter table providers enable row level security;
+
+-- Providers can read and update only their OWN row, matched via the
+-- auth_user_id linked at first login. This is in addition to the
+-- service_role-only access already used by admin/webhook routes.
+drop policy if exists "Providers can view their own row" on providers;
+create policy "Providers can view their own row"
+  on providers for select
+  using (auth.uid() = auth_user_id);
+
+drop policy if exists "Providers can update their own profile" on providers;
+create policy "Providers can update their own profile"
+  on providers for update
+  using (auth.uid() = auth_user_id)
+  with check (auth.uid() = auth_user_id);
+
+-- RLS controls WHICH ROW a provider can touch, not which COLUMNS —
+-- without this, a logged-in provider could set their own is_active,
+-- provider_payout_cents, stripe_account_id, etc. directly via the
+-- client SDK. Column-level grants close that: the `authenticated`
+-- role can only ever update this specific list, no matter what the
+-- request contains.
+revoke update on providers from authenticated;
+grant update (bio, credentials, specialty, years_experience, photo_url, is_available) on providers to authenticated;
+
 -- TELEHEALTH_REQUESTS — one row per paid connection request.
 -- Created when a Stripe Checkout Session starts, marked paid once
 -- confirmed, and used to make the doctor-notify SMS idempotent.
@@ -370,12 +408,17 @@ on conflict (google_place_id) do update set
 -- ============================================================
 -- 5. TELEHEALTH PROVIDER SETUP (run manually, once per doctor)
 -- Fill in the real values below and run in the SQL editor. The row
--- inserts as is_active=false — it won't appear in the marketplace or
--- accept payments until you call POST /api/admin/providers/verify-npi
--- with this row's id (requires ADMIN_SECRET), which checks the NPI
--- against the live NPPES registry and flips is_active=true on success.
--- Do NOT commit real license numbers, NPIs, or phone numbers to this file.
+-- inserts as is_active=false and is_available=false — it won't appear
+-- in the marketplace or accept payments until:
+--   1. You call POST /api/admin/providers/verify-npi with this row's
+--      id (requires ADMIN_SECRET) — checks NPI against NPPES, flips
+--      is_active=true on success.
+--   2. The provider logs into /provider/login with the email below
+--      (Supabase Auth magic link), which links their account on first
+--      login, and toggles "available" on their dashboard themselves.
+-- Do NOT commit real license numbers, NPIs, phone numbers, or emails
+-- to this file.
 -- ============================================================
--- insert into providers (name, license_state, license_number, npi, practice_name, doxy_room_url, notify_phone)
--- values ('Dr. FULL NAME, MD', 'PA', 'PA LICENSE NUMBER', 'NPI NUMBER', 'AFC Urgent Care Narberth', 'https://doxy.me/YOUR_ROOM_NAME', '+1XXXXXXXXXX');
+-- insert into providers (name, license_state, license_number, npi, practice_name, doxy_room_url, notify_phone, email)
+-- values ('Dr. FULL NAME, MD', 'PA', 'PA LICENSE NUMBER', 'NPI NUMBER', 'AFC Urgent Care Narberth', 'https://doxy.me/YOUR_ROOM_NAME', '+1XXXXXXXXXX', 'doctor@example.com');
 -- (platform_fee_cents defaults to 10000 / $100, provider_payout_cents to 3000 / $30 — override either if this doctor's split differs)

@@ -55,6 +55,7 @@ async function seedDefaultProvider(
       npi,
       npi_verified_at: new Date().toISOString(),
       is_active: true,
+      is_available: true,
       practice_name: process.env.DEFAULT_PROVIDER_PRACTICE_NAME || null,
       credentials: process.env.DEFAULT_PROVIDER_CREDENTIALS || null,
       specialty: process.env.DEFAULT_PROVIDER_SPECIALTY || null,
@@ -62,6 +63,7 @@ async function seedDefaultProvider(
       notify_phone: notifyPhone,
       platform_fee_cents: Number(process.env.DEFAULT_PROVIDER_FEE_CENTS) || 10000,
       provider_payout_cents: Number(process.env.DEFAULT_PROVIDER_PAYOUT_CENTS) || 3000,
+      email: process.env.DEFAULT_PROVIDER_EMAIL || null,
     })
     .select(SELECT_FIELDS)
     .single();
@@ -83,21 +85,30 @@ export async function GET(req: NextRequest) {
 
   try {
     const supabase = createServerClient();
+
+    // Auto-seed only when NO row exists at all for this state — not when
+    // everyone's simply toggled unavailable, which would otherwise create
+    // a duplicate seeded provider alongside a real one that's just offline.
+    const { count } = await supabase
+      .from("providers")
+      .select("id", { count: "exact", head: true })
+      .eq("license_state", state);
+
+    if (!count) {
+      await seedDefaultProvider(supabase, state);
+    }
+
     const { data, error } = await supabase
       .from("providers")
       .select(SELECT_FIELDS)
       .eq("license_state", state)
       .eq("is_active", true)
+      .eq("is_available", true)
       .order("created_at", { ascending: true });
 
     if (error) throw error;
 
     let providers = data || [];
-
-    if (providers.length === 0) {
-      const seeded = await seedDefaultProvider(supabase, state);
-      providers = seeded ? [seeded] : [];
-    }
 
     // Sort by proximity when the patient shared their location and a
     // provider has a practice location on file. Providers without a

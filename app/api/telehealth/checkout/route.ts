@@ -63,7 +63,8 @@ export async function POST(req: NextRequest) {
       .from("providers")
       .select("*")
       .eq("license_state", stateAttested)
-      .eq("is_active", true);
+      .eq("is_active", true)
+      .eq("is_available", true);
 
     // If the patient picked a specific doctor from the marketplace, use that
     // one; otherwise fall back to the first active doctor for their state.
