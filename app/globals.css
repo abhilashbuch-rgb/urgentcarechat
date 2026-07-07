@@ -1393,6 +1393,34 @@ body {
 
 .lux-back:hover { color: var(--lux-blue); }
 
+.receipt-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--lux-text);
+  margin-bottom: 20px;
+}
+
+.receipt-rows strong { color: var(--lux-text-soft); font-weight: 600; margin-right: 6px; }
+
+@media print {
+  .lux-header, .lux-back, .receipt-print .lux-btn { display: none; }
+  .lux-shell, .lux-main { background: #fff; }
+  .receipt-print {
+    background: #fff;
+    color: #000;
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+  .receipt-print .lux-card-title,
+  .receipt-print .lux-card-sub,
+  .receipt-rows,
+  .receipt-rows strong {
+    color: #000;
+  }
+}
+
 .lux-legal-links {
   font-size: 11px;
   color: var(--lux-text-soft);

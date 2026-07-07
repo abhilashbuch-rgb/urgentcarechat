@@ -193,6 +193,24 @@ alter table telehealth_requests add column if not exists emr_push_error text;
 
 create unique index if not exists idx_telehealth_requests_note_token on telehealth_requests(note_token);
 
+-- Superbill — an itemized receipt the PATIENT can self-submit to their
+-- own insurance for possible out-of-network reimbursement. We never
+-- bill insurance ourselves (that's a fee-splitting/kickback problem if
+-- tied to a referral fee); this just hands the patient the paperwork
+-- to pursue their own reimbursement. Optional: a provider only enters
+-- diagnosis_code/procedure_code if they want one generated.
+-- superbill_snapshot captures patient name/DOB + provider identity at
+-- generation time, since the live patient_first_name/last_name/dob
+-- columns above get scrubbed once the EMR push succeeds — this is
+-- retained longer, same as any billing receipt a practice would keep.
+alter table telehealth_requests add column if not exists diagnosis_code text;   -- ICD-10, provider-entered
+alter table telehealth_requests add column if not exists procedure_code text;  -- CPT, provider-entered
+alter table telehealth_requests add column if not exists superbill_token text;
+alter table telehealth_requests add column if not exists superbill_snapshot jsonb;
+alter table telehealth_requests add column if not exists superbill_generated_at timestamptz;
+
+create unique index if not exists idx_telehealth_requests_superbill_token on telehealth_requests(superbill_token);
+
 -- CLINIC_CLAIMS — a clinic owner/manager asking to claim & verify their
 -- listing. Reviewed manually (for now) before flipping clinics.is_featured
 -- or overwriting clinics.hours_json/services/insurance_tags.

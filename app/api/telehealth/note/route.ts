@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { pushVisitNoteToEmr } from "@/lib/metriport";
+import { generateSuperbill } from "@/lib/superbill";
 
 // ============================================================
 // /api/telehealth/note — Post-call visit note submission.
@@ -52,7 +53,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { token, note } = await req.json();
+    const { token, note, diagnosisCode, procedureCode } = await req.json();
     if (!token || !note || String(note).trim().length < 5) {
       return NextResponse.json({ error: "A visit note is required" }, { status: 400 });
     }
@@ -79,6 +80,19 @@ export async function POST(req: NextRequest) {
         emr_push_status: "pending",
       })
       .eq("id", request.id);
+
+    // Optional — only generates a patient-facing insurance receipt if the
+    // provider entered both codes. Runs BEFORE the EMR push below, which
+    // scrubs the patient demographics this snapshot needs.
+    const diagnosis = String(diagnosisCode || "").trim();
+    const procedure = String(procedureCode || "").trim();
+    if (diagnosis && procedure) {
+      try {
+        await generateSuperbill(request.id, diagnosis, procedure, req.nextUrl.origin);
+      } catch (superbillErr) {
+        console.error("[telehealth/note] superbill generation failed:", superbillErr);
+      }
+    }
 
     // Best-effort, synchronous push. If Metriport isn't configured or the
     // push fails, the note and patient demographics stay in our database

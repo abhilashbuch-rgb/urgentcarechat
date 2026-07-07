@@ -18,6 +18,8 @@ function NoteForm() {
   const [context, setContext] = useState<Context | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [note, setNote] = useState("");
+  const [diagnosisCode, setDiagnosisCode] = useState("");
+  const [procedureCode, setProcedureCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -47,7 +49,7 @@ function NoteForm() {
       const res = await fetch("/api/telehealth/note", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, note }),
+        body: JSON.stringify({ token, note, diagnosisCode, procedureCode }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -76,6 +78,9 @@ function NoteForm() {
         <h1 className="lux-card-title">Note submitted</h1>
         <p className="lux-card-sub">
           Thanks — this has been sent to the patient&apos;s medical record.
+          {diagnosisCode.trim() && procedureCode.trim() && (
+            " We've also texted the patient a receipt they can submit to their own insurance."
+          )}
         </p>
       </div>
     );
@@ -105,6 +110,27 @@ function NoteForm() {
         rows={8}
         aria-label="Visit note"
       />
+
+      <p className="lux-card-sub" style={{ marginTop: 4 }}>
+        Optional — add a diagnosis and procedure code to give the patient an
+        insurance receipt they can submit themselves for reimbursement.
+      </p>
+      <div className="lux-input-row">
+        <input
+          className="lux-input"
+          placeholder="Diagnosis code (ICD-10), e.g. J06.9"
+          value={diagnosisCode}
+          onChange={(e) => setDiagnosisCode(e.target.value)}
+          aria-label="Diagnosis code"
+        />
+        <input
+          className="lux-input"
+          placeholder="Procedure code (CPT), e.g. 99442"
+          value={procedureCode}
+          onChange={(e) => setProcedureCode(e.target.value)}
+          aria-label="Procedure code"
+        />
+      </div>
 
       {submitError && <div className="telehealth-error">{submitError}</div>}
 
