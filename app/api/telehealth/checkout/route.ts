@@ -87,6 +87,12 @@ export async function POST(req: NextRequest) {
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
+      // Card only — no Apple Pay/Google Pay/bank wallets. HSA/FSA cards
+      // run on the same rails as any other debit/credit card (Stripe has
+      // no separate "HSA/FSA" payment method type to select), so this is
+      // the closest actual restriction to "credit card or HSA/FSA card
+      // only" that Stripe's API supports.
+      payment_method_types: ["card"],
       line_items: [
         {
           price_data: {

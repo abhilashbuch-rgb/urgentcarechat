@@ -217,7 +217,7 @@ export default function TelehealthIntake() {
                 <div>
                   <strong>Secure your connection</strong>
                   <p>
-                    Apple Pay, Google Pay, card, or HSA/FSA. One flat fee —
+                    Credit card or HSA/FSA card. One flat fee —
                     only charged once we&apos;ve confirmed a doctor can help.
                   </p>
                 </div>
@@ -435,7 +435,7 @@ export default function TelehealthIntake() {
 
             <h2 className="lux-price">${feeDollars} flat · 30 minutes</h2>
             <p className="lux-card-sub" style={{ marginTop: -10 }}>
-              Apple Pay, Google Pay, card, or HSA/FSA. No insurance needed.
+              Credit card or HSA/FSA card. No insurance needed.
             </p>
 
             <ul className="lux-terms">
