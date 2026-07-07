@@ -46,6 +46,7 @@ export default function TelehealthIntake() {
   const [symptomText, setSymptomText] = useState("");
   const [duration, setDuration] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [dob, setDob] = useState("");
@@ -143,6 +144,7 @@ export default function TelehealthIntake() {
           stateAttested: "PA",
           providerId: selected.id,
           patientPhone: phoneDigits,
+          patientEmail: email.trim(),
           patientFirstName: firstName.trim(),
           patientLastName: lastName.trim(),
           patientDob: dob,
@@ -217,7 +219,7 @@ export default function TelehealthIntake() {
                 <div>
                   <strong>Secure your connection</strong>
                   <p>
-                    Credit card or HSA/FSA card. One flat fee —
+                    Apple Pay, credit card, or HSA/FSA card. One flat fee —
                     only charged once we&apos;ve confirmed a doctor can help.
                   </p>
                 </div>
@@ -374,6 +376,14 @@ export default function TelehealthIntake() {
               onChange={(e) => setPhone(e.target.value)}
               aria-label="Your phone number"
             />
+            <input
+              type="email"
+              className="lux-input"
+              placeholder="Email (optional — for an insurance receipt, if your doctor adds one)"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              aria-label="Email (optional)"
+            />
 
             <button className="lux-btn" onClick={submitIntake} disabled={!canContinueIntake}>
               Continue
@@ -435,7 +445,7 @@ export default function TelehealthIntake() {
 
             <h2 className="lux-price">${feeDollars} flat · 30 minutes</h2>
             <p className="lux-card-sub" style={{ marginTop: -10 }}>
-              Credit card or HSA/FSA card. No insurance needed.
+              Apple Pay, credit card, or HSA/FSA card. No insurance needed.
             </p>
 
             <ul className="lux-terms">

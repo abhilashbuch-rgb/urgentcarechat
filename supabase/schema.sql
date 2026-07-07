@@ -161,6 +161,7 @@ create index if not exists idx_telehealth_requests_session on telehealth_request
 
 -- Idempotent for anyone who already ran the table above without these columns.
 alter table telehealth_requests add column if not exists patient_phone text;
+alter table telehealth_requests add column if not exists patient_email text; -- optional; used only to email the superbill (see lib/superbill.ts)
 alter table telehealth_requests add column if not exists symptom_summary text;
 alter table telehealth_requests add column if not exists proxy_session_sid text;
 alter table telehealth_requests add column if not exists provider_proxy_number text;

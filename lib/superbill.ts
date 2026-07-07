@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { createServerClient } from "./supabase";
 import { sendSms } from "./twilio";
+import { sendEmail } from "./email";
 
 // ============================================================
 // Superbill — an itemized receipt the PATIENT (not us, not the
@@ -47,7 +48,7 @@ export async function generateSuperbill(
   const { data: request, error } = await supabase
     .from("telehealth_requests")
     .select(
-      "patient_first_name, patient_last_name, patient_dob, patient_phone, amount_cents, paid_at, created_at, providers(name, npi, practice_name, credentials)"
+      "patient_first_name, patient_last_name, patient_dob, patient_phone, patient_email, amount_cents, paid_at, created_at, providers(name, npi, practice_name, credentials)"
     )
     .eq("id", telehealthRequestId)
     .maybeSingle();
@@ -88,11 +89,35 @@ export async function generateSuperbill(
     })
     .eq("id", telehealthRequestId);
 
+  const receiptUrl = `${origin}/telehealth/receipt?token=${token}`;
+
+  // Email is the preferred channel — it's a billing document, better
+  // suited to an inbox than a text thread. Only fall back to SMS (the
+  // number is already on file for the masked call) if no email was
+  // given, so the receipt never just goes undelivered.
+  if (request.patient_email) {
+    try {
+      await sendEmail(
+        request.patient_email,
+        "Your urgentcare.chat visit receipt",
+        [
+          "Your visit receipt is ready — submit this to your insurance for possible out-of-network reimbursement.",
+          "We don't bill insurance ourselves, so whether and how much is reimbursed depends on your specific plan.",
+          "",
+          `View or print it here: ${receiptUrl}`,
+        ].join("\n")
+      );
+      return;
+    } catch (emailErr) {
+      console.error("[superbill] patient email failed, falling back to SMS:", emailErr);
+    }
+  }
+
   if (request.patient_phone) {
     try {
       await sendSms(
         request.patient_phone,
-        `urgentcare.chat: your visit receipt for insurance reimbursement is ready — ${origin}/telehealth/receipt?token=${token}`
+        `urgentcare.chat: your visit receipt for insurance reimbursement is ready — ${receiptUrl}`
       );
     } catch (smsErr) {
       // Best-effort — the receipt still exists at its link even if this fails.
