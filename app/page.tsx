@@ -754,6 +754,8 @@ export default function Home({ embed = false }: { embed?: boolean }) {
               <Link href="/privacy">Privacy</Link>
               {" · "}
               <Link href="/disclaimer">Disclaimer</Link>
+              {" · "}
+              <Link href="/partners">White-label</Link>
             </>
           )}
         </div>

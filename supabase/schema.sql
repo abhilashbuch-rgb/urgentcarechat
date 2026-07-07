@@ -61,6 +61,21 @@ create table if not exists conversations (
 
 create index if not exists idx_conversations_ttl on conversations(ttl_expires_at);
 
+-- ORGANIZATIONS — the MSO/practice entity a provider belongs to (e.g.
+-- Penn Valley Urgent Care PLLC). Kept minimal on purpose: just enough
+-- to model this as a real entity instead of leaving it implicit.
+-- Per-org branding, subdomains, and billing are a later project, once
+-- there's an actual second tenant to build them for.
+create table if not exists organizations (
+  id         uuid primary key default gen_random_uuid(),
+  name       text not null unique,
+  created_at timestamptz default now()
+);
+
+insert into organizations (name)
+values ('Penn Valley Urgent Care PLLC')
+on conflict (name) do nothing;
+
 -- PROVIDERS — doctors available for a paid instant telehealth chat.
 -- Each row is one doctor: their state license, their HIPAA-compliant
 -- video/chat room (e.g. a Doxy.me personal room URL), and the phone
@@ -80,6 +95,8 @@ create table if not exists providers (
 );
 
 create index if not exists idx_providers_state_active on providers(license_state, is_active);
+
+alter table providers add column if not exists organization_id uuid references organizations(id);
 
 -- Richer profile fields for the doctor-selection marketplace UI.
 -- Added via ALTER so this stays idempotent if the table already exists.
