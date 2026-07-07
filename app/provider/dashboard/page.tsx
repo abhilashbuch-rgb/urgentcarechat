@@ -87,7 +87,12 @@ export default async function ProviderDashboardPage() {
                   </div>
                   {r.visit_note_submitted_at ? (
                     <span className="lux-trust-badge">
-                      Note {r.emr_push_status === "pushed" ? "sent to EMR" : "submitted"}
+                      Note{" "}
+                      {r.emr_push_status === "pushed"
+                        ? "sent to EMR"
+                        : r.emr_push_status === "emailed"
+                        ? "emailed to you"
+                        : "submitted"}
                     </span>
                   ) : (
                     <Link className="lux-btn" style={{ display: "inline-block", padding: "8px 14px", fontSize: 12 }} href={`/provider/note?token=${r.note_token}`}>

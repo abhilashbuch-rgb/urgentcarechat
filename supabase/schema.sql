@@ -188,7 +188,7 @@ alter table telehealth_requests add column if not exists note_token text;       
 alter table telehealth_requests add column if not exists note_requested_at timestamptz; -- when we texted the provider the note link (idempotency guard)
 alter table telehealth_requests add column if not exists visit_note text;
 alter table telehealth_requests add column if not exists visit_note_submitted_at timestamptz;
-alter table telehealth_requests add column if not exists emr_push_status text not null default 'not_applicable'; -- not_applicable | pending | pushed | failed
+alter table telehealth_requests add column if not exists emr_push_status text not null default 'not_applicable'; -- not_applicable | pending | pushed | emailed | failed
 alter table telehealth_requests add column if not exists emr_push_error text;
 
 create unique index if not exists idx_telehealth_requests_note_token on telehealth_requests(note_token);
