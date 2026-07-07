@@ -292,7 +292,10 @@ begin
 end;
 $$ language plpgsql security definer;
 
--- Schedule daily purge using pg_cron (Supabase has this enabled)
+-- Schedule daily purge using pg_cron. Not enabled by default on every
+-- project — this turns it on (safe/idempotent either way).
+create extension if not exists pg_cron;
+
 -- This runs at 3am UTC every day.
 select cron.schedule(
   'purge-old-conversations',
