@@ -61,6 +61,21 @@ create table if not exists conversations (
 
 create index if not exists idx_conversations_ttl on conversations(ttl_expires_at);
 
+-- ORGANIZATIONS — the MSO/practice entity a provider belongs to (e.g.
+-- Penn Valley Urgent Care PLLC). Kept minimal on purpose: just enough
+-- to model this as a real entity instead of leaving it implicit.
+-- Per-org branding, subdomains, and billing are a later project, once
+-- there's an actual second tenant to build them for.
+create table if not exists organizations (
+  id         uuid primary key default gen_random_uuid(),
+  name       text not null unique,
+  created_at timestamptz default now()
+);
+
+insert into organizations (name)
+values ('Penn Valley Urgent Care PLLC')
+on conflict (name) do nothing;
+
 -- PROVIDERS — doctors available for a paid instant telehealth chat.
 -- Each row is one doctor: their state license, their HIPAA-compliant
 -- video/chat room (e.g. a Doxy.me personal room URL), and the phone
@@ -80,6 +95,8 @@ create table if not exists providers (
 );
 
 create index if not exists idx_providers_state_active on providers(license_state, is_active);
+
+alter table providers add column if not exists organization_id uuid references organizations(id);
 
 -- Richer profile fields for the doctor-selection marketplace UI.
 -- Added via ALTER so this stays idempotent if the table already exists.
@@ -161,6 +178,7 @@ create index if not exists idx_telehealth_requests_session on telehealth_request
 
 -- Idempotent for anyone who already ran the table above without these columns.
 alter table telehealth_requests add column if not exists patient_phone text;
+alter table telehealth_requests add column if not exists patient_email text; -- optional; used only to email the superbill (see lib/superbill.ts)
 alter table telehealth_requests add column if not exists symptom_summary text;
 alter table telehealth_requests add column if not exists proxy_session_sid text;
 alter table telehealth_requests add column if not exists provider_proxy_number text;
@@ -188,10 +206,28 @@ alter table telehealth_requests add column if not exists note_token text;       
 alter table telehealth_requests add column if not exists note_requested_at timestamptz; -- when we texted the provider the note link (idempotency guard)
 alter table telehealth_requests add column if not exists visit_note text;
 alter table telehealth_requests add column if not exists visit_note_submitted_at timestamptz;
-alter table telehealth_requests add column if not exists emr_push_status text not null default 'not_applicable'; -- not_applicable | pending | pushed | failed
+alter table telehealth_requests add column if not exists emr_push_status text not null default 'not_applicable'; -- not_applicable | pending | pushed | emailed | failed
 alter table telehealth_requests add column if not exists emr_push_error text;
 
 create unique index if not exists idx_telehealth_requests_note_token on telehealth_requests(note_token);
+
+-- Superbill — an itemized receipt the PATIENT can self-submit to their
+-- own insurance for possible out-of-network reimbursement. We never
+-- bill insurance ourselves (that's a fee-splitting/kickback problem if
+-- tied to a referral fee); this just hands the patient the paperwork
+-- to pursue their own reimbursement. Optional: a provider only enters
+-- diagnosis_code/procedure_code if they want one generated.
+-- superbill_snapshot captures patient name/DOB + provider identity at
+-- generation time, since the live patient_first_name/last_name/dob
+-- columns above get scrubbed once the EMR push succeeds — this is
+-- retained longer, same as any billing receipt a practice would keep.
+alter table telehealth_requests add column if not exists diagnosis_code text;   -- ICD-10, provider-entered
+alter table telehealth_requests add column if not exists procedure_code text;  -- CPT, provider-entered
+alter table telehealth_requests add column if not exists superbill_token text;
+alter table telehealth_requests add column if not exists superbill_snapshot jsonb;
+alter table telehealth_requests add column if not exists superbill_generated_at timestamptz;
+
+create unique index if not exists idx_telehealth_requests_superbill_token on telehealth_requests(superbill_token);
 
 -- CLINIC_CLAIMS — a clinic owner/manager asking to claim & verify their
 -- listing. Reviewed manually (for now) before flipping clinics.is_featured
@@ -273,7 +309,10 @@ begin
 end;
 $$ language plpgsql security definer;
 
--- Schedule daily purge using pg_cron (Supabase has this enabled)
+-- Schedule daily purge using pg_cron. Not enabled by default on every
+-- project — this turns it on (safe/idempotent either way).
+create extension if not exists pg_cron;
+
 -- This runs at 3am UTC every day.
 select cron.schedule(
   'purge-old-conversations',

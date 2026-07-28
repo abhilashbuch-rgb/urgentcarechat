@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
       stateAttested,
       providerId,
       patientPhone,
+      patientEmail,
       symptomSummary,
       patientFirstName,
       patientLastName,
@@ -58,6 +59,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Optional — only used to email an insurance receipt if the provider
+    // adds diagnosis/procedure codes to their visit note. Not validated
+    // deeply; a malformed address just means that email later fails,
+    // which is caught and logged, not something to block checkout over.
+    const patientEmailTrimmed = String(patientEmail || "").trim().slice(0, 200);
+
     const supabase = createServerClient();
     let providerQuery = supabase
       .from("providers")
@@ -87,6 +94,15 @@ export async function POST(req: NextRequest) {
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
+      // "card" is the only type we need to list — Apple Pay/Google Pay
+      // aren't separate payment method types, they're wallet UI Stripe
+      // shows automatically on top of "card" for supported
+      // browsers/devices (Apple Pay also needs the domain verified once
+      // in the Stripe Dashboard). This just keeps out unrelated methods
+      // like bank redirects/BNPL that "automatic payment methods" could
+      // otherwise surface. HSA/FSA cards run on the same card rails too —
+      // there's no separate type to select for them specifically.
+      payment_method_types: ["card"],
       line_items: [
         {
           price_data: {
@@ -116,6 +132,7 @@ export async function POST(req: NextRequest) {
       stripe_session_id: session.id,
       patient_state_attested: stateAttested,
       patient_phone: patientE164,
+      patient_email: patientEmailTrimmed || null,
       patient_first_name: String(patientFirstName).slice(0, 100),
       patient_last_name: String(patientLastName).slice(0, 100),
       patient_dob: patientDob,

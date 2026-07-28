@@ -43,6 +43,11 @@ interface UIMessage {
   alertBody?: string;
   alertCta?: string;
   alertHref?: string;
+  alertAriaLabel?: string;
+  alertNote?: string;
+  alertTextCta?: string;
+  alertTextHref?: string;
+  alertTextAriaLabel?: string;
   clinics?: Clinic[];
   careLevel?: CareLevel;
 }
@@ -292,18 +297,25 @@ export default function Home({ embed = false }: { embed?: boolean }) {
           type: "alert-911",
           alertTitle: "This may be a medical emergency.",
           alertBody:
-            "What you described could be serious. Please call 911 right now or have someone drive you to the nearest ER. Don't wait \u2014 urgent care is not the right place for this.",
+            "What you described could be serious. Please call 911 right now. Don't wait \u2014 urgent care is not the right place for this.",
           alertCta: "Call 911",
           alertHref: "tel:911",
+          alertAriaLabel: "Call 911 emergency services",
+          alertNote: "If you can't call, have someone drive you to the nearest emergency room.",
         });
       } else if (redFlag === "988") {
         addMessage({
           type: "alert-988",
           alertTitle: "I want you to be safe.",
           alertBody:
-            "Please reach out to the 988 Suicide & Crisis Lifeline \u2014 call or text 988. They're free, confidential, and available 24/7. You don't have to handle this alone.",
-          alertCta: "Call or text 988",
+            "Please reach out to the 988 Suicide & Crisis Lifeline. You don't have to handle this alone.",
+          alertCta: "Call 988",
           alertHref: "tel:988",
+          alertAriaLabel: "Call the 988 Suicide and Crisis Lifeline",
+          alertTextCta: "Text 988",
+          alertTextHref: "sms:988",
+          alertTextAriaLabel: "Text the 988 Suicide and Crisis Lifeline",
+          alertNote: "Free, confidential, available 24/7. You can also chat at 988lifeline.org.",
         });
       } else if (redFlag === "pediatric") {
         addMessage({
@@ -313,6 +325,7 @@ export default function Home({ embed = false }: { embed?: boolean }) {
             "For an infant or young child with these symptoms, please call 911 or go to a pediatric emergency room \u2014 not urgent care.",
           alertCta: "Call 911",
           alertHref: "tel:911",
+          alertAriaLabel: "Call 911 emergency services",
         });
       }
 
@@ -370,6 +383,8 @@ export default function Home({ embed = false }: { embed?: boolean }) {
           alertBody: assistantText,
           alertCta: t.alert911Cta,
           alertHref: "tel:911",
+          alertAriaLabel: t.alert911AriaLabel,
+          alertNote: t.alert911Note,
         });
       } else if (
         /988/i.test(assistantText) &&
@@ -381,6 +396,11 @@ export default function Home({ embed = false }: { embed?: boolean }) {
           alertBody: assistantText,
           alertCta: t.alert988Cta,
           alertHref: "tel:988",
+          alertAriaLabel: t.alert988AriaLabel,
+          alertTextCta: t.alert988TextCta,
+          alertTextHref: "sms:988",
+          alertTextAriaLabel: t.alert988TextAriaLabel,
+          alertNote: t.alert988Note,
         });
       } else {
         // Normal bot message
@@ -538,9 +558,25 @@ export default function Home({ embed = false }: { embed?: boolean }) {
                   <div className={cssClass}>
                     <div className="alert-title">{msg.alertTitle}</div>
                     <div>{msg.alertBody}</div>
-                    <a className="alert-cta" href={msg.alertHref}>
-                      {msg.alertCta}
-                    </a>
+                    <div className="alert-actions">
+                      <a
+                        className="alert-cta"
+                        href={msg.alertHref}
+                        aria-label={msg.alertAriaLabel}
+                      >
+                        {msg.alertCta}
+                      </a>
+                      {msg.alertTextHref && (
+                        <a
+                          className="alert-cta alert-cta-secondary"
+                          href={msg.alertTextHref}
+                          aria-label={msg.alertTextAriaLabel}
+                        >
+                          {msg.alertTextCta}
+                        </a>
+                      )}
+                    </div>
+                    {msg.alertNote && <p className="alert-note">{msg.alertNote}</p>}
                   </div>
                 </div>
               );
@@ -754,6 +790,21 @@ export default function Home({ embed = false }: { embed?: boolean }) {
               <Link href="/privacy">Privacy</Link>
               {" · "}
               <Link href="/disclaimer">Disclaimer</Link>
+              {" · "}
+              <Link href="/partners">White-label</Link>
+              {process.env.NEXT_PUBLIC_TIP_JAR_URL && (
+                <>
+                  {" · "}
+                  <a
+                    href={process.env.NEXT_PUBLIC_TIP_JAR_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="tip-link"
+                  >
+                    Help keep this free ☕
+                  </a>
+                </>
+              )}
             </>
           )}
         </div>

@@ -1,4 +1,5 @@
 import { createServerClient } from "./supabase";
+import { sendEmail } from "./email";
 
 // ============================================================
 // Metriport adapter — pushes a provider's visit note into the
@@ -94,17 +95,19 @@ async function uploadVisitNoteDocument(
   }
 }
 
-// Looks up the telehealth_request, pushes patient + note to Metriport,
-// and — only on success — scrubs the local note and patient
-// demographics, since the medical record now lives with the
-// provider's practice via the EMR, not with us.
+// Looks up the telehealth_request and pushes patient + note to
+// Metriport. Metriport can't reach every practice — no HIE match, no
+// EMR at all, or just not configured — so any failure there falls
+// back to emailing the note directly to the provider's own on-file
+// address, which works regardless of what (if any) EMR they run.
+// Only on success of either channel do we scrub the local note and
+// patient demographics, since the record now lives somewhere else.
 export async function pushVisitNoteToEmr(telehealthRequestId: string): Promise<void> {
-  const { apiKey, facilityId } = requireConfig();
   const supabase = createServerClient();
 
   const { data: request, error } = await supabase
     .from("telehealth_requests")
-    .select("patient_first_name, patient_last_name, patient_dob, visit_note, providers(name)")
+    .select("patient_first_name, patient_last_name, patient_dob, visit_note, providers(name, email)")
     .eq("id", telehealthRequestId)
     .maybeSingle();
 
@@ -115,35 +118,59 @@ export async function pushVisitNoteToEmr(telehealthRequestId: string): Promise<v
     throw new Error("Missing patient demographics or note — nothing to push");
   }
 
-  const provider = request.providers as unknown as { name: string };
+  const provider = request.providers as unknown as { name: string; email: string };
+
+  let status: "pushed" | "emailed" | undefined;
+  let lastError: string | undefined;
 
   try {
+    const { apiKey, facilityId } = requireConfig();
     const patientId = await createPatient(apiKey, facilityId, {
       firstName: request.patient_first_name,
       lastName: request.patient_last_name,
       dob: request.patient_dob,
     });
-
     await uploadVisitNoteDocument(apiKey, patientId, facilityId, request.visit_note, provider.name);
-
-    await supabase
-      .from("telehealth_requests")
-      .update({
-        emr_push_status: "pushed",
-        visit_note: null,
-        patient_first_name: null,
-        patient_last_name: null,
-        patient_dob: null,
-      })
-      .eq("id", telehealthRequestId);
+    status = "pushed";
   } catch (err) {
+    lastError = err instanceof Error ? err.message : "Unknown error";
+
+    try {
+      await sendEmail(
+        provider.email,
+        "Visit note — action needed (EMR auto-push unavailable)",
+        [
+          `We couldn't automatically deliver this note into your EMR (${lastError}).`,
+          "Please copy it into your patient's chart manually.",
+          "",
+          `Patient: ${request.patient_first_name} ${request.patient_last_name}`,
+          `DOB: ${request.patient_dob}`,
+          "",
+          request.visit_note,
+        ].join("\n")
+      );
+      status = "emailed";
+    } catch (emailErr) {
+      lastError = `Metriport: ${lastError}; Email fallback: ${emailErr instanceof Error ? emailErr.message : "Unknown error"}`;
+    }
+  }
+
+  if (!status) {
     await supabase
       .from("telehealth_requests")
-      .update({
-        emr_push_status: "failed",
-        emr_push_error: err instanceof Error ? err.message : "Unknown error",
-      })
+      .update({ emr_push_status: "failed", emr_push_error: lastError })
       .eq("id", telehealthRequestId);
-    throw err;
+    throw new Error(lastError);
   }
+
+  await supabase
+    .from("telehealth_requests")
+    .update({
+      emr_push_status: status,
+      visit_note: null,
+      patient_first_name: null,
+      patient_last_name: null,
+      patient_dob: null,
+    })
+    .eq("id", telehealthRequestId);
 }
