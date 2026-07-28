@@ -792,6 +792,19 @@ export default function Home({ embed = false }: { embed?: boolean }) {
               <Link href="/disclaimer">Disclaimer</Link>
               {" · "}
               <Link href="/partners">White-label</Link>
+              {process.env.NEXT_PUBLIC_TIP_JAR_URL && (
+                <>
+                  {" · "}
+                  <a
+                    href={process.env.NEXT_PUBLIC_TIP_JAR_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="tip-link"
+                  >
+                    Help keep this free ☕
+                  </a>
+                </>
+              )}
             </>
           )}
         </div>
