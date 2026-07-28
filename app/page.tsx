@@ -493,7 +493,10 @@ export default function Home({ embed = false }: { embed?: boolean }) {
           <div className="hero-blob hero-blob-a" aria-hidden="true" />
           <div className="hero-blob hero-blob-b" aria-hidden="true" />
           <div className="hero-inner">
-            <div className="hero-eyebrow">Free &middot; No signup &middot; 24/7</div>
+            <div className="hero-eyebrow">
+              <span className="hero-eyebrow-dot" aria-hidden="true" />
+              Free &middot; No signup &middot; 24/7
+            </div>
             <h1 className="hero-title">Care, the moment you need it.</h1>
             <p className="hero-sub">
               Describe what&apos;s going on and get AI-guided triage, real
@@ -510,9 +513,33 @@ export default function Home({ embed = false }: { embed?: boolean }) {
               />
             </svg>
             <div className="hero-trust-row">
-              <span className="hero-trust-badge">Not a diagnosis tool</span>
-              <span className="hero-trust-badge">NPI-verified doctors</span>
-              <span className="hero-trust-badge">Private &amp; secure</span>
+              <span className="hero-trust-badge">
+                <span className="hero-trust-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 11l3 3L22 4" />
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                  </svg>
+                </span>
+                Not a diagnosis tool
+              </span>
+              <span className="hero-trust-badge">
+                <span className="hero-trust-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z" />
+                    <path d="M9 12l2 2 4-4" />
+                  </svg>
+                </span>
+                NPI-verified doctors
+              </span>
+              <span className="hero-trust-badge">
+                <span className="hero-trust-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="4" y="11" width="16" height="9" rx="2" />
+                    <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                  </svg>
+                </span>
+                Private &amp; secure
+              </span>
             </div>
           </div>
         </section>
