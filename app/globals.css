@@ -109,7 +109,7 @@ body {
 
 .lang-toggle:hover { border-color: var(--blue); color: var(--blue-deep); }
 
-.doctor-cta {
+.tip-cta {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -125,9 +125,7 @@ body {
   box-shadow: 0 4px 14px -6px rgba(60,59,110,.5);
 }
 
-.doctor-cta:hover { transform: translateY(-1px); box-shadow: 0 6px 18px -6px rgba(60,59,110,.65); }
-.doctor-cta-arrow { transition: transform 0.15s; }
-.doctor-cta:hover .doctor-cta-arrow { transform: translateX(2px); }
+.tip-cta:hover { transform: translateY(-1px); box-shadow: 0 6px 18px -6px rgba(60,59,110,.65); }
 
 /* ========== HERO (recedes once the visitor engages) ========== */
 .hero {
@@ -1653,7 +1651,7 @@ body {
   .site-header { padding: 14px 18px; }
   .brand { font-size: 19px; }
   .tagline { display: none; }
-  .doctor-cta { font-size: 12px; padding: 7px 12px; }
+  .tip-cta { font-size: 12px; padding: 7px 12px; }
   .app { padding: 18px 16px 0; }
   .msg { max-width: 95%; }
 }

@@ -25,7 +25,6 @@ export const STRINGS = {
       "Got it. Tell me what's going on and I'll help you find a nearby urgent care.",
     qrFindClinics: "Find clinics near me",
     qrSymptomQuestion: "I have a symptom question",
-    qrTalkDoctor: "Talk to a doctor now — $100",
     inputPlaceholder: "What's going on?",
     footerNote: "Free public service · Not affiliated with any clinic · No personal data stored unless you opt in to a follow-up text",
     disclaimerBannerNotDoctor: "Not a doctor.",
@@ -35,7 +34,7 @@ export const STRINGS = {
         For mental health crisis, call or text <strong>988</strong>.
       </>
     ),
-    doctorCta: "Talk to a doctor",
+    tipCta: "Tip jar ☕",
     langToggleLabel: "Español",
     geoNoSupport: "Your browser doesn't support location services. You can type your zip code instead.",
     geoUserBubble: "Find urgent care near me",
@@ -92,7 +91,6 @@ export const STRINGS = {
       "Entendido. Cuénteme qué está pasando y le ayudaré a encontrar una clínica de urgencias cercana.",
     qrFindClinics: "Buscar clínicas cercanas",
     qrSymptomQuestion: "Tengo una pregunta sobre síntomas",
-    qrTalkDoctor: "Hablar con un médico ahora — $100",
     inputPlaceholder: "¿Qué está pasando?",
     footerNote: "Servicio público gratuito · No afiliado con ninguna clínica · No se guardan datos personales salvo que opte por un mensaje de seguimiento",
     disclaimerBannerNotDoctor: "No es un médico.",
@@ -103,7 +101,7 @@ export const STRINGS = {
         <strong>988</strong>.
       </>
     ),
-    doctorCta: "Hablar con un médico",
+    tipCta: "Propina ☕",
     langToggleLabel: "English",
     geoNoSupport: "Su navegador no admite servicios de ubicación. Puede escribir su código postal en su lugar.",
     geoUserBubble: "Buscar urgencias cerca de mí",

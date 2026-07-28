@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { STRINGS, getStoredLanguage, type Language } from "@/lib/i18n";
 import FollowUpOptIn from "./components/FollowUpOptIn";
@@ -92,7 +91,6 @@ export default function Home({ embed = false }: { embed?: boolean }) {
   const [language, setLanguage] = useState<Language>("en");
   const inputRef = useRef<HTMLInputElement>(null);
   const nextId = useRef(0);
-  const router = useRouter();
   const t = STRINGS[language];
 
   const toggleLanguage = () => {
@@ -154,11 +152,9 @@ export default function Home({ embed = false }: { embed?: boolean }) {
     addMessage({
       type: "bot",
       text: t.symptomPrompt,
-      quickReplies: embed
-        ? [t.qrFindClinics, t.qrSymptomQuestion]
-        : [t.qrFindClinics, t.qrSymptomQuestion, t.qrTalkDoctor],
+      quickReplies: [t.qrFindClinics, t.qrSymptomQuestion],
     });
-  }, [addMessage, t, embed]);
+  }, [addMessage, t]);
 
   // Focus input on mount
   useEffect(() => {
@@ -270,12 +266,6 @@ export default function Home({ embed = false }: { embed?: boolean }) {
     // Intercept geolocation quick reply
     if (text === t.qrFindClinics) {
       handleGeolocate();
-      return;
-    }
-
-    // Intercept paid doctor-connect quick reply
-    if (text === t.qrTalkDoctor) {
-      router.push("/telehealth");
       return;
     }
 
@@ -481,9 +471,16 @@ export default function Home({ embed = false }: { embed?: boolean }) {
             <button className="lang-toggle" onClick={toggleLanguage}>
               {t.langToggleLabel}
             </button>
-            <Link href="/telehealth" className="doctor-cta">
-              {t.doctorCta} <span className="doctor-cta-arrow">&rarr;</span>
-            </Link>
+            {process.env.NEXT_PUBLIC_TIP_JAR_URL && (
+              <a
+                href={process.env.NEXT_PUBLIC_TIP_JAR_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="tip-cta"
+              >
+                {t.tipCta}
+              </a>
+            )}
           </div>
         </header>
       )}
@@ -499,8 +496,8 @@ export default function Home({ embed = false }: { embed?: boolean }) {
             </div>
             <h1 className="hero-title">Care, the moment you need it.</h1>
             <p className="hero-sub">
-              Describe what&apos;s going on and get AI-guided triage, real
-              clinics nearby, or a licensed doctor on the phone in seconds.
+              Describe what&apos;s going on and get AI-guided triage and real
+              clinics nearby, in seconds.
             </p>
             <svg className="hero-pulse" viewBox="0 0 300 40" preserveAspectRatio="none" aria-hidden="true">
               <polyline
@@ -529,7 +526,7 @@ export default function Home({ embed = false }: { embed?: boolean }) {
                     <path d="M9 12l2 2 4-4" />
                   </svg>
                 </span>
-                NPI-verified doctors
+                Real, nearby clinics
               </span>
               <span className="hero-trust-badge">
                 <span className="hero-trust-icon" aria-hidden="true">
