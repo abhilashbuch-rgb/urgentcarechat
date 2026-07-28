@@ -169,13 +169,15 @@ export default function TelehealthIntake() {
   const feeDollars = selected ? (selected.platform_fee_cents / 100).toFixed(0) : "100";
 
   return (
-    <div className="lux-shell">
+    <div className="bright-shell">
       <header className="lux-header">
         <div className="brand lux-brand">
           <span className="dot"></span>urgentcare
           <span className="tld">.chat</span>
         </div>
-        <div className="lux-tagline">Concierge Care</div>
+        <Link href="/telehealth" className="lux-header-cta">
+          Talk to a doctor now
+        </Link>
       </header>
 
       <main className="lux-main">
@@ -204,9 +206,14 @@ export default function TelehealthIntake() {
 
             <ol className="lux-how-it-works">
               <li>
-                <span className="lux-step-num">1</span>
+                <span className="lux-step-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 7v5l3 3" />
+                  </svg>
+                </span>
                 <div>
-                  <strong>Tell us what&apos;s happening</strong>
+                  <strong>Connect in minutes</strong>
                   <p>
                     A quick description of your symptoms and how long
                     it&apos;s been going on. We screen for emergencies before
@@ -215,7 +222,13 @@ export default function TelehealthIntake() {
                 </div>
               </li>
               <li>
-                <span className="lux-step-num">2</span>
+                <span className="lux-step-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 3h6a1 1 0 0 1 1 1v1H8V4a1 1 0 0 1 1-1Z" />
+                    <path d="M6 6h12v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V6Z" />
+                    <path d="m9 13 2 2 4-4" />
+                  </svg>
+                </span>
                 <div>
                   <strong>Secure your connection</strong>
                   <p>
@@ -225,9 +238,14 @@ export default function TelehealthIntake() {
                 </div>
               </li>
               <li>
-                <span className="lux-step-num">3</span>
+                <span className="lux-step-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="4" y="10" width="16" height="10" rx="2" />
+                    <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                  </svg>
+                </span>
                 <div>
-                  <strong>Connected in seconds</strong>
+                  <strong>Connected &amp; confidential</strong>
                   <p>
                     The doctor calls you through an encrypted, masked line —
                     your real number is never shared, and neither is theirs.
@@ -513,6 +531,12 @@ export default function TelehealthIntake() {
         )}
 
           </div>
+        </div>
+
+        <div className="lux-payments-bar">
+          <span>🔒 Secure payments</span>
+          <span aria-hidden="true">·</span>
+          <span>Powered by Stripe</span>
         </div>
 
         <Link className="lux-back" href="/">
