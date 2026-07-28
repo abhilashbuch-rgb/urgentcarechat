@@ -165,6 +165,12 @@ export default function Home({ embed = false }: { embed?: boolean }) {
   // reads as a warm intro rather than something permanently in the way.
   const hasStarted = messages.some((m) => m.type === "user");
 
+  // Once a 911/988 alert has shown, keep the footer free of anything
+  // but the essentials for the rest of the session.
+  const hasEmergencyAlert = messages.some(
+    (m) => m.type === "alert-911" || m.type === "alert-988"
+  );
+
   // Log clinic clicks for analytics
   const logClick = async (clinicName: string, action: string) => {
     try {
@@ -471,16 +477,6 @@ export default function Home({ embed = false }: { embed?: boolean }) {
             <button className="lang-toggle" onClick={toggleLanguage}>
               {t.langToggleLabel}
             </button>
-            {process.env.NEXT_PUBLIC_TIP_JAR_URL && (
-              <a
-                href={process.env.NEXT_PUBLIC_TIP_JAR_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="tip-cta"
-              >
-                {t.tipCta}
-              </a>
-            )}
           </div>
         </header>
       )}
@@ -816,7 +812,7 @@ export default function Home({ embed = false }: { embed?: boolean }) {
               <Link href="/disclaimer">Disclaimer</Link>
               {" · "}
               <Link href="/partners">White-label</Link>
-              {process.env.NEXT_PUBLIC_TIP_JAR_URL && (
+              {!hasEmergencyAlert && process.env.NEXT_PUBLIC_TIP_JAR_URL && (
                 <>
                   {" · "}
                   <a

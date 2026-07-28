@@ -109,24 +109,6 @@ body {
 
 .lang-toggle:hover { border-color: var(--blue); color: var(--blue-deep); }
 
-.tip-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--sans);
-  font-size: 13px;
-  font-weight: 600;
-  color: #ffffff;
-  background: linear-gradient(135deg, var(--blue), var(--blue-deep));
-  padding: 8px 14px;
-  border-radius: 999px;
-  text-decoration: none;
-  transition: transform 0.15s, box-shadow 0.15s;
-  box-shadow: 0 4px 14px -6px rgba(60,59,110,.5);
-}
-
-.tip-cta:hover { transform: translateY(-1px); box-shadow: 0 6px 18px -6px rgba(60,59,110,.65); }
-
 /* ========== HERO (recedes once the visitor engages) ========== */
 .hero {
   position: relative;
@@ -1651,7 +1633,6 @@ body {
   .site-header { padding: 14px 18px; }
   .brand { font-size: 19px; }
   .tagline { display: none; }
-  .tip-cta { font-size: 12px; padding: 7px 12px; }
   .app { padding: 18px 16px 0; }
   .msg { max-width: 95%; }
 }

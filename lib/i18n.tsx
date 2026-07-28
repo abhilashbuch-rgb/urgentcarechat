@@ -34,7 +34,6 @@ export const STRINGS = {
         For mental health crisis, call or text <strong>988</strong>.
       </>
     ),
-    tipCta: "Tip jar ☕",
     langToggleLabel: "Español",
     geoNoSupport: "Your browser doesn't support location services. You can type your zip code instead.",
     geoUserBubble: "Find urgent care near me",
@@ -101,7 +100,6 @@ export const STRINGS = {
         <strong>988</strong>.
       </>
     ),
-    tipCta: "Propina ☕",
     langToggleLabel: "English",
     geoNoSupport: "Su navegador no admite servicios de ubicación. Puede escribir su código postal en su lugar.",
     geoUserBubble: "Buscar urgencias cerca de mí",
