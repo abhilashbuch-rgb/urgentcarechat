@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { STRINGS, getStoredLanguage, type Language } from "@/lib/i18n";
 import FollowUpOptIn from "./components/FollowUpOptIn";
@@ -92,7 +91,6 @@ export default function Home({ embed = false }: { embed?: boolean }) {
   const [language, setLanguage] = useState<Language>("en");
   const inputRef = useRef<HTMLInputElement>(null);
   const nextId = useRef(0);
-  const router = useRouter();
   const t = STRINGS[language];
 
   const toggleLanguage = () => {
@@ -154,11 +152,9 @@ export default function Home({ embed = false }: { embed?: boolean }) {
     addMessage({
       type: "bot",
       text: t.symptomPrompt,
-      quickReplies: embed
-        ? [t.qrFindClinics, t.qrSymptomQuestion]
-        : [t.qrFindClinics, t.qrSymptomQuestion, t.qrTalkDoctor],
+      quickReplies: [t.qrFindClinics, t.qrSymptomQuestion],
     });
-  }, [addMessage, t, embed]);
+  }, [addMessage, t]);
 
   // Focus input on mount
   useEffect(() => {
@@ -168,6 +164,12 @@ export default function Home({ embed = false }: { embed?: boolean }) {
   // The hero recedes as soon as the visitor actually engages, so it
   // reads as a warm intro rather than something permanently in the way.
   const hasStarted = messages.some((m) => m.type === "user");
+
+  // Once a 911/988 alert has shown, keep the footer free of anything
+  // but the essentials for the rest of the session.
+  const hasEmergencyAlert = messages.some(
+    (m) => m.type === "alert-911" || m.type === "alert-988"
+  );
 
   // Log clinic clicks for analytics
   const logClick = async (clinicName: string, action: string) => {
@@ -270,12 +272,6 @@ export default function Home({ embed = false }: { embed?: boolean }) {
     // Intercept geolocation quick reply
     if (text === t.qrFindClinics) {
       handleGeolocate();
-      return;
-    }
-
-    // Intercept paid doctor-connect quick reply
-    if (text === t.qrTalkDoctor) {
-      router.push("/telehealth");
       return;
     }
 
@@ -481,9 +477,6 @@ export default function Home({ embed = false }: { embed?: boolean }) {
             <button className="lang-toggle" onClick={toggleLanguage}>
               {t.langToggleLabel}
             </button>
-            <Link href="/telehealth" className="doctor-cta">
-              {t.doctorCta} <span className="doctor-cta-arrow">&rarr;</span>
-            </Link>
           </div>
         </header>
       )}
@@ -493,11 +486,14 @@ export default function Home({ embed = false }: { embed?: boolean }) {
           <div className="hero-blob hero-blob-a" aria-hidden="true" />
           <div className="hero-blob hero-blob-b" aria-hidden="true" />
           <div className="hero-inner">
-            <div className="hero-eyebrow">Free &middot; No signup &middot; 24/7</div>
+            <div className="hero-eyebrow">
+              <span className="hero-eyebrow-dot" aria-hidden="true" />
+              Free &middot; No signup &middot; 24/7
+            </div>
             <h1 className="hero-title">Care, the moment you need it.</h1>
             <p className="hero-sub">
-              Describe what&apos;s going on and get AI-guided triage, real
-              clinics nearby, or a licensed doctor on the phone in seconds.
+              Describe what&apos;s going on and get AI-guided triage and real
+              clinics nearby, in seconds.
             </p>
             <svg className="hero-pulse" viewBox="0 0 300 40" preserveAspectRatio="none" aria-hidden="true">
               <polyline
@@ -510,9 +506,33 @@ export default function Home({ embed = false }: { embed?: boolean }) {
               />
             </svg>
             <div className="hero-trust-row">
-              <span className="hero-trust-badge">Not a diagnosis tool</span>
-              <span className="hero-trust-badge">NPI-verified doctors</span>
-              <span className="hero-trust-badge">Private &amp; secure</span>
+              <span className="hero-trust-badge">
+                <span className="hero-trust-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 11l3 3L22 4" />
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                  </svg>
+                </span>
+                Not a diagnosis tool
+              </span>
+              <span className="hero-trust-badge">
+                <span className="hero-trust-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z" />
+                    <path d="M9 12l2 2 4-4" />
+                  </svg>
+                </span>
+                Real, nearby clinics
+              </span>
+              <span className="hero-trust-badge">
+                <span className="hero-trust-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="4" y="11" width="16" height="9" rx="2" />
+                    <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                  </svg>
+                </span>
+                Private &amp; secure
+              </span>
             </div>
           </div>
         </section>
@@ -792,7 +812,7 @@ export default function Home({ embed = false }: { embed?: boolean }) {
               <Link href="/disclaimer">Disclaimer</Link>
               {" · "}
               <Link href="/partners">White-label</Link>
-              {process.env.NEXT_PUBLIC_TIP_JAR_URL && (
+              {!hasEmergencyAlert && process.env.NEXT_PUBLIC_TIP_JAR_URL && (
                 <>
                   {" · "}
                   <a
