@@ -33,8 +33,8 @@ export default function PartnersPage() {
         <section className="legal-section">
           <h2>Interested?</h2>
           <p>
-            <a href="mailto:support@hipaaspeak.com?subject=White-label%20inquiry">
-              support@hipaaspeak.com
+            <a href="mailto:urgentcarechat@icloud.com?subject=White-label%20inquiry">
+              urgentcarechat@icloud.com
             </a>
           </p>
         </section>
