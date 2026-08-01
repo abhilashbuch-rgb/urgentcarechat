@@ -16,7 +16,9 @@ export default function PartnersPage() {
 
       <main className="legal-main">
         <h1 className="legal-title">White-label this platform</h1>
-        <p className="legal-updated">For urgent care groups &amp; MSOs</p>
+        <p className="legal-updated">
+          For urgent care groups &amp; MSOs &middot; A HIPAAspeak companion
+        </p>
 
         <section className="legal-section">
           <p>
@@ -31,8 +33,8 @@ export default function PartnersPage() {
         <section className="legal-section">
           <h2>Interested?</h2>
           <p>
-            <a href="mailto:abhilash.buch@gmail.com?subject=White-label%20inquiry">
-              abhilash.buch@gmail.com
+            <a href="mailto:support@hipaaspeak.com?subject=White-label%20inquiry">
+              support@hipaaspeak.com
             </a>
           </p>
         </section>
