@@ -1,0 +1,16 @@
+# urgentcare.chat
+
+> Free AI-guided symptom triage and urgent care finder for the United States. Not a doctor — helps someone decide whether a situation needs the ER, urgent care, or self-care, then finds real nearby clinics by zip code. Available nationwide.
+
+urgentcare.chat is a technology platform operated by Medicin.io LLC. It does not diagnose, treat, or prescribe, and is not affiliated with any specific clinic. For a life-threatening emergency, call 911. For a mental health crisis, call or text 988.
+
+An MCP tool (`find_urgent_care`) is available at https://urgentcare.chat/api/mcp for agents that support the Model Context Protocol, returning real, live nearby urgent care clinics by US zip code.
+
+## Pages
+
+- [Home / Chat](https://urgentcare.chat/): Start a free triage conversation and find nearby urgent care clinics anywhere in the US.
+- [Platform Disclaimer](https://urgentcare.chat/disclaimer): What urgentcare.chat is and isn't, and how it handles clinical data.
+- [Privacy Policy](https://urgentcare.chat/privacy)
+- [Terms of Service](https://urgentcare.chat/terms)
+- [White-label / Partners](https://urgentcare.chat/partners): For urgent care groups and MSOs interested in a branded version of this platform.
+- [Embeddable widget](https://urgentcare.chat/widget): Embed the triage chat on another site.
