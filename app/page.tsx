@@ -38,7 +38,7 @@ type CareLevel = "emergency" | "urgent" | "self_care";
 
 interface UIMessage {
   id: number;
-  type: "bot" | "user" | "alert-911" | "alert-988" | "clinics" | "typing";
+  type: "bot" | "user" | "alert-911" | "alert-988" | "clinics" | "typing" | "support-note";
   text?: string;
   quickReplies?: string[];
   alertTitle?: string;
@@ -92,6 +92,7 @@ export default function Home({ embed = false }: { embed?: boolean }) {
     "self" | "child" | "other" | null
   >(null);
   const [language, setLanguage] = useState<Language>("en");
+  const supportNoteShown = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const nextId = useRef(0);
   const t = STRINGS[language];
@@ -126,6 +127,15 @@ export default function Home({ embed = false }: { embed?: boolean }) {
   const removeMessage = useCallback((id: number) => {
     setMessages((prev) => prev.filter((m) => m.id !== id));
   }, []);
+
+  // Shown at most once per session, and only after low-stakes guidance
+  // (self-care advice or clinic results) — never after urgent/emergency
+  // responses, which stay focused on the medical situation.
+  const maybeShowSupportNote = useCallback(() => {
+    if (embed || supportNoteShown.current) return;
+    supportNoteShown.current = true;
+    addMessage({ type: "support-note" });
+  }, [embed, addMessage]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -232,6 +242,7 @@ export default function Home({ embed = false }: { embed?: boolean }) {
             if (clinics.length > 0) {
               addMessage({ type: "bot", text: t.geoResultsIntro });
               addMessage({ type: "clinics", clinics });
+              maybeShowSupportNote();
             } else {
               addMessage({ type: "bot", text: t.geoNoResults });
             }
@@ -408,6 +419,7 @@ export default function Home({ embed = false }: { embed?: boolean }) {
             ? data.careLevel
             : undefined;
         addMessage({ type: "bot", text: assistantText, careLevel });
+        if (careLevel === "self_care") maybeShowSupportNote();
       }
 
       // If the LLM triggered a clinic search, fetch and display results
@@ -418,6 +430,7 @@ export default function Home({ embed = false }: { embed?: boolean }) {
 
         if (clinics.length > 0) {
           addMessage({ type: "clinics", clinics });
+          maybeShowSupportNote();
         } else {
           addMessage({ type: "bot", text: t.clinicSearchNoResults });
         }
@@ -559,6 +572,23 @@ export default function Home({ embed = false }: { embed?: boolean }) {
                       <span></span>
                     </div>
                   </div>
+                </div>
+              );
+            }
+
+            if (msg.type === "support-note") {
+              return (
+                <div key={msg.id} className="support-note">
+                  If you found this helpful, please{" "}
+                  <a
+                    href={TIP_JAR_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="tip-link"
+                  >
+                    support it ☕
+                  </a>
+                  .
                 </div>
               );
             }
@@ -824,7 +854,7 @@ export default function Home({ embed = false }: { embed?: boolean }) {
                     rel="noopener noreferrer"
                     className="tip-link"
                   >
-                    Help keep this free ☕
+                    If you found this helpful, please support it ☕
                   </a>
                 </>
               )}
