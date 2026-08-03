@@ -7,6 +7,9 @@ import FollowUpOptIn from "./components/FollowUpOptIn";
 import ClaimListing from "./components/ClaimListing";
 import { checkRedFlags } from "@/lib/red-flags";
 
+// Quiet, optional footer link — never shown during 911/988 alerts.
+const TIP_JAR_URL = "https://ko-fi.com/urgentcarechat";
+
 // ============================================================
 // Types
 // ============================================================
@@ -812,11 +815,11 @@ export default function Home({ embed = false }: { embed?: boolean }) {
               <Link href="/disclaimer">Disclaimer</Link>
               {" · "}
               <Link href="/partners">White-label</Link>
-              {!hasEmergencyAlert && process.env.NEXT_PUBLIC_TIP_JAR_URL && (
+              {!hasEmergencyAlert && (
                 <>
                   {" · "}
                   <a
-                    href={process.env.NEXT_PUBLIC_TIP_JAR_URL}
+                    href={TIP_JAR_URL}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="tip-link"
