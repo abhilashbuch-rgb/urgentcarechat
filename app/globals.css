@@ -518,6 +518,18 @@ body {
   line-height: 1.4;
 }
 
+/* One-time, low-key nudge shown after non-emergency guidance —
+   deliberately styled like plain footer text, not a message bubble. */
+.support-note {
+  align-self: center;
+  max-width: 88%;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
 /* Typing indicator */
 .typing {
   display: inline-flex;
@@ -908,6 +920,9 @@ body {
 
 .footer-note a { color: var(--ink-soft); text-decoration: underline; }
 .footer-note a:hover { color: var(--blue-deep); }
+
+.tip-link { color: var(--ink-soft); text-decoration: underline; }
+.tip-link:hover { color: var(--blue-deep); }
 
 /* ========== TELEHEALTH (shared bits reused inside the lux theme) ========== */
 .telehealth-sub {
