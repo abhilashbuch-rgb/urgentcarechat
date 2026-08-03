@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createServerSupabase } from "@/lib/supabase-server-auth";
 import { createServerClient } from "@/lib/supabase";
 import ProfileForm from "./ProfileForm";
+import BrandIcon from "@/app/components/BrandIcon";
 
 export default async function ProviderProfilePage() {
   const supabase = await createServerSupabase();
@@ -22,8 +23,8 @@ export default async function ProviderProfilePage() {
     <div className="lux-shell">
       <header className="lux-header">
         <div className="brand lux-brand">
-          <span className="dot"></span>urgentcare
-          <span className="tld">.chat</span>
+          <BrandIcon />
+          urgentcare<span className="tld">.chat</span>
         </div>
         <Link href="/provider/dashboard" className="lang-toggle">
           &larr; Dashboard

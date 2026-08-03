@@ -5,6 +5,7 @@ import { createServerClient } from "@/lib/supabase";
 import AvailabilityToggle from "./AvailabilityToggle";
 import SignOutButton from "./SignOutButton";
 import ConnectButton from "./ConnectButton";
+import BrandIcon from "@/app/components/BrandIcon";
 
 // Server component — reads the session via the cookie-aware client,
 // then uses the service-role client for telehealth_requests (which
@@ -36,8 +37,8 @@ export default async function ProviderDashboardPage() {
     <div className="lux-shell">
       <header className="lux-header">
         <div className="brand lux-brand">
-          <span className="dot"></span>urgentcare
-          <span className="tld">.chat</span>
+          <BrandIcon />
+          urgentcare<span className="tld">.chat</span>
         </div>
         <div className="header-actions">
           <Link href="/provider/profile" className="lang-toggle">Edit profile</Link>

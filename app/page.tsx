@@ -6,6 +6,7 @@ import { STRINGS, getStoredLanguage, type Language } from "@/lib/i18n";
 import FollowUpOptIn from "./components/FollowUpOptIn";
 import ClaimListing from "./components/ClaimListing";
 import { checkRedFlags } from "@/lib/red-flags";
+import BrandIcon from "@/app/components/BrandIcon";
 
 // Quiet, optional footer link — never shown during 911/988 alerts.
 const TIP_JAR_URL = "https://ko-fi.com/urgentcarechat";
@@ -486,8 +487,8 @@ export default function Home({ embed = false }: { embed?: boolean }) {
       ) : (
         <header className="site-header">
           <div className="brand">
-            <span className="dot"></span>urgentcare
-            <span className="tld">.chat</span>
+            <BrandIcon />
+            urgentcare<span className="tld">.chat</span>
           </div>
           <div className="header-actions">
             <button className="lang-toggle" onClick={toggleLanguage}>

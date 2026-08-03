@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createBrowserSupabase } from "@/lib/supabase-browser";
+import BrandIcon from "@/app/components/BrandIcon";
 
 export default function ProviderLoginPage() {
   const [email, setEmail] = useState("");
@@ -32,8 +33,8 @@ export default function ProviderLoginPage() {
     <div className="lux-shell">
       <header className="lux-header">
         <div className="brand lux-brand">
-          <span className="dot"></span>urgentcare
-          <span className="tld">.chat</span>
+          <BrandIcon />
+          urgentcare<span className="tld">.chat</span>
         </div>
         <div className="lux-tagline">Provider</div>
       </header>

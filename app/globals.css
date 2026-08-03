@@ -61,18 +61,13 @@ body {
   font-size: 22px;
   letter-spacing: -0.02em;
   display: flex;
-  align-items: baseline;
-  gap: 2px;
+  align-items: center;
+  gap: 8px;
 }
 
-.brand .dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--blue);
-  margin-right: 8px;
-  transform: translateY(-2px);
+.brand-icon {
+  flex-shrink: 0;
+  border-radius: 22%;
 }
 
 .brand .tld {
@@ -971,7 +966,6 @@ body {
 }
 
 .lux-brand { color: var(--lux-text); }
-.lux-brand .dot { background: var(--lux-blue); }
 .lux-brand .tld { color: var(--lux-blue); }
 
 .lux-tagline {

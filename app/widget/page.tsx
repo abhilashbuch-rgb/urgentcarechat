@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Home from "../page";
+import BrandIcon from "@/app/components/BrandIcon";
 
 const SNIPPET = `<iframe
   src="https://urgentcare.chat/widget"
@@ -26,8 +27,8 @@ function EmbedDocs() {
     <div className="widget-docs">
       <header className="site-header">
         <div className="brand">
-          <span className="dot"></span>urgentcare
-          <span className="tld">.chat</span>
+          <BrandIcon />
+          urgentcare<span className="tld">.chat</span>
         </div>
         <div className="tagline">Embed this widget</div>
       </header>

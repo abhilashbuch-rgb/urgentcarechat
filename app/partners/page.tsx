@@ -1,4 +1,5 @@
 import Link from "next/link";
+import BrandIcon from "@/app/components/BrandIcon";
 
 export const metadata = {
   title: "White-label — urgentcare.chat",
@@ -9,8 +10,8 @@ export default function PartnersPage() {
     <div className="legal-page">
       <header className="site-header">
         <div className="brand">
-          <span className="dot"></span>urgentcare
-          <span className="tld">.chat</span>
+          <BrandIcon />
+          urgentcare<span className="tld">.chat</span>
         </div>
       </header>
 

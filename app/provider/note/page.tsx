@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import BrandIcon from "@/app/components/BrandIcon";
 
 interface Context {
   providerName: string;
@@ -146,8 +147,8 @@ export default function ProviderNotePage() {
     <div className="lux-shell">
       <header className="lux-header">
         <div className="brand lux-brand">
-          <span className="dot"></span>urgentcare
-          <span className="tld">.chat</span>
+          <BrandIcon />
+          urgentcare<span className="tld">.chat</span>
         </div>
         <div className="lux-tagline">Provider</div>
       </header>
