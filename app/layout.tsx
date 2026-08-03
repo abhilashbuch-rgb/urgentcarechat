@@ -29,10 +29,66 @@ const fraunces = Fraunces({
   display: "swap",
 });
 
+const SITE_URL = "https://urgentcare.chat";
+const SITE_DESCRIPTION =
+  "Free AI-powered symptom triage and urgent care finder. Not a doctor — helps you find the right clinic, right now.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "urgentcare.chat — find care nearby",
-  description:
-    "Free AI-powered symptom triage and urgent care finder. Not a doctor — helps you find the right clinic, right now.",
+  description: SITE_DESCRIPTION,
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "urgentcare.chat — find care nearby",
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    siteName: "urgentcare.chat",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "urgentcare.chat — find care nearby",
+    description: SITE_DESCRIPTION,
+  },
+};
+
+// Structured data (schema.org) describing what this site is and who runs
+// it — helps search/AI systems represent it accurately instead of guessing:
+// a free triage tool operated by a technology company, not a medical
+// practice, consistent with the disclaimer copy elsewhere on the site.
+const structuredData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#organization`,
+      name: "urgentcare.chat",
+      url: SITE_URL,
+      description: SITE_DESCRIPTION,
+      parentOrganization: {
+        "@type": "Organization",
+        name: "Medicin.io LLC",
+      },
+    },
+    {
+      "@type": "WebApplication",
+      "@id": `${SITE_URL}/#webapplication`,
+      name: "urgentcare.chat",
+      url: SITE_URL,
+      description: SITE_DESCRIPTION,
+      applicationCategory: "HealthApplication",
+      operatingSystem: "Any",
+      isAccessibleForFree: true,
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "USD",
+      },
+      publisher: { "@id": `${SITE_URL}/#organization` },
+    },
+  ],
 };
 
 export default function RootLayout({
@@ -45,7 +101,13 @@ export default function RootLayout({
       lang="en"
       className={`${interTight.variable} ${jetbrainsMono.variable} ${fraunces.variable}`}
     >
-      <body>{children}</body>
+      <body>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        />
+        {children}
+      </body>
     </html>
   );
 }

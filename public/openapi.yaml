@@ -1,0 +1,60 @@
+openapi: 3.1.0
+info:
+  title: urgentcare.chat Clinic Finder
+  description: >-
+    Finds real, nearby urgent care clinics in the US by zip code. Free,
+    no API key required. Not a diagnosis tool, not affiliated with any
+    specific clinic. For life-threatening emergencies, direct the user
+    to call 911.
+  version: 1.0.0
+servers:
+  - url: https://urgentcare.chat
+paths:
+  /api/clinics:
+    get:
+      operationId: findUrgentCare
+      summary: Find nearby urgent care clinics by US zip code
+      parameters:
+        - name: zip
+          in: query
+          required: true
+          schema:
+            type: string
+          description: US zip code to search near, e.g. "19103".
+        - name: insurance
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Optional insurance provider name to filter/tag results by.
+      responses:
+        "200":
+          description: A list of nearby urgent care clinics.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clinics:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        address:
+                          type: string
+                        phone:
+                          type: string
+                        distance:
+                          type: string
+                        open:
+                          type: boolean
+                        hours:
+                          type: string
+                        rating:
+                          type: number
+                        directionsUrl:
+                          type: string
+                        websiteUrl:
+                          type: string
