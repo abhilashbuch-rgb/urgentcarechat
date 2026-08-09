@@ -24,6 +24,7 @@ interface PlaceResult {
   directionsUrl: string;
   websiteUrl: string;
   featured: boolean;
+  network: boolean;
 }
 
 // Default services that most urgent care clinics offer
@@ -223,6 +224,7 @@ export async function GET(req: NextRequest) {
           )}&destination_place_id=${place.id || ""}`,
           websiteUrl: place.websiteUri || "",
           featured: false,
+          network: false,
         };
       }
     );
@@ -240,7 +242,7 @@ export async function GET(req: NextRequest) {
           const overrideRes = await fetch(
             `${supabaseUrl}/rest/v1/clinics?google_place_id=in.(${placeIds
               .map((id) => `"${id}"`)
-              .join(",")})&select=google_place_id,services,insurance_tags,is_featured`,
+              .join(",")})&select=google_place_id,services,insurance_tags,is_featured,brand`,
             {
               headers: {
                 apikey: supabaseKey,
@@ -255,7 +257,16 @@ export async function GET(req: NextRequest) {
               services: string[];
               insurance_tags: string[];
               is_featured: boolean | null;
+              brand: string | null;
             }[] = await overrideRes.json();
+
+            // A paid is_featured on ANY location of a brand boosts every
+            // location of that brand in this result set — a chain (e.g.
+            // AFC Urgent Care) pays once and its whole local footprint
+            // benefits, not just the one clinic that's individually featured.
+            const featuredBrands = new Set(
+              overrides.filter((o) => o.is_featured && o.brand).map((o) => o.brand)
+            );
 
             for (const override of overrides) {
               const match = results.find(
@@ -266,7 +277,10 @@ export async function GET(req: NextRequest) {
                   match.services = override.services;
                 if (override.insurance_tags?.length)
                   match.insurance = override.insurance_tags;
-                match.featured = !!override.is_featured;
+
+                const networkBoosted = !!override.brand && featuredBrands.has(override.brand);
+                match.featured = !!override.is_featured || networkBoosted;
+                match.network = networkBoosted && !override.is_featured;
               }
             }
           }

@@ -10,7 +10,7 @@ import { createServerClient } from "@/lib/supabase";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { clinicName, action, sessionId, referrerZip } = body;
+    const { clinicName, action, sessionId, referrerZip, placeId } = body;
 
     if (!clinicName || !action) {
       return NextResponse.json({ ok: true }); // Silently ignore bad data
@@ -20,7 +20,21 @@ export async function POST(req: NextRequest) {
     // Analytics should never block the user experience.
     try {
       const supabase = createServerClient();
+
+      // Resolve the click to a real clinics row (if we have one for this
+      // Google Place) so /api/clinics/analytics can attribute it later.
+      let clinicId: string | null = null;
+      if (placeId) {
+        const { data } = await supabase
+          .from("clinics")
+          .select("id")
+          .eq("google_place_id", placeId)
+          .maybeSingle();
+        clinicId = data?.id ?? null;
+      }
+
       await supabase.from("clicks").insert({
+        clinic_id: clinicId,
         clinic_name: clinicName,
         event_type: action,
         session_id: sessionId || null,

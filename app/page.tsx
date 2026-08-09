@@ -28,6 +28,7 @@ interface Clinic {
   websiteUrl: string;
   placeId?: string;
   featured?: boolean;
+  network?: boolean;
 }
 
 interface ChatMessage {
@@ -186,7 +187,7 @@ export default function Home({ embed = false }: { embed?: boolean }) {
   );
 
   // Log clinic clicks for analytics
-  const logClick = async (clinicName: string, action: string) => {
+  const logClick = async (clinicName: string, action: string, placeId?: string) => {
     try {
       await fetch("/api/clicks", {
         method: "POST",
@@ -195,6 +196,7 @@ export default function Home({ embed = false }: { embed?: boolean }) {
           clinicName,
           action,
           sessionId: getSessionId(),
+          placeId,
         }),
       });
     } catch {
@@ -650,7 +652,11 @@ export default function Home({ embed = false }: { embed?: boolean }) {
                         className={`clinic-card${c.featured ? " featured" : ""}`}
                         role="listitem"
                       >
-                        {c.featured && <div className="featured-tag">{t.featuredTag}</div>}
+                        {c.featured && (
+                          <div className="featured-tag">
+                            {c.network ? t.networkTag : t.featuredTag}
+                          </div>
+                        )}
                         <div className="clinic-name">{c.name}</div>
                         <div className="clinic-meta">
                           <span>{c.distance}</span>
@@ -690,7 +696,7 @@ export default function Home({ embed = false }: { embed?: boolean }) {
                             href={c.directionsUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            onClick={() => logClick(c.name, "directions")}
+                            onClick={() => logClick(c.name, "directions", c.placeId)}
                             aria-label={`Get directions to ${c.name}`}
                           >
                             Directions
@@ -699,7 +705,7 @@ export default function Home({ embed = false }: { embed?: boolean }) {
                             <a
                               className="clinic-btn secondary"
                               href={`tel:${c.phone.replace(/\D/g, "")}`}
-                              onClick={() => logClick(c.name, "call")}
+                              onClick={() => logClick(c.name, "call", c.placeId)}
                               aria-label={`Call ${c.name} at ${c.phone}`}
                             >
                               Call {c.phone}
@@ -711,7 +717,7 @@ export default function Home({ embed = false }: { embed?: boolean }) {
                               href={c.websiteUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              onClick={() => logClick(c.name, "website")}
+                              onClick={() => logClick(c.name, "website", c.placeId)}
                               aria-label={`Visit ${c.name} website`}
                             >
                               Website

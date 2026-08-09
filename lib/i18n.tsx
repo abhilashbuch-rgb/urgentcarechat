@@ -67,6 +67,7 @@ export const STRINGS = {
     claimSuccess: "Thanks — we'll review and follow up by email.",
     claimError: "Something went wrong. Please try again.",
     featuredTag: "Featured",
+    networkTag: "Featured network",
   },
   es: {
     disclaimerTitle: "Antes de continuar",
@@ -133,6 +134,7 @@ export const STRINGS = {
     claimSuccess: "Gracias — revisaremos y le responderemos por correo.",
     claimError: "Algo salió mal. Intente de nuevo.",
     featuredTag: "Destacado",
+    networkTag: "Red destacada",
   },
 } as const;
 

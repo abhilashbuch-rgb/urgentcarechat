@@ -1188,6 +1188,113 @@ body {
   color: var(--ink-soft);
 }
 
+/* ========== CLINIC ANALYTICS ========== */
+.analytics-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.analytics-main {
+  max-width: 760px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 32px 20px 60px;
+}
+
+.analytics-eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+
+.analytics-title {
+  font-family: var(--serif);
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 8px;
+}
+
+.analytics-featured-note {
+  font-size: 14px;
+  color: var(--blue-deep);
+  margin-bottom: 24px;
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.analytics-card {
+  background: var(--bg-card);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 20px 22px;
+  box-shadow: var(--shadow);
+}
+
+.analytics-card h2 {
+  font-family: var(--serif);
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.analytics-total {
+  font-family: var(--serif);
+  font-size: 34px;
+  font-weight: 600;
+  color: var(--blue-deep);
+  line-height: 1;
+}
+
+.analytics-total-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 16px;
+}
+
+.analytics-by-type {
+  border-top: 1px solid var(--rule);
+  padding-top: 12px;
+}
+
+.analytics-type-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 4px 0;
+}
+
+.analytics-type-row strong { color: var(--ink); }
+
+.analytics-sparkline {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 40px;
+  margin-top: 16px;
+  border-top: 1px solid var(--rule);
+  padding-top: 10px;
+}
+
+.analytics-bar {
+  flex: 1;
+  min-height: 2px;
+  background: var(--blue);
+  border-radius: 2px 2px 0 0;
+}
+
 /* mobile */
 @media (max-width: 600px) {
   .site-header { padding: 14px 18px; }

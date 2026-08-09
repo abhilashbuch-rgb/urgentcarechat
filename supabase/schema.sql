@@ -35,6 +35,20 @@ create table if not exists clinics (
 create index if not exists idx_clinics_zip on clinics(zip);
 create index if not exists idx_clinics_place_id on clinics(google_place_id);
 
+-- BRAND — groups multiple locations of the same chain (e.g. all four
+-- "AFC Urgent Care" rows) so a paid is_featured on any one location can
+-- boost the whole network in search results — see /api/clinics. Null
+-- for independent, single-location clinics.
+alter table clinics add column if not exists brand text;
+create index if not exists idx_clinics_brand on clinics(brand);
+
+-- ANALYTICS_TOKEN — a private, unguessable link a claimed clinic (or
+-- whoever we're courting, e.g. AFC) can be given to see their own
+-- referral numbers with no login required — see /clinics/analytics/[token]
+-- and /api/clinics/analytics. Not shown anywhere publicly; share it
+-- directly with the clinic when they claim a listing.
+alter table clinics add column if not exists analytics_token uuid not null default gen_random_uuid() unique;
+
 -- CLICKS — analytics (no PII, ever)
 create table if not exists clicks (
   id              uuid primary key default gen_random_uuid(),
@@ -152,106 +166,106 @@ select cron.schedule(
 --    Insurance data is approximate — clinics should claim/verify.
 -- ============================================================
 
-insert into clinics (google_place_id, name, address, phone, lat, lng, zip, services, insurance_tags, rating) values
+insert into clinics (google_place_id, name, address, phone, lat, lng, zip, services, insurance_tags, rating, brand) values
 
 -- === AFC Urgent Care locations ===
 ('ChIJaxQljqfAxokRmduNQquSk1E', 'AFC Urgent Care Narberth', '934 Montgomery Ave, Narberth, PA 19072', '(484) 270-8600', 40.0116, -75.2615, '19072',
  '{"x-ray","lab","covid_testing","pediatric","vaccinations","occupational_health"}',
- '{"aetna","bcbs","cigna","united","medicare","medicaid","humana"}', 4.6),
+ '{"aetna","bcbs","cigna","united","medicare","medicaid","humana"}', 4.6, 'AFC Urgent Care'),
 
 ('ChIJgbZAtA7GxokRV0s_H2oaf-g', 'AFC Urgent Care South Philly', '1444 W Passyunk Ave, Philadelphia, PA 19145', '(215) 964-9250', 39.9250, -75.1711, '19145',
  '{"x-ray","lab","covid_testing","pediatric","vaccinations","std_testing"}',
- '{"aetna","bcbs","cigna","united","medicare","medicaid","humana"}', 4.6),
+ '{"aetna","bcbs","cigna","united","medicare","medicaid","humana"}', 4.6, 'AFC Urgent Care'),
 
 ('ChIJayo1KwzJxokR-H01HQe90vI', 'AFC Urgent Care Northern Liberties', '180 W Girard Ave, Philadelphia, PA 19123', '(267) 319-8047', 39.9691, -75.1393, '19123',
  '{"x-ray","lab","covid_testing","pediatric","vaccinations","occupational_health"}',
- '{"aetna","bcbs","cigna","united","medicare","medicaid","humana"}', 4.7),
+ '{"aetna","bcbs","cigna","united","medicare","medicaid","humana"}', 4.7, 'AFC Urgent Care'),
 
 ('ChIJY7d8jjLJxokRLZZvMCXB0fk', 'AFC Urgent Care Pennsauken', '6630 S Crescent Blvd, Pennsauken, NJ 08109', '(856) 665-1010', 39.9381, -75.0749, '08109',
  '{"x-ray","lab","covid_testing","pediatric","vaccinations","occupational_health"}',
- '{"aetna","bcbs","cigna","united","medicare","medicaid","humana","horizon"}', 4.6),
+ '{"aetna","bcbs","cigna","united","medicare","medicaid","humana","horizon"}', 4.6, 'AFC Urgent Care'),
 
 -- === Vybe Urgent Care locations (Philly chain) ===
 ('ChIJK3ivrrfJxokRCc4mNl36Qmk', 'vybe urgent care - Market St', '618 Market St, Philadelphia, PA 19106', '(215) 583-0618', 39.9506, -75.1516, '19106',
  '{"x-ray","lab","covid_testing","pediatric","vaccinations","std_testing"}',
- '{"aetna","bcbs","cigna","united","medicare","medicaid","humana"}', 4.8),
+ '{"aetna","bcbs","cigna","united","medicare","medicaid","humana"}', 4.8, 'vybe urgent care'),
 
 ('ChIJYzGdiPHHxokRPD-5h0f8Xnc', 'vybe urgent care - Spring Garden', '1500 Spring Garden St Ste R105, Philadelphia, PA 19130', '(267) 768-8288', 39.9626, -75.1644, '19130',
  '{"x-ray","lab","covid_testing","pediatric","vaccinations","std_testing"}',
- '{"aetna","bcbs","cigna","united","medicare","medicaid","humana"}', 4.6),
+ '{"aetna","bcbs","cigna","united","medicare","medicaid","humana"}', 4.6, 'vybe urgent care'),
 
 ('ChIJwxL9wS_GxokRu7lEJe2D7JM', 'vybe urgent care - Chestnut St', '1420 Chestnut St, Philadelphia, PA 19102', '(215) 999-1420', 39.9507, -75.1650, '19102',
  '{"x-ray","lab","covid_testing","pediatric","vaccinations","std_testing"}',
- '{"aetna","bcbs","cigna","united","medicare","medicaid","humana"}', 4.7),
+ '{"aetna","bcbs","cigna","united","medicare","medicaid","humana"}', 4.7, 'vybe urgent care'),
 
 ('ChIJcSVfThfGxokR4bNC2Bs0fCY', 'vybe urgent care - South Broad', '1217 S Broad St, Philadelphia, PA 19147', '(215) 999-1217', 39.9350, -75.1671, '19147',
  '{"x-ray","lab","covid_testing","pediatric","vaccinations","std_testing"}',
- '{"aetna","bcbs","cigna","united","medicare","medicaid","humana"}', 4.7),
+ '{"aetna","bcbs","cigna","united","medicare","medicaid","humana"}', 4.7, 'vybe urgent care'),
 
 ('ChIJp3KiLKDHxokRYs7P3G-X_I0', 'vybe urgent care - University City', '3550 Market St Ste 102, Philadelphia, PA 19104', '(215) 405-0701', 39.9558, -75.1939, '19104',
  '{"x-ray","lab","covid_testing","pediatric","vaccinations","std_testing"}',
- '{"aetna","bcbs","cigna","united","medicare","medicaid","humana"}', 4.6),
+ '{"aetna","bcbs","cigna","united","medicare","medicaid","humana"}', 4.6, 'vybe urgent care'),
 
 ('ChIJ46_Yn4LHxokRhFTPoTmHvKo', 'vybe urgent care - West Philly', '5828 Market St, Philadelphia, PA 19139', '(215) 948-4010', 39.9610, -75.2380, '19139',
  '{"x-ray","lab","covid_testing","pediatric","vaccinations","std_testing"}',
- '{"aetna","bcbs","cigna","united","medicare","medicaid","humana"}', 4.7),
+ '{"aetna","bcbs","cigna","united","medicare","medicaid","humana"}', 4.7, 'vybe urgent care'),
 
 ('ChIJTQl7-jrHxokRCNTM4sRUKEU', 'vybe urgent care - City Ave', '4190 City Ave Ste 101, Philadelphia, PA 19131', '(215) 857-5300', 40.0045, -75.2175, '19131',
  '{"x-ray","lab","covid_testing","pediatric","vaccinations","std_testing"}',
- '{"aetna","bcbs","cigna","united","medicare","medicaid","humana"}', 4.7),
+ '{"aetna","bcbs","cigna","united","medicare","medicaid","humana"}', 4.7, 'vybe urgent care'),
 
 ('ChIJLa9H-9XJxokRbYrru43iyhE', 'vybe urgent care - Aramingo', '3356 Aramingo Ave, Philadelphia, PA 19134', '(215) 999-3356', 39.9908, -75.1024, '19134',
  '{"x-ray","lab","covid_testing","pediatric","vaccinations","std_testing"}',
- '{"aetna","bcbs","cigna","united","medicare","medicaid","humana"}', 4.5),
+ '{"aetna","bcbs","cigna","united","medicare","medicaid","humana"}', 4.5, 'vybe urgent care'),
 
 ('ChIJWyZeRO64xokRuBHe-QG2XSA', 'vybe urgent care - Roxborough', '6060 Ridge Ave #100, Philadelphia, PA 19128', '(215) 999-6060', 40.0329, -75.2149, '19128',
  '{"x-ray","lab","covid_testing","pediatric","vaccinations","std_testing"}',
- '{"aetna","bcbs","cigna","united","medicare","medicaid","humana"}', 4.5),
+ '{"aetna","bcbs","cigna","united","medicare","medicaid","humana"}', 4.5, 'vybe urgent care'),
 
 -- === Jefferson Health ===
 ('ChIJ__8vDjfGxokRFKxuwSwCgPE', 'Jefferson Rittenhouse Urgent Care', '2021 Chestnut St, Philadelphia, PA 19103', '(267) 443-2020', 39.9523, -75.1744, '19103',
  '{"x-ray","lab","covid_testing","pediatric","vaccinations"}',
- '{"aetna","bcbs","cigna","united","medicare","medicaid"}', 3.5),
+ '{"aetna","bcbs","cigna","united","medicare","medicaid"}', 3.5, null),
 
 -- === myDoc Urgent Care ===
 ('ChIJWyAFNCXGxokR59uHcVNDUuA', 'myDoc Urgent Care - Rittenhouse', '1420 Locust St, Philadelphia, PA 19102', '(215) 800-1909', 39.9482, -75.1658, '19102',
  '{"x-ray","lab","covid_testing","pediatric","vaccinations","std_testing"}',
- '{"aetna","bcbs","cigna","united","medicare","medicaid"}', 3.9),
+ '{"aetna","bcbs","cigna","united","medicare","medicaid"}', 3.9, 'myDoc Urgent Care'),
 
 ('ChIJUaxnnyLHxokR5A8xkZWkhOA', 'myDoc Urgent Care - North Broad', '1501 N Broad St #10, Philadelphia, PA 19122', '(267) 457-5553', 39.9762, -75.1571, '19122',
  '{"x-ray","lab","covid_testing","pediatric","vaccinations","std_testing"}',
- '{"aetna","bcbs","cigna","united","medicare","medicaid"}', 4.0),
+ '{"aetna","bcbs","cigna","united","medicare","medicaid"}', 4.0, 'myDoc Urgent Care'),
 
 ('ChIJ3WEbGFfGxokRTxb09i0ZZqw', 'myDoc Urgent Care - University City', '3717 Chestnut St Ste 202, Philadelphia, PA 19104', '(215) 921-8294', 39.9555, -75.1975, '19104',
  '{"x-ray","lab","covid_testing","pediatric","vaccinations","std_testing"}',
- '{"aetna","bcbs","cigna","united","medicare","medicaid"}', 4.0),
+ '{"aetna","bcbs","cigna","united","medicare","medicaid"}', 4.0, 'myDoc Urgent Care'),
 
 -- === Other Philly-area clinics ===
 ('ChIJF5VM1MHHxokRgNCMejn21tg', 'Everest Urgent Care - Ridge Ave', '2077 Ridge Ave, Philadelphia, PA 19121', '(267) 817-9800', 39.9776, -75.1686, '19121',
  '{"x-ray","lab","covid_testing","vaccinations"}',
- '{"aetna","bcbs","cigna","united","medicare","medicaid"}', 4.3),
+ '{"aetna","bcbs","cigna","united","medicare","medicaid"}', 4.3, 'Everest Urgent Care'),
 
 ('ChIJi6EmXRDBxokRFvku_dHavwM', 'Everest Urgent Care - Upper Darby', '6787 Market St #101, Upper Darby, PA 19082', '(610) 352-8000', 39.9624, -75.2563, '19082',
  '{"x-ray","lab","covid_testing","vaccinations"}',
- '{"aetna","bcbs","cigna","united","medicare","medicaid"}', 4.6),
+ '{"aetna","bcbs","cigna","united","medicare","medicaid"}', 4.6, 'Everest Urgent Care'),
 
 ('ChIJPfuEAi3GxokRtGoumUft1ew', 'Concentra Urgent Care - Center City', '219 N Broad St Ste 101, Philadelphia, PA 19107', '(215) 762-8525', 39.9568, -75.1624, '19107',
  '{"x-ray","lab","covid_testing","occupational_health","sports_physicals"}',
- '{"aetna","bcbs","cigna","united","medicare"}', 4.2),
+ '{"aetna","bcbs","cigna","united","medicare"}', 4.2, null),
 
 -- === South Jersey clinics ===
 ('ChIJMUR7aarOxokRFf4H0uCCyAg', 'Virtua Urgent Care - Westmont', '602 W Cuthbert Blvd, Haddon Township, NJ 08108', '(856) 946-5180', 39.9019, -75.0629, '08108',
  '{"x-ray","lab","covid_testing","pediatric","vaccinations"}',
- '{"aetna","bcbs","cigna","united","medicare","medicaid","horizon"}', 4.7),
+ '{"aetna","bcbs","cigna","united","medicare","medicaid","horizon"}', 4.7, null),
 
 ('ChIJ_WEDhaLPxokR-IH6LUhxyq0', 'Optum Primary Care - Mount Ephraim', '2 S Black Horse Pike, Mt Ephraim, NJ 08059', '(856) 931-3107', 39.8812, -75.0855, '08059',
  '{"x-ray","lab","covid_testing","vaccinations"}',
- '{"aetna","bcbs","cigna","united","medicare","medicaid","horizon"}', 4.6),
+ '{"aetna","bcbs","cigna","united","medicare","medicaid","horizon"}', 4.6, null),
 
 -- === Main Line / Montgomery County (from earlier search) ===
 ('ChIJG5HJUZDAxokRCgYur3k_NNM', 'Main Line Health Urgent Care - Wynnewood', '306 E Lancaster Ave #200, Wynnewood, PA 19096', '(484) 565-1293', 40.0025, -75.2806, '19096',
  '{"x-ray","lab","covid_testing","pediatric","vaccinations"}',
- '{"aetna","bcbs","cigna","united","medicare","medicaid"}', 4.3)
+ '{"aetna","bcbs","cigna","united","medicare","medicaid"}', 4.3, null)
 
 on conflict (google_place_id) do update set
   name = excluded.name,
@@ -263,6 +277,7 @@ on conflict (google_place_id) do update set
   services = excluded.services,
   insurance_tags = excluded.insurance_tags,
   rating = excluded.rating,
+  brand = excluded.brand,
   updated_at = now();
 
 -- ============================================================
