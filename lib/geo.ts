@@ -1,5 +1,5 @@
-// Haversine distance in miles — shared by /api/clinics (Google Places
-// results) and /api/telehealth/providers (doctor marketplace routing).
+// Haversine distance in miles — used by /api/clinics to sort Google
+// Places results by proximity to the searched zip/location.
 export function distanceMiles(
   lat1: number,
   lng1: number,

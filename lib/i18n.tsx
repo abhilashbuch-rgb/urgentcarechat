@@ -1,7 +1,4 @@
-// Lightweight i18n for the triage chat UI. Scoped to the free triage
-// experience only — the paid telehealth consent/legal text stays in
-// English pending a professional translation review, since mistranslating
-// a fee/consent disclosure carries real risk.
+// Lightweight i18n for the triage chat UI.
 
 export type Language = "en" | "es";
 

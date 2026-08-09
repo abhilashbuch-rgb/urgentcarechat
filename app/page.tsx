@@ -59,7 +59,7 @@ interface UIMessage {
 // Red-flag detection (client-side defense-in-depth)
 // Fires BEFORE the API call to catch obvious cases instantly.
 // The server-side LLM also enforces these via the system prompt.
-// Shared with the telehealth intake screen — see lib/red-flags.ts.
+// See lib/red-flags.ts.
 // ============================================================
 
 // ============================================================
@@ -846,6 +846,8 @@ export default function Home({ embed = false }: { embed?: boolean }) {
               <Link href="/disclaimer">Disclaimer</Link>
               {" · "}
               <Link href="/partners">White-label</Link>
+              {" · "}
+              <Link href="/reads">Health Reads</Link>
               {!hasEmergencyAlert && (
                 <>
                   {" · "}

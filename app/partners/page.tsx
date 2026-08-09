@@ -23,11 +23,9 @@ export default function PartnersPage() {
 
         <section className="legal-section">
           <p>
-            Run your own branded instant-telehealth experience on the same
-            platform powering urgentcare.chat &mdash; AI-guided patient
-            intake, NPI-verified providers, masked calling, automatic
-            provider payouts, and EMR documentation push, under your own
-            name and domain.
+            Run your own branded AI-guided symptom triage and clinic-finder
+            experience on the same platform powering urgentcare.chat &mdash;
+            under your own name and domain.
           </p>
         </section>
 
