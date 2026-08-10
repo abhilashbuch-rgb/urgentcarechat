@@ -29,6 +29,7 @@ interface Clinic {
   placeId?: string;
   featured?: boolean;
   network?: boolean;
+  waitMinutes?: number | null;
 }
 
 interface ChatMessage {
@@ -669,6 +670,16 @@ export default function Home({ embed = false }: { embed?: boolean }) {
                               <span aria-hidden="true">&middot;</span>
                               <span aria-label={`Rating: ${c.rating} out of 5`}>
                                 &#9733; {c.rating}
+                              </span>
+                            </>
+                          )}
+                          {c.waitMinutes !== null && c.waitMinutes !== undefined && (
+                            <>
+                              <span aria-hidden="true">&middot;</span>
+                              <span className="wait-badge">
+                                {t.waitPrefix}
+                                {c.waitMinutes}
+                                {t.waitSuffix}
                               </span>
                             </>
                           )}

@@ -12,7 +12,7 @@ export interface ClickSummary {
 }
 
 export interface ClinicAnalytics {
-  clinic: { name: string; brand: string | null; isFeatured: boolean };
+  clinic: { name: string; brand: string | null; isFeatured: boolean; waitToken: string };
   location: ClickSummary;
   network: (ClickSummary & { locationCount: number }) | null;
 }
@@ -46,7 +46,7 @@ export async function getClinicAnalytics(token: string): Promise<ClinicAnalytics
 
   const { data: clinic, error: clinicErr } = await supabase
     .from("clinics")
-    .select("id, name, brand, is_featured")
+    .select("id, name, brand, is_featured, wait_token")
     .eq("analytics_token", token)
     .maybeSingle();
 
@@ -83,7 +83,12 @@ export async function getClinicAnalytics(token: string): Promise<ClinicAnalytics
   }
 
   return {
-    clinic: { name: clinic.name, brand: clinic.brand, isFeatured: !!clinic.is_featured },
+    clinic: {
+      name: clinic.name,
+      brand: clinic.brand,
+      isFeatured: !!clinic.is_featured,
+      waitToken: clinic.wait_token,
+    },
     location,
     network,
   };

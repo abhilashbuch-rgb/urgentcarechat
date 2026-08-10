@@ -49,6 +49,23 @@ create index if not exists idx_clinics_brand on clinics(brand);
 -- directly with the clinic when they claim a listing.
 alter table clinics add column if not exists analytics_token uuid not null default gen_random_uuid() unique;
 
+-- CURRENT WAIT — a live-ish "current wait" signal shown on clinic cards
+-- in search results. Two ways to set it, both through the same
+-- write-scoped wait_token (see /api/clinics/wait): (1) staff update it
+-- themselves from /clinics/wait/[token] on their phone between patients
+-- (wait_source='manual'), or (2) a real-time queue vendor the clinic
+-- already uses (Solv, Experity, ClockWise.MD, etc.) pushes to the same
+-- endpoint once they set up a webhook (wait_source='feed'). Treated as
+-- stale and hidden after WAIT_STALE_MINUTES (see lib/wait-time.ts) so a
+-- forgotten update doesn't show a confidently wrong number for days.
+-- wait_token is deliberately separate from analytics_token — it's a
+-- write credential, so it stays scoped to just this one action even if
+-- the read-only analytics link gets forwarded around.
+alter table clinics add column if not exists current_wait_minutes integer;
+alter table clinics add column if not exists wait_updated_at timestamptz;
+alter table clinics add column if not exists wait_source text;
+alter table clinics add column if not exists wait_token uuid not null default gen_random_uuid() unique;
+
 -- CLICKS — analytics (no PII, ever)
 create table if not exists clicks (
   id              uuid primary key default gen_random_uuid(),

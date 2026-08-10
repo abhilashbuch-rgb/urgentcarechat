@@ -100,6 +100,10 @@ export default async function ClinicAnalyticsPage({
         )}
 
         <p className="legal-links">
+          <Link href={`/clinics/wait/${clinic.waitToken}`}>
+            Update your current wait time
+          </Link>
+          {" · "}
           <Link href="/">Back to urgentcare.chat</Link>
         </p>
       </main>

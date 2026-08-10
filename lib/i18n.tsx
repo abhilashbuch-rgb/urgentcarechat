@@ -68,6 +68,8 @@ export const STRINGS = {
     claimError: "Something went wrong. Please try again.",
     featuredTag: "Featured",
     networkTag: "Featured network",
+    waitPrefix: "Wait: ~",
+    waitSuffix: " min",
   },
   es: {
     disclaimerTitle: "Antes de continuar",
@@ -135,6 +137,8 @@ export const STRINGS = {
     claimError: "Algo salió mal. Intente de nuevo.",
     featuredTag: "Destacado",
     networkTag: "Red destacada",
+    waitPrefix: "Espera: ~",
+    waitSuffix: " min",
   },
 } as const;
 

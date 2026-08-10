@@ -637,6 +637,7 @@ body {
 
 .clinic-meta .open { color: var(--safe); font-weight: 600; }
 .clinic-meta .closed { color: var(--accent); font-weight: 600; }
+.clinic-meta .wait-badge { color: var(--blue-deep); font-weight: 600; }
 
 .clinic-address {
   font-size: 13px;
@@ -1294,6 +1295,74 @@ body {
   background: var(--blue);
   border-radius: 2px 2px 0 0;
 }
+
+/* ========== WAIT-TIME SELF-REPORT ========== */
+.wait-form {
+  background: var(--bg-card);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 20px 22px;
+  box-shadow: var(--shadow);
+  margin-bottom: 20px;
+}
+
+.wait-current {
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.wait-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.wait-option {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 16px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.wait-option:hover { border-color: var(--blue); color: var(--blue-deep); }
+
+.wait-option.active {
+  border-color: var(--blue);
+  background: var(--blue);
+  color: white;
+}
+
+.wait-option:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.wait-clear {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-soft);
+  background: transparent;
+  border: none;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+
+.wait-clear:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.wait-status {
+  font-size: 13px;
+  margin-top: 12px;
+}
+
+.wait-status-ok { color: var(--safe); }
+.wait-status-error { color: var(--accent-deep); }
 
 /* mobile */
 @media (max-width: 600px) {
