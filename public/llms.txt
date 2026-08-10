@@ -8,9 +8,10 @@ An MCP tool (`find_urgent_care`) is available at https://urgentcare.chat/api/mcp
 
 ## Pages
 
-- [Home / Chat](https://urgentcare.chat/): Start a free triage conversation and find nearby urgent care clinics anywhere in the US.
+- [Home](https://urgentcare.chat/): What this platform is and how to get a branded version of it. The live triage chat itself runs under each customer's own branded subdomain, not on this root domain.
 - [Platform Disclaimer](https://urgentcare.chat/disclaimer): What urgentcare.chat is and isn't, and how it handles clinical data.
 - [Privacy Policy](https://urgentcare.chat/privacy)
 - [Terms of Service](https://urgentcare.chat/terms)
 - [White-label / Partners](https://urgentcare.chat/partners): For urgent care groups and MSOs interested in a branded version of this platform.
 - [Embeddable widget](https://urgentcare.chat/widget): Embed the triage chat on another site.
+- [Health Reads](https://urgentcare.chat/reads): General, non-personalized health topics and flu-activity info.

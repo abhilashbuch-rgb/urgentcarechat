@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Home from "../page";
+import TriageApp from "@/app/components/TriageApp";
 import BrandIcon from "@/app/components/BrandIcon";
 
 const SNIPPET = `<iframe
@@ -70,6 +70,6 @@ export default function WidgetPage() {
   }, []);
 
   if (isFramed === null) return null;
-  if (isFramed) return <Home embed />;
+  if (isFramed) return <TriageApp embed />;
   return <EmbedDocs />;
 }

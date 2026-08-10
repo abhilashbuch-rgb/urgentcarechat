@@ -169,12 +169,152 @@ function sortClinics(results: PlaceResult[]): void {
   });
 }
 
+// Live rating/hours/website for one known clinic, by Google Place ID
+// (Place Details, not Text Search — Text Search has no way to filter
+// to "just this chain's locations", which is the whole reason a
+// tenant-scoped search can't just be a filtered version of the public one).
+async function fetchPlaceDetails(placeId: string, apiKey: string) {
+  try {
+    const res = await fetch(`https://places.googleapis.com/v1/places/${placeId}`, {
+      headers: {
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask":
+          "formattedAddress,nationalPhoneNumber,rating,currentOpeningHours,websiteUri",
+      },
+    });
+    if (!res.ok) return null;
+
+    const place: {
+      formattedAddress?: string;
+      nationalPhoneNumber?: string;
+      rating?: number;
+      currentOpeningHours?: { openNow?: boolean; weekdayDescriptions?: string[] };
+      websiteUri?: string;
+    } = await res.json();
+
+    const hoursInfo = formatHoursStatus(place.currentOpeningHours);
+    return {
+      address: place.formattedAddress || "",
+      phone: place.nationalPhoneNumber || "",
+      rating: place.rating || 0,
+      open: hoursInfo.open,
+      hours: hoursInfo.hours,
+      websiteUrl: place.websiteUri || "",
+    };
+  } catch {
+    return null;
+  }
+}
+
+// Tenant-scoped search (e.g. afc.urgentcare.chat): reads only that
+// tenant's own clinics rows — never Google's broad "urgent care near
+// X" search — since Google has no concept of "only AFC's locations".
+async function handleTenantClinics(
+  tenantSlug: string,
+  centerLat: number,
+  centerLng: number,
+  apiKey: string,
+  insurance: string | null
+): Promise<NextResponse> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    return NextResponse.json({ clinics: [] });
+  }
+
+  try {
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/clinics?tenant_slug=eq.${encodeURIComponent(
+        tenantSlug
+      )}&select=google_place_id,name,address,phone,lat,lng,services,insurance_tags,is_featured,current_wait_minutes,wait_updated_at`,
+      {
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+        },
+      }
+    );
+
+    if (!res.ok) return NextResponse.json({ clinics: [] });
+
+    const rows: {
+      google_place_id: string | null;
+      name: string;
+      address: string | null;
+      phone: string | null;
+      lat: number | null;
+      lng: number | null;
+      services: string[];
+      insurance_tags: string[];
+      is_featured: boolean | null;
+      current_wait_minutes: number | null;
+      wait_updated_at: string | null;
+    }[] = await res.json();
+
+    const results: PlaceResult[] = await Promise.all(
+      rows.map(async (row) => {
+        const details = row.google_place_id
+          ? await fetchPlaceDetails(row.google_place_id, apiKey)
+          : null;
+
+        const lat = row.lat ?? 0;
+        const lng = row.lng ?? 0;
+        const address = details?.address || row.address || "";
+
+        return {
+          name: row.name,
+          address,
+          phone: details?.phone || row.phone || "",
+          lat,
+          lng,
+          rating: details?.rating ?? 0,
+          open: details?.open ?? false,
+          hours: details?.hours ?? "Call to confirm hours",
+          placeId: row.google_place_id || "",
+          distance: `${distanceMiles(centerLat, centerLng, lat, lng).toFixed(1)} mi`,
+          services: row.services?.length ? row.services : [...DEFAULT_URGENT_CARE_SERVICES],
+          insurance: row.insurance_tags || [],
+          directionsUrl: `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+            address || row.name
+          )}${row.google_place_id ? `&destination_place_id=${row.google_place_id}` : ""}`,
+          websiteUrl: details?.websiteUrl || "",
+          featured: !!row.is_featured,
+          network: false,
+          waitMinutes:
+            row.current_wait_minutes !== null && !isWaitStale(row.wait_updated_at)
+              ? row.current_wait_minutes
+              : null,
+        };
+      })
+    );
+
+    sortClinics(results);
+
+    let filtered = results;
+    if (insurance && insurance.toLowerCase() !== "skip" && insurance.toLowerCase() !== "none") {
+      filtered = filterByInsurance(results, insurance);
+    }
+
+    return NextResponse.json({ clinics: filtered.slice(0, 5) });
+  } catch (err) {
+    console.error("Tenant clinics error:", err instanceof Error ? err.message : "Unknown");
+    return NextResponse.json({ clinics: [] });
+  }
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const zip = searchParams.get("zip");
   const insurance = searchParams.get("insurance");
   const lat = searchParams.get("lat");
   const lng = searchParams.get("lng");
+
+  // Set by proxy.ts when this request came in through a recognized
+  // tenant subdomain (e.g. afc.urgentcare.chat) — routes to a completely
+  // different, narrower lookup below instead of the public Google search.
+  const tenantSlug = req.headers.get("x-tenant-slug");
 
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   if (!apiKey) {
@@ -203,20 +343,25 @@ export async function GET(req: NextRequest) {
   } else if (zip && /^\d{5}$/.test(zip)) {
     cacheKey = zip;
 
-    // Check cache first — the cache holds raw (pre-enrichment) Google
-    // Places results, so is_featured/network/wait still get refreshed
-    // from Supabase on every request, cache hit or not.
-    const cached = cache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-      const results = cached.results.map((r) => ({ ...r }));
-      await enrichWithSupabase(results);
-      sortClinics(results);
+    // Check cache first — but not for a tenant-scoped request. This
+    // cache is keyed by zip only and holds public Google Places
+    // results; a tenant's own clinics never go through it (see
+    // handleTenantClinics below), so mixing the two would either leak
+    // public results into a branded portal or pollute the public
+    // cache with a single tenant's narrow view.
+    if (!tenantSlug) {
+      const cached = cache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+        const results = cached.results.map((r) => ({ ...r }));
+        await enrichWithSupabase(results);
+        sortClinics(results);
 
-      let filtered = results;
-      if (insurance && insurance.toLowerCase() !== "skip" && insurance.toLowerCase() !== "none") {
-        filtered = filterByInsurance(results, insurance);
+        let filtered = results;
+        if (insurance && insurance.toLowerCase() !== "skip" && insurance.toLowerCase() !== "none") {
+          filtered = filterByInsurance(results, insurance);
+        }
+        return NextResponse.json({ clinics: filtered.slice(0, 5) });
       }
-      return NextResponse.json({ clinics: filtered.slice(0, 5) });
     }
 
     const coords = await geocodeZip(zip, apiKey);
@@ -233,6 +378,10 @@ export async function GET(req: NextRequest) {
       { error: "Please provide a valid 5-digit zip code" },
       { status: 400 }
     );
+  }
+
+  if (tenantSlug) {
+    return handleTenantClinics(tenantSlug, centerLat, centerLng, apiKey, insurance);
   }
 
   try {
