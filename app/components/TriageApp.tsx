@@ -508,33 +508,44 @@ export default function TriageApp({
           <div className="brand">
             {tenant ? (
               tenant.logoUrl ? (
+                // The logo image is the brand here — it already carries the
+                // name (AFC's real lockup has "american family care /
+                // urgent care" baked into the artwork), so no separate
+                // text label next to it.
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={tenant.logoUrl} alt={tenant.displayName} className="brand-icon" style={{ width: 22, height: 22, objectFit: "contain" }} />
+                <img
+                  src={tenant.logoUrl}
+                  alt={tenant.displayName}
+                  style={{ height: 32, width: "auto", objectFit: "contain" }}
+                />
               ) : (
-                <span
-                  className="brand-icon"
-                  style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: "22%",
-                    background: tenant.primaryColor || "var(--blue)",
-                    color: "#fff",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontFamily: "var(--mono)",
-                    fontSize: 10,
-                    fontWeight: 600,
-                  }}
-                >
-                  {tenant.displayName.slice(0, 1)}
-                </span>
+                <>
+                  <span
+                    className="brand-icon"
+                    style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: "22%",
+                      background: tenant.primaryColor || "var(--blue)",
+                      color: "#fff",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontFamily: "var(--mono)",
+                      fontSize: 10,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {tenant.displayName.slice(0, 1)}
+                  </span>
+                  {tenant.displayName}
+                </>
               )
             ) : (
-              <BrandIcon />
-            )}
-            {tenant ? tenant.displayName : (
-              <>urgentcare<span className="tld">.chat</span></>
+              <>
+                <BrandIcon />
+                urgentcare<span className="tld">.chat</span>
+              </>
             )}
           </div>
           <div className="header-actions">
