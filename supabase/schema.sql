@@ -332,14 +332,14 @@ on conflict (google_place_id) do update set
 
 -- ============================================================
 -- 5. TENANTS — first branded subdomain: afc.urgentcare.chat
--- primary_color/logo_url below are PLACEHOLDERS (our own navy, no
--- logo) — once you have AFC's real values, update the row directly:
---   update tenants set primary_color = '#...', logo_url = '...' where slug = 'afc';
+-- primary_color is AFC's real brand red, sampled directly from their
+-- logo artwork (public/tenants/afc-logo.png — their real mark, supplied
+-- by the user for this exact purpose, not something we generated).
 -- ============================================================
 -- ON CONFLICT DO NOTHING (not DO UPDATE) so re-running this file never
 -- clobbers a primary_color/logo_url you've since updated by hand.
 insert into tenants (slug, display_name, primary_color, logo_url, active)
-values ('afc', 'AFC Urgent Care', '#3c3b6e', null, true)
+values ('afc', 'AFC Urgent Care', '#E61D30', '/tenants/afc-logo.png', true)
 on conflict (slug) do nothing;
 
 -- Only AFC's own 4 real locations belong to the afc tenant — everyone
