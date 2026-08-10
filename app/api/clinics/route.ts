@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { distanceMiles } from "@/lib/geo";
+import { isWaitStale } from "@/lib/wait-time";
 
 // ============================================================
 // /api/clinics — Real clinic search via Google Places API (New)
@@ -24,6 +25,8 @@ interface PlaceResult {
   directionsUrl: string;
   websiteUrl: string;
   featured: boolean;
+  network: boolean;
+  waitMinutes: number | null;
 }
 
 // Default services that most urgent care clinics offer
@@ -88,6 +91,84 @@ function formatHoursStatus(openingHours: {
   return { open: isOpen, hours: isOpen ? "Open now" : "Closed" };
 }
 
+// Merges in our own clinics-table data on top of the raw Google Places
+// results: services/insurance overrides, the featured/network-boost
+// flag, and the current-wait signal. Deliberately run fresh on every
+// request (never cached — see the 1-hour Google Places cache below)
+// since wait time in particular needs to stay near-real-time.
+async function enrichWithSupabase(results: PlaceResult[]): Promise<void> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseKey) return;
+
+  const placeIds = results.map((r) => r.placeId).filter(Boolean);
+  if (placeIds.length === 0) return;
+
+  try {
+    const overrideRes = await fetch(
+      `${supabaseUrl}/rest/v1/clinics?google_place_id=in.(${placeIds
+        .map((id) => `"${id}"`)
+        .join(",")})&select=google_place_id,services,insurance_tags,is_featured,brand,current_wait_minutes,wait_updated_at`,
+      {
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+        },
+      }
+    );
+
+    if (!overrideRes.ok) return;
+
+    const overrides: {
+      google_place_id: string;
+      services: string[];
+      insurance_tags: string[];
+      is_featured: boolean | null;
+      brand: string | null;
+      current_wait_minutes: number | null;
+      wait_updated_at: string | null;
+    }[] = await overrideRes.json();
+
+    // A paid is_featured on ANY location of a brand boosts every
+    // location of that brand in this result set — a chain (e.g.
+    // AFC Urgent Care) pays once and its whole local footprint
+    // benefits, not just the one clinic that's individually featured.
+    const featuredBrands = new Set(
+      overrides.filter((o) => o.is_featured && o.brand).map((o) => o.brand)
+    );
+
+    for (const override of overrides) {
+      const match = results.find((r) => r.placeId === override.google_place_id);
+      if (!match) continue;
+
+      if (override.services?.length) match.services = override.services;
+      if (override.insurance_tags?.length) match.insurance = override.insurance_tags;
+
+      const networkBoosted = !!override.brand && featuredBrands.has(override.brand);
+      match.featured = !!override.is_featured || networkBoosted;
+      match.network = networkBoosted && !override.is_featured;
+
+      match.waitMinutes =
+        override.current_wait_minutes !== null && !isWaitStale(override.wait_updated_at)
+          ? override.current_wait_minutes
+          : null;
+    }
+  } catch (enrichErr) {
+    // Supabase enrichment failure should not block results
+    console.error("Supabase enrichment failed:", enrichErr);
+  }
+}
+
+// Featured/network-boosted first, then open, then by distance.
+function sortClinics(results: PlaceResult[]): void {
+  results.sort((a, b) => {
+    if (a.featured !== b.featured) return a.featured ? -1 : 1;
+    if (a.open !== b.open) return a.open ? -1 : 1;
+    return parseFloat(a.distance) - parseFloat(b.distance);
+  });
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const zip = searchParams.get("zip");
@@ -122,14 +203,20 @@ export async function GET(req: NextRequest) {
   } else if (zip && /^\d{5}$/.test(zip)) {
     cacheKey = zip;
 
-    // Check cache first
+    // Check cache first — the cache holds raw (pre-enrichment) Google
+    // Places results, so is_featured/network/wait still get refreshed
+    // from Supabase on every request, cache hit or not.
     const cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-      let results = cached.results;
+      const results = cached.results.map((r) => ({ ...r }));
+      await enrichWithSupabase(results);
+      sortClinics(results);
+
+      let filtered = results;
       if (insurance && insurance.toLowerCase() !== "skip" && insurance.toLowerCase() !== "none") {
-        results = filterByInsurance(results, insurance);
+        filtered = filterByInsurance(results, insurance);
       }
-      return NextResponse.json({ clinics: results.slice(0, 5) });
+      return NextResponse.json({ clinics: filtered.slice(0, 5) });
     }
 
     const coords = await geocodeZip(zip, apiKey);
@@ -223,69 +310,18 @@ export async function GET(req: NextRequest) {
           )}&destination_place_id=${place.id || ""}`,
           websiteUrl: place.websiteUri || "",
           featured: false,
+          network: false,
+          waitMinutes: null,
         };
       }
     );
 
-    // Try to enrich with Supabase override data
-    try {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const supabaseKey =
-        process.env.SUPABASE_SERVICE_ROLE_KEY ||
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    // Cache the raw Google Places results before enrichment/sorting —
+    // enrichWithSupabase always runs fresh below, cache hit or not.
+    cache.set(cacheKey, { results: results.map((r) => ({ ...r })), timestamp: Date.now() });
 
-      if (supabaseUrl && supabaseKey) {
-        const placeIds = results.map((r) => r.placeId).filter(Boolean);
-        if (placeIds.length > 0) {
-          const overrideRes = await fetch(
-            `${supabaseUrl}/rest/v1/clinics?google_place_id=in.(${placeIds
-              .map((id) => `"${id}"`)
-              .join(",")})&select=google_place_id,services,insurance_tags,is_featured`,
-            {
-              headers: {
-                apikey: supabaseKey,
-                Authorization: `Bearer ${supabaseKey}`,
-              },
-            }
-          );
-
-          if (overrideRes.ok) {
-            const overrides: {
-              google_place_id: string;
-              services: string[];
-              insurance_tags: string[];
-              is_featured: boolean | null;
-            }[] = await overrideRes.json();
-
-            for (const override of overrides) {
-              const match = results.find(
-                (r) => r.placeId === override.google_place_id
-              );
-              if (match) {
-                if (override.services?.length)
-                  match.services = override.services;
-                if (override.insurance_tags?.length)
-                  match.insurance = override.insurance_tags;
-                match.featured = !!override.is_featured;
-              }
-            }
-          }
-        }
-      }
-    } catch (enrichErr) {
-      // Supabase enrichment failure should not block results
-      console.error("Supabase enrichment failed:", enrichErr);
-    }
-
-    // Sort: featured clinics first, then open, then by distance
-    results.sort((a, b) => {
-      if (a.featured !== b.featured) return a.featured ? -1 : 1;
-      if (a.open !== b.open) return a.open ? -1 : 1;
-      return parseFloat(a.distance) - parseFloat(b.distance);
-    });
-
-    // Cache raw results (before insurance filtering)
-    cache.set(cacheKey, { results, timestamp: Date.now() });
+    await enrichWithSupabase(results);
+    sortClinics(results);
 
     // Apply insurance filter if requested
     let filteredResults = results;

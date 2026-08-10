@@ -1,7 +1,4 @@
-// Lightweight i18n for the triage chat UI. Scoped to the free triage
-// experience only — the paid telehealth consent/legal text stays in
-// English pending a professional translation review, since mistranslating
-// a fee/consent disclosure carries real risk.
+// Lightweight i18n for the triage chat UI.
 
 export type Language = "en" | "es";
 
@@ -70,6 +67,9 @@ export const STRINGS = {
     claimSuccess: "Thanks — we'll review and follow up by email.",
     claimError: "Something went wrong. Please try again.",
     featuredTag: "Featured",
+    networkTag: "Featured network",
+    waitPrefix: "Wait: ~",
+    waitSuffix: " min",
   },
   es: {
     disclaimerTitle: "Antes de continuar",
@@ -136,6 +136,9 @@ export const STRINGS = {
     claimSuccess: "Gracias — revisaremos y le responderemos por correo.",
     claimError: "Algo salió mal. Intente de nuevo.",
     featuredTag: "Destacado",
+    networkTag: "Red destacada",
+    waitPrefix: "Espera: ~",
+    waitSuffix: " min",
   },
 } as const;
 

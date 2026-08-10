@@ -6,6 +6,7 @@ import { STRINGS, getStoredLanguage, type Language } from "@/lib/i18n";
 import FollowUpOptIn from "./components/FollowUpOptIn";
 import ClaimListing from "./components/ClaimListing";
 import { checkRedFlags } from "@/lib/red-flags";
+import BrandIcon from "@/app/components/BrandIcon";
 
 // Quiet, optional footer link — never shown during 911/988 alerts.
 const TIP_JAR_URL = "https://ko-fi.com/urgentcarechat";
@@ -27,6 +28,8 @@ interface Clinic {
   websiteUrl: string;
   placeId?: string;
   featured?: boolean;
+  network?: boolean;
+  waitMinutes?: number | null;
 }
 
 interface ChatMessage {
@@ -58,7 +61,7 @@ interface UIMessage {
 // Red-flag detection (client-side defense-in-depth)
 // Fires BEFORE the API call to catch obvious cases instantly.
 // The server-side LLM also enforces these via the system prompt.
-// Shared with the telehealth intake screen — see lib/red-flags.ts.
+// See lib/red-flags.ts.
 // ============================================================
 
 // ============================================================
@@ -185,7 +188,7 @@ export default function Home({ embed = false }: { embed?: boolean }) {
   );
 
   // Log clinic clicks for analytics
-  const logClick = async (clinicName: string, action: string) => {
+  const logClick = async (clinicName: string, action: string, placeId?: string) => {
     try {
       await fetch("/api/clicks", {
         method: "POST",
@@ -194,6 +197,7 @@ export default function Home({ embed = false }: { embed?: boolean }) {
           clinicName,
           action,
           sessionId: getSessionId(),
+          placeId,
         }),
       });
     } catch {
@@ -486,8 +490,8 @@ export default function Home({ embed = false }: { embed?: boolean }) {
       ) : (
         <header className="site-header">
           <div className="brand">
-            <span className="dot"></span>urgentcare
-            <span className="tld">.chat</span>
+            <BrandIcon />
+            urgentcare<span className="tld">.chat</span>
           </div>
           <div className="header-actions">
             <button className="lang-toggle" onClick={toggleLanguage}>
@@ -649,7 +653,11 @@ export default function Home({ embed = false }: { embed?: boolean }) {
                         className={`clinic-card${c.featured ? " featured" : ""}`}
                         role="listitem"
                       >
-                        {c.featured && <div className="featured-tag">{t.featuredTag}</div>}
+                        {c.featured && (
+                          <div className="featured-tag">
+                            {c.network ? t.networkTag : t.featuredTag}
+                          </div>
+                        )}
                         <div className="clinic-name">{c.name}</div>
                         <div className="clinic-meta">
                           <span>{c.distance}</span>
@@ -662,6 +670,16 @@ export default function Home({ embed = false }: { embed?: boolean }) {
                               <span aria-hidden="true">&middot;</span>
                               <span aria-label={`Rating: ${c.rating} out of 5`}>
                                 &#9733; {c.rating}
+                              </span>
+                            </>
+                          )}
+                          {c.waitMinutes !== null && c.waitMinutes !== undefined && (
+                            <>
+                              <span aria-hidden="true">&middot;</span>
+                              <span className="wait-badge">
+                                {t.waitPrefix}
+                                {c.waitMinutes}
+                                {t.waitSuffix}
                               </span>
                             </>
                           )}
@@ -689,7 +707,7 @@ export default function Home({ embed = false }: { embed?: boolean }) {
                             href={c.directionsUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            onClick={() => logClick(c.name, "directions")}
+                            onClick={() => logClick(c.name, "directions", c.placeId)}
                             aria-label={`Get directions to ${c.name}`}
                           >
                             Directions
@@ -698,7 +716,7 @@ export default function Home({ embed = false }: { embed?: boolean }) {
                             <a
                               className="clinic-btn secondary"
                               href={`tel:${c.phone.replace(/\D/g, "")}`}
-                              onClick={() => logClick(c.name, "call")}
+                              onClick={() => logClick(c.name, "call", c.placeId)}
                               aria-label={`Call ${c.name} at ${c.phone}`}
                             >
                               Call {c.phone}
@@ -710,7 +728,7 @@ export default function Home({ embed = false }: { embed?: boolean }) {
                               href={c.websiteUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              onClick={() => logClick(c.name, "website")}
+                              onClick={() => logClick(c.name, "website", c.placeId)}
                               aria-label={`Visit ${c.name} website`}
                             >
                               Website
@@ -845,6 +863,8 @@ export default function Home({ embed = false }: { embed?: boolean }) {
               <Link href="/disclaimer">Disclaimer</Link>
               {" · "}
               <Link href="/partners">White-label</Link>
+              {" · "}
+              <Link href="/reads">Health Reads</Link>
               {!hasEmergencyAlert && (
                 <>
                   {" · "}

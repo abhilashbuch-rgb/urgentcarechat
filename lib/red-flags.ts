@@ -1,7 +1,5 @@
-// Shared red-flag detection — used by both the free triage chat
-// (app/page.tsx) and the paid telehealth intake screen (app/telehealth)
-// so "screen out emergencies before charging" uses the exact same
-// rules as the free chat's defense-in-depth check.
+// Red-flag detection for the free triage chat — client-side
+// defense-in-depth check that runs before the API call.
 
 export const RED_FLAGS_911 = [
   /chest pain|chest pressure|crushing chest|tight chest/i,
