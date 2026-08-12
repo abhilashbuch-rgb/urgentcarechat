@@ -1,28 +1,60 @@
 import Link from "next/link";
 import BrandIcon from "@/app/components/BrandIcon";
-import ChatPreview from "@/app/components/ChatPreview";
+import TriageApp from "@/app/components/TriageApp";
+import { getTodaysReads } from "@/lib/health-reads";
+import { fetchFluActivity, type FluActivity } from "@/lib/cdc-flu";
+import { type HealthTopic } from "@/lib/medlineplus";
 
-// Root urgentcare.chat is the B2B pitch page — the live triage chat runs
-// under branded tenant subdomains (see app/t/[tenant] and proxy.ts).
-// Styled with its own `lp-` scoped palette: a calmer clinical
-// blue/teal, distinct from the red/white/blue patient-facing chat,
-// because this page is selling to operators rather than triaging anyone.
-export default function LandingPage() {
+const KOFI_URL = "https://ko-fi.com/urgentcarechat";
+
+// Case studies are a list from the start, even though AFC is the only one
+// today — adding the next brand should be one entry here, not a rewrite.
+const CASE_STUDIES = [
+  {
+    brand: "AFC Urgent Care",
+    url: "https://afc.urgentcare.chat",
+    host: "afc.urgentcare.chat",
+    blurb:
+      "Four Philadelphia-area locations, routed by their own branded assistant.",
+    accent: "#E61D30",
+  },
+];
+
+// Hourly ISR: the topic set rotates once a day and flu data weekly, so
+// there's no reason to hit MedlinePlus and the CDC on every visit. The
+// chat itself is a client component and stays fully live regardless.
+export const revalidate = 3600;
+
+// Root urgentcare.chat: the brand-agnostic public tool. The chat here is
+// deliberately UNSCOPED — no tenant prop, so /api/clinics takes the
+// public Google Places path and returns whatever is genuinely nearest,
+// competitors included. Tenant scoping only ever comes from the
+// x-tenant-slug header proxy.ts sets for a recognised subdomain, which
+// the root domain never receives.
+export default async function LandingPage() {
+  let reads: HealthTopic[] = [];
+  let flu: FluActivity = { level: "unknown", weightedIli: null, epiweek: null, state: "PA" };
+
+  try {
+    [reads, flu] = await Promise.all([getTodaysReads(3), fetchFluActivity("PA")]);
+  } catch {
+    // Preview is optional chrome — an outage here must not take the
+    // homepage (and the chat) down with it.
+  }
+
   return (
     <div className="lp">
       <header className="lp-nav">
         <div className="lp-nav-inner">
           <div className="lp-brand">
             <BrandIcon />
-            {/* One element, not a bare text node + span — otherwise the
-                flex gap lands between "urgentcare" and ".chat". */}
             <span>
               urgentcare<span className="lp-tld">.chat</span>
             </span>
           </div>
           <nav className="lp-nav-links">
-            <Link href="/reads">Health Reads</Link>
-            <Link href="/partners">White-label</Link>
+            <a href="#reads">Health Reads</a>
+            <a href="#for-clinics">For clinics</a>
             <a
               className="lp-nav-cta"
               href="mailto:urgentcarechat@icloud.com?subject=Branded%20portal%20inquiry"
@@ -34,20 +66,133 @@ export default function LandingPage() {
       </header>
 
       <main className="lp-main">
+        {/* ---------- 1. the tool itself, unscoped ---------- */}
         <section className="lp-hero">
           <div className="lp-hero-copy">
             <span className="lp-eyebrow">
               <span className="lp-eyebrow-dot" aria-hidden="true" />
-              For urgent care groups &amp; MSOs
+              Free &middot; no signup &middot; 24/7
             </span>
             <h1 className="lp-h1">
-              Turn your location finder into a conversation.
+              Describe what&apos;s wrong. Get sent to the right place.
             </h1>
             <p className="lp-lede">
-              Patients describe what&apos;s wrong in plain language.
-              urgentcare.chat screens for real emergencies first, then routes
-              them to the right location in your network — with live wait
-              times, under your own brand and domain.
+              Tell it what&apos;s going on in plain language. It screens for
+              real emergencies first, then finds the nearest urgent care that
+              can actually help — with live wait times where clinics report
+              them.
+            </p>
+            <ul className="lp-hero-points">
+              <li>Nearest first, wherever you are in the US</li>
+              <li>Emergencies routed straight to 911 or 988</li>
+              <li>Nothing about you is stored</li>
+            </ul>
+            <p className="lp-hero-note">
+              Not a doctor and not a diagnosis. If this is an emergency, call
+              911.
+            </p>
+          </div>
+
+          <div className="lp-hero-visual">
+            <div className="lp-chat-card">
+              <TriageApp contained />
+            </div>
+          </div>
+        </section>
+
+        {/* ---------- 2. Health Reads preview ---------- */}
+        <section className="lp-section" id="reads">
+          <div className="lp-section-head">
+            <div>
+              <h2 className="lp-section-title">Health Reads</h2>
+              <p className="lp-section-sub">
+                Plain-language health topics from the National Library of
+                Medicine, rotating daily. General reading — not advice about
+                your situation.
+              </p>
+            </div>
+            <Link className="lp-section-link" href="/reads">
+              See all &rarr;
+            </Link>
+          </div>
+
+          {flu.level !== "unknown" && (
+            <div className={`flu-banner flu-${flu.level}`}>
+              <strong>
+                Flu activity in {flu.state}: {flu.level}
+              </strong>
+              {flu.weightedIli !== null && (
+                <span className="flu-detail">
+                  {" "}
+                  &middot; {flu.weightedIli.toFixed(1)}% weighted ILI (CDC
+                  FluView)
+                </span>
+              )}
+            </div>
+          )}
+
+          {reads.length > 0 ? (
+            <div className="lp-reads-grid">
+              {reads.map((topic) => (
+                <article className="lp-tile lp-read-card" key={topic.url}>
+                  <h3>{topic.title}</h3>
+                  <p>{topic.summary}</p>
+                  <p className="lp-tile-link">
+                    <a href={topic.url} target="_blank" rel="noopener noreferrer">
+                      Read on MedlinePlus &rarr;
+                    </a>
+                  </p>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="lp-section-sub">
+              Today&apos;s reads couldn&apos;t load right now —{" "}
+              <Link href="/reads">try the full page</Link>.
+            </p>
+          )}
+        </section>
+
+        {/* ---------- 3. see it live ---------- */}
+        <section className="lp-section" id="for-clinics">
+          <div className="lp-section-head">
+            <div>
+              <h2 className="lp-section-title">See it live</h2>
+              <p className="lp-section-sub">
+                Urgent care groups run this on their own subdomain, with their
+                logo and their brand color, routing only to their locations.
+              </p>
+            </div>
+          </div>
+
+          <ul className="lp-case-list">
+            {CASE_STUDIES.map((c) => (
+              <li className="lp-tile lp-case" key={c.host}>
+                <span
+                  className="lp-case-swatch"
+                  style={{ background: c.accent }}
+                  aria-hidden="true"
+                />
+                <div className="lp-case-body">
+                  <h3>{c.brand}</h3>
+                  <p>{c.blurb}</p>
+                </div>
+                <a
+                  className="lp-btn-secondary lp-case-cta"
+                  href={c.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {c.host} &rarr;
+                </a>
+              </li>
+            ))}
+          </ul>
+
+          <div className="lp-case-footer">
+            <p className="lp-section-sub">
+              Want one of these under your own name? We&apos;ll stand up a
+              working branded version with your real locations first.
             </p>
             <div className="lp-cta-row">
               <a
@@ -56,124 +201,42 @@ export default function LandingPage() {
               >
                 Book a walkthrough
               </a>
-              <Link className="lp-btn-secondary" href="/partners">
-                How white-labeling works
+              <Link className="lp-btn-secondary" href="/security">
+                Security &amp; compliance
               </Link>
             </div>
-            <p className="lp-hero-note">
-              Free for patients. No signup, no app, no PHI collected.
-            </p>
-          </div>
-
-          <div className="lp-hero-visual">
-            <ChatPreview />
-            <p className="cp-caption">
-              <span className="cp-swatch" aria-hidden="true" />{" "}
-              Shown in <strong>AFC Urgent Care&apos;s</strong> brand color, on
-              their own subdomain. Yours would use your logo and your color.
-            </p>
           </div>
         </section>
 
-        <section className="lp-bento" aria-label="What the platform does">
-          <article className="lp-tile lp-tile-wide lp-tile-safety">
-            <div className="lp-tile-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z" />
-                <path d="M12 8v4" />
-                <path d="M12 16h.01" />
-              </svg>
+        {/* ---------- 4. trust strip ---------- */}
+        <section className="lp-section lp-trust">
+          <div className="lp-trust-points">
+            <div>
+              <h3>No ads.</h3>
+              <p>Nothing on this site is an ad, and nothing ever will be.</p>
             </div>
-            <h2>Emergencies never get routed to a clinic.</h2>
-            <p>
-              Chest pain, stroke signs, pediatric fever thresholds, suicidal
-              ideation — checked before anything else runs, on both the
-              browser and the server independently, and sent straight to 911
-              or 988. The clinic list never gets in the way of an emergency.
-            </p>
-          </article>
-
-          <article className="lp-tile">
-            <div className="lp-tile-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="9" />
-                <path d="M12 7v5l3.5 2" />
-              </svg>
+            <div>
+              <h3>No pay-for-placement.</h3>
+              <p>
+                Clinics can&apos;t buy their way to the top of your results.
+                Ranking is distance and whether they&apos;re open.
+              </p>
             </div>
-            <h2>Live wait times.</h2>
-            <p>
-              Staff update from their phone in one tap, or your queue system
-              pushes it automatically. Anything older than two hours hides
-              itself rather than showing a number that&apos;s wrong.
-            </p>
-          </article>
-
-          <article className="lp-tile">
-            <div className="lp-tile-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="10" r="3" />
-                <path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11z" />
-              </svg>
+            <div>
+              <h3>Nearest, not sponsored.</h3>
+              <p>
+                If a competitor is closer to you, you see the competitor.
+                That&apos;s the whole point.
+              </p>
             </div>
-            <h2>Your network wins the search.</h2>
-            <p>
-              When a competitor happens to sit a block closer, your locations
-              still surface together as one network — so you stop leaking your
-              own patients to the clinic across the street.
-            </p>
-          </article>
-
-          <article className="lp-tile">
-            <div className="lp-tile-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="4" y="10" width="16" height="10" rx="2" />
-                <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-              </svg>
-            </div>
-            <h2>No PHI. By design.</h2>
-            <p>
-              No name, no date of birth, no insurance ID, no account. An
-              anonymous session and a zip code is the entire data footprint —
-              which keeps this out of HIPAA scope entirely.
-            </p>
-            <p className="lp-tile-link">
-              <Link href="/security">Full security posture &rarr;</Link>
-            </p>
-          </article>
-
-          <article className="lp-tile lp-tile-domain">
-            <div className="lp-tile-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="9" />
-                <path d="M3 12h18M12 3c2.5 3 2.5 15 0 18M12 3c-2.5 3-2.5 15 0 18" />
-              </svg>
-            </div>
-            <h2>Your brand, not ours.</h2>
-            <p>
-              Your logo in the header, your brand color through the whole
-              interface, your own subdomain. Patients never see our name — we
-              set the color from your brand guide, down to the exact hex.
-            </p>
-            <div className="lp-domain-chip">
-              <span className="lp-domain-scheme">https://</span>
-              <span className="lp-domain-sub">yourbrand</span>
-              <span className="lp-domain-rest">.urgentcare.chat</span>
-            </div>
-          </article>
-        </section>
-
-        <section className="lp-close">
-          <h2>Want to see it running under your own brand?</h2>
-          <p>
-            We&apos;ll stand up a working branded version with your real
-            locations so you can try it before committing to anything.
+          </div>
+          <p className="lp-trust-kofi">
+            Free to use and funded out of pocket. If it helped, you can{" "}
+            <a href={KOFI_URL} target="_blank" rel="noopener noreferrer">
+              buy us a coffee
+            </a>
+            .
           </p>
-          <a
-            className="lp-btn-primary"
-            href="mailto:urgentcarechat@icloud.com?subject=Branded%20portal%20inquiry"
-          >
-            urgentcarechat@icloud.com
-          </a>
         </section>
       </main>
 
@@ -188,11 +251,13 @@ export default function LandingPage() {
             <Link href="/disclaimer">Disclaimer</Link>
             <Link href="/security">Security</Link>
             <Link href="/reads">Health Reads</Link>
+            <Link href="/partners">White-label</Link>
           </span>
         </div>
         <p className="lp-footer-note">
           Not a diagnosis tool and not a substitute for emergency care. If you
-          are having a medical emergency, call 911.
+          are having a medical emergency, call 911. For a mental health crisis,
+          call or text 988.
         </p>
       </footer>
     </div>

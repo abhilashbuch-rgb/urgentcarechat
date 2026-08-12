@@ -2097,6 +2097,264 @@ body {
   .sec-block { padding-top: 34px; }
 }
 
+/* ---------- live chat as a bounded card in the landing hero ----------
+   The chat normally owns the viewport: .input-bar is position:fixed to
+   the bottom of the window and .chat grows without limit. Inside the
+   landing page it has to behave like a widget instead, so everything
+   below re-scopes it to its own box. */
+.lp-chat-card {
+  background: var(--l-card);
+  border: 1px solid var(--l-rule);
+  border-radius: 14px;
+  box-shadow: var(--l-shadow-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 560px;
+}
+
+/* TriageApp's own wrapper element — must be the flex column, since it
+   is the card's only child. */
+.lp-chat-card .triage-contained {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.lp-chat-card .embed-topbar { padding: 10px 14px 0; flex-shrink: 0; }
+
+.lp-chat-card .app {
+  flex: 1;
+  min-height: 0;
+  max-width: 100%;
+  padding: 12px 16px 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.lp-chat-card .disclaimer { flex-shrink: 0; margin-bottom: 12px; }
+
+/* the scrolling region */
+.lp-chat-card .chat {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 8px;
+}
+
+/* un-fix the composer so it sits at the bottom of the CARD, not the window */
+.lp-chat-card .input-bar {
+  position: static;
+  flex-shrink: 0;
+  background: var(--l-card);
+  border-top: 1px solid var(--l-rule);
+  padding: 12px 16px 12px;
+}
+
+/* An <input> with flex:1 keeps min-width:auto, which resolves to its
+   intrinsic width (~200px) and becomes a floor it won't shrink past —
+   shoving the Send button outside the card on narrow screens. */
+.lp-chat-card #input { min-width: 0; }
+.lp-chat-card .input-wrap { max-width: 100%; padding-left: 12px; }
+.lp-chat-card #send-btn { padding: 0 13px; flex-shrink: 0; }
+.lp-chat-card .geo-btn { flex-shrink: 0; }
+
+.lp-chat-card .chat-card-note {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: var(--l-ink-faint);
+}
+
+/* the disclaimer modal is fixed to the viewport by design — leave it,
+   but keep it from being clipped by the card's overflow:hidden */
+.lp-chat-card .disclaimer-overlay { position: fixed; }
+
+@media (max-width: 940px) {
+  .lp-chat-card { height: 520px; }
+}
+
+/* ---------- landing sections (reads preview, case study, trust) ---------- */
+.lp-hero-points {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+
+.lp-hero-points li {
+  position: relative;
+  padding-left: 22px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--l-ink-soft);
+}
+
+.lp-hero-points li::before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 8px;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: var(--l-navy);
+}
+
+.lp-section { padding-bottom: 76px; }
+
+.lp-section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+
+.lp-section-title {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: clamp(23px, 2.7vw, 30px);
+  letter-spacing: -0.014em;
+  margin-bottom: 8px;
+}
+
+.lp-section-sub {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--l-ink-soft);
+  max-width: 62ch;
+}
+
+.lp-section-sub a { color: var(--l-navy); }
+
+.lp-section-link {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.05em;
+  color: var(--l-navy);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  padding-bottom: 4px;
+}
+
+.lp-section-link:hover { text-decoration: underline; }
+
+/* reads preview */
+.lp-reads-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.lp-read-card h3 {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 17px;
+  line-height: 1.3;
+  margin-bottom: 9px;
+}
+
+.lp-read-card p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--l-ink-soft);
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* case studies */
+.lp-case-list { list-style: none; display: grid; gap: 14px; }
+
+.lp-case {
+  flex-direction: row;
+  align-items: center;
+  gap: 18px;
+  padding: 20px 22px;
+}
+
+.lp-case-swatch {
+  width: 10px;
+  height: 40px;
+  border-radius: 5px;
+  flex-shrink: 0;
+}
+
+.lp-case-body { flex: 1; min-width: 0; }
+
+.lp-case-body h3 {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+
+.lp-case-body p { font-size: 14px; line-height: 1.55; color: var(--l-ink-soft); }
+
+.lp-case-cta {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  padding: 10px 16px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.lp-case-footer { margin-top: 26px; }
+.lp-case-footer .lp-cta-row { margin-top: 16px; margin-bottom: 0; }
+
+/* trust strip */
+.lp-trust {
+  border-top: 1px solid var(--l-rule);
+  padding-top: 44px;
+}
+
+.lp-trust-points {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 26px;
+  margin-bottom: 26px;
+}
+
+.lp-trust-points h3 {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 16.5px;
+  margin-bottom: 7px;
+}
+
+.lp-trust-points p { font-size: 14px; line-height: 1.6; color: var(--l-ink-soft); }
+
+.lp-trust-kofi {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--l-ink-faint);
+  padding-top: 20px;
+  border-top: 1px solid var(--l-rule);
+}
+
+.lp-trust-kofi a { color: var(--l-navy); font-weight: 600; }
+
+@media (max-width: 940px) {
+  .lp-reads-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lp-trust-points { grid-template-columns: 1fr 1fr; gap: 22px; }
+}
+
+@media (max-width: 640px) {
+  .lp-reads-grid { grid-template-columns: 1fr; }
+  .lp-trust-points { grid-template-columns: 1fr; }
+  .lp-section { padding-bottom: 56px; }
+  .lp-case { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .lp-case-swatch { width: 40px; height: 8px; }
+  .lp-case-cta { width: 100%; text-align: center; }
+}
+
 /* ---------- landing responsive ---------- */
 @media (max-width: 940px) {
   .lp-hero {

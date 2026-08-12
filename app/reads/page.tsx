@@ -1,6 +1,7 @@
 import Link from "next/link";
 import BrandIcon from "@/app/components/BrandIcon";
-import { getTodaysTopics, fetchHealthTopic, type HealthTopic } from "@/lib/medlineplus";
+import { type HealthTopic } from "@/lib/medlineplus";
+import { getTodaysReads } from "@/lib/health-reads";
 import { fetchFluActivity, type FluActivity } from "@/lib/cdc-flu";
 
 export const metadata = {
@@ -13,23 +14,12 @@ export const metadata = {
 // flu-activity data reasonably current without hitting the APIs on every request.
 export const revalidate = 3600;
 
-async function getReads(): Promise<HealthTopic[]> {
-  const terms = getTodaysTopics(5);
-  const results = await Promise.allSettled(terms.map((term) => fetchHealthTopic(term)));
-  return results
-    .filter(
-      (r): r is PromiseFulfilledResult<HealthTopic | null> =>
-        r.status === "fulfilled" && r.value !== null
-    )
-    .map((r) => r.value as HealthTopic);
-}
-
 export default async function ReadsPage() {
   let reads: HealthTopic[] = [];
   let flu: FluActivity = { level: "unknown", weightedIli: null, epiweek: null, state: "PA" };
 
   try {
-    [reads, flu] = await Promise.all([getReads(), fetchFluActivity("PA")]);
+    [reads, flu] = await Promise.all([getTodaysReads(5), fetchFluActivity("PA")]);
   } catch {
     // Graceful empty state below — reads stays [] and flu stays "unknown".
   }

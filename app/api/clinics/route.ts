@@ -118,7 +118,20 @@ async function enrichWithSupabase(results: PlaceResult[]): Promise<void> {
       }
     );
 
-    if (!overrideRes.ok) return;
+    if (!overrideRes.ok) {
+      // Log loudly. A non-2xx here means EVERY Supabase-backed feature
+      // silently degrades to defaults — no insurance tags, no
+      // featured/network boost, no wait times — while the endpoint still
+      // returns 200 with plausible-looking clinics. The usual cause is a
+      // column in the select above not existing in the database yet, in
+      // which case PostgREST rejects the whole query.
+      console.error(
+        "[clinics] Supabase enrichment query rejected:",
+        overrideRes.status,
+        (await overrideRes.text()).slice(0, 300)
+      );
+      return;
+    }
 
     const overrides: {
       google_place_id: string;
@@ -237,7 +250,16 @@ async function handleTenantClinics(
       }
     );
 
-    if (!res.ok) return NextResponse.json({ clinics: [] });
+    if (!res.ok) {
+      // A tenant portal showing zero clinics is indistinguishable from
+      // "no locations configured" without this, so say which it is.
+      console.error(
+        `[clinics] tenant '${tenantSlug}' lookup rejected:`,
+        res.status,
+        (await res.text()).slice(0, 300)
+      );
+      return NextResponse.json({ clinics: [] });
+    }
 
     const rows: {
       google_place_id: string | null;
