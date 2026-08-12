@@ -1142,6 +1142,54 @@ body {
   color: var(--accent-deep);
 }
 
+/* Reporting exists for every state, but not every state has a current
+   week — and a visitor outside the US has no state at all. */
+.flu-banner.flu-unknown {
+  background: rgba(0,0,0,.03);
+  border-left-color: #c9d1d6;
+  color: var(--ink-soft);
+}
+
+/* The banner is a flex row so the state picker can sit at the end of it
+   on wide screens and wrap underneath on narrow ones. */
+.flu-banner {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.flu-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.flu-picker-label {
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-size: 10px;
+}
+
+.flu-picker select {
+  font: inherit;
+  font-size: 12px;
+  color: inherit;
+  background: rgba(255,255,255,.75);
+  border: 1px solid rgba(0,0,0,.12);
+  border-radius: 5px;
+  padding: 3px 6px;
+  max-width: 150px;
+}
+
+@media (max-width: 560px) {
+  .flu-picker { margin-left: 0; width: 100%; }
+}
+
 .reads-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -2864,3 +2912,183 @@ body {
   text-decoration: none;
 }
 .lp-tile-link a:hover { text-decoration: underline; }
+
+/* ============================================================
+   TENANT PORTAL (/t/[tenant], served as brand.urgentcare.chat)
+   Deliberately thin: the tenant page reuses the root's .lp-* system and
+   re-points its accent variables at the tenant's own color, so these
+   rules only cover what a branded portal has that the root doesn't —
+   a real logo lockup, a location roster, and configurable blocks.
+   ============================================================ */
+.tp {
+  /* Same two-wash ground as the root, but mixed from the tenant's accent
+     instead of our teal, so the page reads as theirs. */
+  background-image:
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--l-teal) 9%, transparent), transparent 42%),
+    radial-gradient(circle at 92% 8%, color-mix(in srgb, var(--l-navy) 6%, transparent), transparent 40%);
+}
+
+.tp-logo { display: block; object-fit: contain; }
+
+/* The nav CTA is navy on the root site; on a tenant portal the most
+   prominent button has to be their color, not ours. */
+.tp .lp-nav-cta {
+  background: var(--l-teal);
+  color: var(--tp-accent-ink, #fff);
+  border-color: transparent;
+}
+.tp .lp-nav-cta:hover { background: var(--l-teal-deep); }
+
+.tp-brand-text { gap: 9px; font-weight: 650; }
+.tp-brand-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  background: var(--l-teal);
+  flex: none;
+}
+
+.tp-h1-sans { font-family: inherit; letter-spacing: -.02em; }
+
+.tp-nav-phone { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ---------- locations ---------- */
+.tp-loc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(258px, 1fr));
+  gap: 16px;
+}
+
+.tp-loc { display: flex; flex-direction: column; gap: 9px; }
+.tp-loc h3 { font-size: 17px; margin: 0; }
+
+.tp-loc-address {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--l-ink-soft);
+}
+
+.tp-loc-rating {
+  margin: 0;
+  font-size: 13px;
+  color: var(--l-ink);
+  font-variant-numeric: tabular-nums;
+}
+.tp-loc-rating-src { color: var(--l-ink-faint); font-size: 12px; }
+
+.tp-loc-services {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.tp-loc-services li {
+  font-size: 11.5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--l-teal-soft);
+  color: var(--l-teal-deep);
+}
+
+.tp-loc-actions {
+  margin: 3px 0 0;
+  display: flex;
+  gap: 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.tp-loc-actions a { color: var(--l-teal-deep); text-decoration: none; }
+.tp-loc-actions a:hover { text-decoration: underline; }
+
+/* ---------- configurable blocks ---------- */
+.tp-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(262px, 1fr));
+  gap: 16px;
+}
+
+.tp-card { display: flex; flex-direction: column; gap: 9px; }
+.tp-card h3 { font-size: 17px; margin: 0; }
+.tp-card p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--l-ink-soft); }
+
+.tp-card-bullets {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--l-ink-soft);
+}
+
+.tp-prose { max-width: 700px; }
+.tp-prose p {
+  font-size: 15.5px;
+  line-height: 1.75;
+  color: var(--l-ink-soft);
+  margin: 0 0 15px;
+}
+
+.tp-faq { margin: 0; }
+.tp-faq-item {
+  padding: 17px 0;
+  border-top: 1px solid var(--l-rule);
+}
+.tp-faq-item:last-child { border-bottom: 1px solid var(--l-rule); }
+.tp-faq dt { font-weight: 650; font-size: 15.5px; margin-bottom: 6px; }
+.tp-faq dd {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: var(--l-ink-soft);
+}
+
+/* ---------- CTA band ---------- */
+.tp-cta {
+  background: var(--l-card);
+  border: 1px solid var(--l-rule);
+  border-radius: var(--tp-radius, 16px);
+  box-shadow: var(--l-shadow);
+  padding: 28px 30px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.tp-cta-title {
+  font-family: var(--serif);
+  font-size: clamp(21px, 2.3vw, 27px);
+  letter-spacing: -.015em;
+  margin: 0 0 7px;
+}
+
+.tp-cta-body {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: var(--l-ink-soft);
+  max-width: 46ch;
+}
+
+.tp-btn-accent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 11px 20px;
+  border-radius: 10px;
+  background: var(--l-teal);
+  color: var(--tp-accent-ink, #fff);
+  font-size: 14.5px;
+  font-weight: 650;
+  text-decoration: none;
+  border: 1px solid transparent;
+}
+.tp-btn-accent:hover { background: var(--l-teal-deep); }
+
+@media (max-width: 600px) {
+  .tp-cta { padding: 22px 19px; }
+  .tp-loc-grid, .tp-card-grid { grid-template-columns: 1fr; }
+}

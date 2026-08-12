@@ -4,11 +4,16 @@
 // so this stays a plain read against the public "active tenants" RLS
 // policy — no service_role key needed here.
 
+import { parseTenantConfig, type TenantConfig } from "@/lib/tenant-config";
+
 export interface Tenant {
   slug: string;
   displayName: string;
   primaryColor: string | null;
   logoUrl: string | null;
+  /** Portal layout and copy, from tenants.config. Never null — an absent
+   *  or invalid config resolves to the defaults. */
+  config: TenantConfig;
 }
 
 interface CacheEntry {
@@ -35,7 +40,7 @@ export async function getTenantBySlug(slug: string): Promise<Tenant | null> {
       const res = await fetch(
         `${supabaseUrl}/rest/v1/tenants?slug=eq.${encodeURIComponent(
           slug
-        )}&active=is.true&select=slug,display_name,primary_color,logo_url`,
+        )}&active=is.true&select=slug,display_name,primary_color,logo_url,config`,
         {
           headers: {
             apikey: supabaseKey,
@@ -50,6 +55,7 @@ export async function getTenantBySlug(slug: string): Promise<Tenant | null> {
           display_name: string;
           primary_color: string | null;
           logo_url: string | null;
+          config: unknown;
         }[] = await res.json();
 
         const row = rows[0];
@@ -59,6 +65,7 @@ export async function getTenantBySlug(slug: string): Promise<Tenant | null> {
             displayName: row.display_name,
             primaryColor: row.primary_color,
             logoUrl: row.logo_url,
+            config: parseTenantConfig(row.config),
           };
         }
       }

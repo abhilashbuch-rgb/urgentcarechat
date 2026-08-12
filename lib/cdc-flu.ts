@@ -5,33 +5,88 @@
 
 export type FluLevel = "low" | "moderate" | "high" | "unknown";
 
+/** Whether a reading is for the state itself or the wider region it falls in. */
+export type FluScope = "state" | "region";
+
 export interface FluActivity {
   level: FluLevel;
   weightedIli: number | null;
   epiweek: number | null;
   state: string;
+  /** Display name for whatever `weightedIli` actually covers — the state, or
+   *  the multi-state region when the state doesn't report. */
+  label: string;
+  scope: FluScope;
 }
+
+// Every jurisdiction ILINet reports for, so the banner can follow the
+// visitor instead of being pinned to one state.
+const STATE_NAMES: Record<string, string> = {
+  AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas",
+  CA: "California", CO: "Colorado", CT: "Connecticut", DE: "Delaware",
+  DC: "the District of Columbia", FL: "Florida", GA: "Georgia",
+  HI: "Hawaii", ID: "Idaho", IL: "Illinois", IN: "Indiana", IA: "Iowa",
+  KS: "Kansas", KY: "Kentucky", LA: "Louisiana", ME: "Maine",
+  MD: "Maryland", MA: "Massachusetts", MI: "Michigan", MN: "Minnesota",
+  MS: "Mississippi", MO: "Missouri", MT: "Montana", NE: "Nebraska",
+  NV: "Nevada", NH: "New Hampshire", NJ: "New Jersey", NM: "New Mexico",
+  NY: "New York", NC: "North Carolina", ND: "North Dakota", OH: "Ohio",
+  OK: "Oklahoma", OR: "Oregon", PA: "Pennsylvania", RI: "Rhode Island",
+  SC: "South Carolina", SD: "South Dakota", TN: "Tennessee", TX: "Texas",
+  UT: "Utah", VT: "Vermont", VA: "Virginia", WA: "Washington",
+  WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming",
+  PR: "Puerto Rico", VI: "the U.S. Virgin Islands",
+};
 
 // Delphi's region codes are NOT simply lowercased state abbreviations.
 // New York reports as "ny_minus_jfk" (state excluding NYC, which reports
-// separately); a plain "ny" is rejected with result:-2, which this code
-// previously sent — so NY silently reported "unknown" forever.
-const STATE_TO_REGION: Record<string, string> = {
-  PA: "pa",
-  NJ: "nj",
+// separately as "jfk"); a plain "ny" is rejected with result:-2, which this
+// code previously sent — so NY silently reported "unknown" forever.
+const REGION_OVERRIDES: Record<string, string> = {
   NY: "ny_minus_jfk",
-  DE: "de",
-  MD: "md",
 };
 
-// Human labels, since "NY" here genuinely excludes New York City.
+const STATE_TO_REGION: Record<string, string> = Object.fromEntries(
+  Object.keys(STATE_NAMES).map((s) => [s, REGION_OVERRIDES[s] ?? s.toLowerCase()])
+);
+
+// Display labels. Same as the state name except where the reporting region
+// isn't actually the whole state, which the reader deserves to know.
 export const STATE_LABELS: Record<string, string> = {
-  PA: "Pennsylvania",
-  NJ: "New Jersey",
+  ...STATE_NAMES,
   NY: "New York (excl. NYC)",
-  DE: "Delaware",
-  MD: "Maryland",
 };
+
+export function isTrackedState(state: string): boolean {
+  return Object.hasOwn(STATE_TO_REGION, state.toUpperCase());
+}
+
+// Seven jurisdictions (AK, CT, HI, OK, OR, SD, UT) don't publish
+// state-level ILINet through this endpoint at all — verified against live
+// data, and widening the lookback window doesn't help, so it isn't
+// reporting lag. For a visitor in one of those, the HHS region they belong
+// to does report, and "flu activity in your multi-state region" is far
+// better than a blank banner. Every state gets a mapping so the fallback
+// works for anyone who drops out of state-level reporting later.
+const HHS_REGIONS: { code: string; label: string; states: string[] }[] = [
+  { code: "hhs1", label: "New England", states: ["CT", "ME", "MA", "NH", "RI", "VT"] },
+  { code: "hhs2", label: "the NY/NJ region", states: ["NJ", "NY", "PR", "VI"] },
+  { code: "hhs3", label: "the Mid-Atlantic", states: ["DE", "DC", "MD", "PA", "VA", "WV"] },
+  { code: "hhs4", label: "the Southeast", states: ["AL", "FL", "GA", "KY", "MS", "NC", "SC", "TN"] },
+  { code: "hhs5", label: "the Great Lakes region", states: ["IL", "IN", "MI", "MN", "OH", "WI"] },
+  { code: "hhs6", label: "the South Central region", states: ["AR", "LA", "NM", "OK", "TX"] },
+  { code: "hhs7", label: "the Central Plains", states: ["IA", "KS", "MO", "NE"] },
+  { code: "hhs8", label: "the Mountain region", states: ["CO", "MT", "ND", "SD", "UT", "WY"] },
+  { code: "hhs9", label: "the Southwest & Pacific", states: ["AZ", "CA", "HI", "NV"] },
+  { code: "hhs10", label: "the Pacific Northwest", states: ["AK", "ID", "OR", "WA"] },
+];
+
+const STATE_TO_HHS: Record<string, { code: string; label: string }> =
+  Object.fromEntries(
+    HHS_REGIONS.flatMap((r) =>
+      r.states.map((s) => [s, { code: r.code, label: r.label }])
+    )
+  );
 
 export const TRACKED_STATES = ["PA", "NJ", "NY", "DE", "MD"] as const;
 
@@ -78,11 +133,41 @@ function classify(weightedIli: number): FluLevel {
 }
 
 function unknown(state: string): FluActivity {
-  return { level: "unknown", weightedIli: null, epiweek: null, state };
+  const abbrev = state.toUpperCase();
+  return {
+    level: "unknown",
+    weightedIli: null,
+    epiweek: null,
+    state: abbrev,
+    label: STATE_LABELS[abbrev] ?? state,
+    scope: "state",
+  };
 }
 
 export async function fetchFluActivity(stateAbbrev: string): Promise<FluActivity> {
-  const region = STATE_TO_REGION[stateAbbrev.toUpperCase()];
+  const abbrev = stateAbbrev.toUpperCase();
+  const state = await fetchForRegion(
+    STATE_TO_REGION[abbrev],
+    abbrev,
+    STATE_LABELS[abbrev] ?? stateAbbrev,
+    "state"
+  );
+  if (state.level !== "unknown") return state;
+
+  // No state-level reading — try the multi-state HHS region this state
+  // belongs to before giving up.
+  const hhs = STATE_TO_HHS[abbrev];
+  if (!hhs) return state;
+
+  return fetchForRegion(hhs.code, abbrev, hhs.label, "region");
+}
+
+async function fetchForRegion(
+  region: string | undefined,
+  stateAbbrev: string,
+  label: string,
+  scope: FluScope
+): Promise<FluActivity> {
   if (!region) return unknown(stateAbbrev);
 
   try {
@@ -106,7 +191,9 @@ export async function fetchFluActivity(stateAbbrev: string): Promise<FluActivity
       level: classify(weightedIli),
       weightedIli,
       epiweek: latest.epiweek,
-      state: stateAbbrev,
+      state: stateAbbrev.toUpperCase(),
+      label,
+      scope,
     };
   } catch {
     return unknown(stateAbbrev);

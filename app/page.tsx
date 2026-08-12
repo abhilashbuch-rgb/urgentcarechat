@@ -2,7 +2,7 @@ import Link from "next/link";
 import BrandIcon from "@/app/components/BrandIcon";
 import TriageApp from "@/app/components/TriageApp";
 import { getTodaysReads } from "@/lib/health-reads";
-import { fetchFluActivity, type FluActivity } from "@/lib/cdc-flu";
+import FluBanner from "@/app/components/FluBanner";
 import { type HealthTopic } from "@/lib/medlineplus";
 
 const KOFI_URL = "https://ko-fi.com/urgentcarechat";
@@ -33,10 +33,9 @@ export const revalidate = 3600;
 // the root domain never receives.
 export default async function LandingPage() {
   let reads: HealthTopic[] = [];
-  let flu: FluActivity = { level: "unknown", weightedIli: null, epiweek: null, state: "PA" };
 
   try {
-    [reads, flu] = await Promise.all([getTodaysReads(3), fetchFluActivity("PA")]);
+    reads = await getTodaysReads(3);
   } catch {
     // Preview is optional chrome — an outage here must not take the
     // homepage (and the chat) down with it.
@@ -117,20 +116,7 @@ export default async function LandingPage() {
             </Link>
           </div>
 
-          {flu.level !== "unknown" && (
-            <div className={`flu-banner flu-${flu.level}`}>
-              <strong>
-                Flu activity in {flu.state}: {flu.level}
-              </strong>
-              {flu.weightedIli !== null && (
-                <span className="flu-detail">
-                  {" "}
-                  &middot; {flu.weightedIli.toFixed(1)}% weighted ILI (CDC
-                  FluView)
-                </span>
-              )}
-            </div>
-          )}
+          <FluBanner />
 
           {reads.length > 0 ? (
             <div className="lp-reads-grid">

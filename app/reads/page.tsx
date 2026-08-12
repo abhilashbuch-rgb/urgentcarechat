@@ -2,7 +2,7 @@ import Link from "next/link";
 import BrandIcon from "@/app/components/BrandIcon";
 import { type HealthTopic } from "@/lib/medlineplus";
 import { getTodaysReads } from "@/lib/health-reads";
-import { fetchFluActivity, type FluActivity } from "@/lib/cdc-flu";
+import FluBanner from "@/app/components/FluBanner";
 
 export const metadata = {
   title: "Health Reads — urgentcare.chat",
@@ -16,12 +16,11 @@ export const revalidate = 3600;
 
 export default async function ReadsPage() {
   let reads: HealthTopic[] = [];
-  let flu: FluActivity = { level: "unknown", weightedIli: null, epiweek: null, state: "PA" };
 
   try {
-    [reads, flu] = await Promise.all([getTodaysReads(5), fetchFluActivity("PA")]);
+    reads = await getTodaysReads(5);
   } catch {
-    // Graceful empty state below — reads stays [] and flu stays "unknown".
+    // Graceful empty state below — reads stays [].
   }
 
   return (
@@ -52,19 +51,7 @@ export default async function ReadsPage() {
           trends and everything MedlinePlus published this week.
         </p>
 
-        {flu.level !== "unknown" && (
-          <div className={`flu-banner flu-${flu.level}`}>
-            <strong>
-              Flu activity in {flu.state}: {flu.level}
-            </strong>
-            {flu.weightedIli !== null && (
-              <span className="flu-detail">
-                {" "}
-                · {flu.weightedIli.toFixed(1)}% weighted ILI (CDC FluView)
-              </span>
-            )}
-          </div>
-        )}
+        <FluBanner />
 
         {reads.length > 0 ? (
           <div className="reads-grid">
