@@ -81,6 +81,20 @@ create table if not exists tenants (
   created_at    timestamptz default now()
 );
 
+-- CONFIG on tenants — the whole portal layout, as data.
+--
+-- A tenant's page is assembled from this: which sections appear, in what
+-- order, with what copy, in what colors. That means "make AFC's page say
+-- something different" is an UPDATE, not a deploy. The app validates this
+-- against a strict schema (lib/tenant-config.ts) and falls back to sane
+-- defaults if it doesn't parse, so a typo here degrades to the default
+-- portal rather than breaking the subdomain.
+--
+-- No HTML is accepted anywhere in here — prose is plain text and gets
+-- rendered as paragraphs. Links must be http(s), mailto:, tel:, or a
+-- root-relative path; anything else is rejected at parse time.
+alter table tenants add column if not exists config jsonb;
+
 -- TENANT_SLUG on clinics — which tenant's branded portal this listing
 -- belongs to. Null means "general directory only, not tied to any
 -- tenant" — the default for almost every row, since most clinics in
@@ -349,6 +363,66 @@ on conflict (google_place_id) do update set
 insert into tenants (slug, display_name, primary_color, logo_url, active)
 values ('afc', 'AFC Urgent Care', '#E61D30', '/tenants/afc-logo.png', true)
 on conflict (slug) do nothing;
+
+-- AFC's starting portal config. Every string, section, and color below is
+-- editable in place — this is a starting point, not the design.
+--
+-- Only applied when config is still null, so re-running this file never
+-- overwrites edits made by hand or by AFC.
+--
+-- The copy here stays to what the data actually supports (their four real
+-- locations and the services already on those rows). It deliberately makes
+-- no claims about hours, pricing, insurance acceptance, or staffing —
+-- those are AFC's to state, and belong in a "cards" or "prose" section
+-- once they've confirmed them.
+update tenants set config = '{
+  "theme": {
+    "accent": "#E61D30",
+    "accentInk": "#ffffff",
+    "headline": "serif",
+    "logoHeight": 34
+  },
+  "navLinks": [
+    { "label": "Locations", "href": "https://www.afcurgentcare.com/locations/" },
+    { "label": "Services", "href": "https://www.afcurgentcare.com/services/" }
+  ],
+  "navCta": { "label": "Check in online", "href": "https://www.afcurgentcare.com/" },
+  "footerNote": "AFC Urgent Care — Philadelphia area",
+  "showPoweredBy": true,
+  "sections": [
+    {
+      "type": "chat",
+      "headline": "Not sure if you need to be seen? Ask first.",
+      "subhead": "Describe what is going on in plain language. It screens for emergencies first, then points you to the AFC location that can handle it.",
+      "points": [
+        "Open 7 days, walk-ins welcome",
+        "Emergencies routed straight to 911",
+        "Nothing you type is stored"
+      ]
+    },
+    { "type": "locations", "title": "AFC locations" },
+    {
+      "type": "faq",
+      "title": "Before you come in",
+      "items": [
+        {
+          "q": "Should I go to urgent care or the ER?",
+          "a": "Urgent care handles things like sprains, cuts needing stitches, fevers, infections, rashes, and minor breaks. Chest pain, trouble breathing, stroke symptoms, severe bleeding, or a serious head injury are emergencies — call 911 instead. The chat above screens for these before it suggests anything."
+        },
+        {
+          "q": "Do I need an appointment?",
+          "a": "No. AFC takes walk-ins. Checking in online first can shorten the time you spend in the waiting room."
+        },
+        {
+          "q": "What should I bring?",
+          "a": "A photo ID and your insurance card if you have one. If you are being seen for a work injury, bring whatever paperwork your employer gave you."
+        }
+      ]
+    },
+    { "type": "reads", "title": "While you wait", "count": 3, "showFluBanner": true }
+  ]
+}'::jsonb
+where slug = 'afc' and config is null;
 
 -- Only AFC's own 4 real locations belong to the afc tenant — everyone
 -- else in this table (vybe, myDoc, Everest, Jefferson, ...) stays
