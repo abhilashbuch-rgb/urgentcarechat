@@ -66,6 +66,29 @@ alter table clinics add column if not exists wait_updated_at timestamptz;
 alter table clinics add column if not exists wait_source text;
 alter table clinics add column if not exists wait_token uuid not null default gen_random_uuid() unique;
 
+-- TENANTS — branded white-label subdomains (e.g. afc.urgentcare.chat).
+-- Deliberately separate from the `brand` column above: `brand` groups
+-- real-world chains for the network-boost ranking feature ("AFC Urgent
+-- Care" as a name), while `tenant_slug` below is ours — which of OUR
+-- customers a listing/conversation is scoped to. A clinic can belong to
+-- a real chain without being any tenant's listing, and vice versa.
+create table if not exists tenants (
+  slug          text primary key,        -- e.g. 'afc' — used in the subdomain
+  display_name  text not null,           -- e.g. 'AFC Urgent Care'
+  primary_color text,                    -- hex, e.g. '#1b4b8f' — theirs, not ours; placeholder until provided
+  logo_url      text,                    -- theirs, not ours; placeholder until provided
+  active        boolean not null default true,
+  created_at    timestamptz default now()
+);
+
+-- TENANT_SLUG on clinics — which tenant's branded portal this listing
+-- belongs to. Null means "general directory only, not tied to any
+-- tenant" — the default for almost every row, since most clinics in
+-- this table are simply real businesses we surface to the public, not
+-- a customer's own locations.
+alter table clinics add column if not exists tenant_slug text references tenants(slug);
+create index if not exists idx_clinics_tenant on clinics(tenant_slug);
+
 -- CLICKS — analytics (no PII, ever)
 create table if not exists clicks (
   id              uuid primary key default gen_random_uuid(),
@@ -91,6 +114,10 @@ create table if not exists conversations (
 );
 
 create index if not exists idx_conversations_ttl on conversations(ttl_expires_at);
+
+-- Which tenant's branded portal this conversation happened under. Null
+-- means the general/root triage chat, not scoped to any tenant.
+alter table conversations add column if not exists tenant_slug text references tenants(slug);
 
 -- CLINIC_CLAIMS — a clinic owner/manager asking to claim & verify their
 -- listing. Reviewed manually (for now) before flipping clinics.is_featured
@@ -135,6 +162,7 @@ alter table clicks enable row level security;
 alter table conversations enable row level security;
 alter table clinic_claims enable row level security;
 alter table follow_up_requests enable row level security;
+alter table tenants enable row level security;
 
 -- Clinic claims: anyone can submit a claim request; only service_role reads/reviews.
 create policy "Anyone can submit a clinic claim"
@@ -154,6 +182,11 @@ create policy "Anyone can insert clicks"
 
 -- Conversations: service_role only (no anon policy = locked down)
 -- The serverless functions use the service_role key to write here.
+
+-- Tenants: anyone can read active tenants (proxy.ts and the tenant
+-- layout need this to theme a subdomain); only service_role writes.
+create policy "Public can read active tenants"
+  on tenants for select to anon using (active = true);
 
 -- ============================================================
 -- 3. AUTO-PURGE for 30-day TTL on conversations
@@ -296,6 +329,24 @@ on conflict (google_place_id) do update set
   rating = excluded.rating,
   brand = excluded.brand,
   updated_at = now();
+
+-- ============================================================
+-- 5. TENANTS — first branded subdomain: afc.urgentcare.chat
+-- primary_color is AFC's real brand red, sampled directly from their
+-- logo artwork (public/tenants/afc-logo.png — their real mark, supplied
+-- by the user for this exact purpose, not something we generated).
+-- ============================================================
+-- ON CONFLICT DO NOTHING (not DO UPDATE) so re-running this file never
+-- clobbers a primary_color/logo_url you've since updated by hand.
+insert into tenants (slug, display_name, primary_color, logo_url, active)
+values ('afc', 'AFC Urgent Care', '#E61D30', '/tenants/afc-logo.png', true)
+on conflict (slug) do nothing;
+
+-- Only AFC's own 4 real locations belong to the afc tenant — everyone
+-- else in this table (vybe, myDoc, Everest, Jefferson, ...) stays
+-- untenanted, since they're just real businesses we surface publicly,
+-- not AFC's own listings.
+update clinics set tenant_slug = 'afc' where brand = 'AFC Urgent Care';
 
 -- ============================================================
 -- Done! You should see "Success. No rows returned" for the
