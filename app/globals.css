@@ -1373,3 +1373,553 @@ body {
   .msg { max-width: 95%; }
   .reads-grid { grid-template-columns: 1fr; }
 }
+
+/* ============================================================
+   LANDING PAGE (root urgentcare.chat) — B2B pitch page.
+   Fully `lp-`/`cp-` scoped with its own palette: a calmer clinical
+   blue/teal rather than the patient-facing red/white/blue, because
+   this page is selling to operators, not triaging anyone. Nothing
+   here touches the chat, legal, or reads styles above.
+   ============================================================ */
+.lp {
+  /* Neutrals biased toward the teal accent so they read as chosen
+     rather than default grey. */
+  --l-ground: #f3f7f8;
+  --l-card: #ffffff;
+  --l-ink: #0d2436;
+  --l-ink-soft: #52697a;
+  --l-ink-faint: #8ba0ad;
+  --l-teal: #0f7d84;
+  --l-teal-deep: #0a5c62;
+  --l-teal-soft: rgba(15,125,132,.09);
+  --l-navy: #123a5c;
+  --l-rule: #dde8ec;
+  --l-shadow: 0 1px 2px rgba(13,36,54,.04), 0 12px 32px -14px rgba(13,36,54,.14);
+  --l-shadow-lg: 0 1px 2px rgba(13,36,54,.04), 0 30px 60px -24px rgba(13,36,54,.22);
+
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--l-ground);
+  background-image:
+    radial-gradient(circle at 12% 0%, rgba(15,125,132,.07), transparent 42%),
+    radial-gradient(circle at 92% 8%, rgba(18,58,92,.06), transparent 40%);
+  color: var(--l-ink);
+}
+
+/* ---------- nav ---------- */
+.lp-nav {
+  border-bottom: 1px solid var(--l-rule);
+  background: rgba(255,255,255,.82);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.lp-nav-inner,
+.lp-footer-inner,
+.lp-main > section {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding-left: 28px;
+  padding-right: 28px;
+}
+
+.lp-nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding-top: 15px;
+  padding-bottom: 15px;
+}
+
+.lp-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  color: var(--l-ink);
+}
+
+.lp-tld { color: var(--l-teal); font-style: italic; }
+
+.lp-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  font-size: 14px;
+}
+
+.lp-nav-links a {
+  color: var(--l-ink-soft);
+  text-decoration: none;
+  transition: color .15s;
+}
+
+.lp-nav-links a:hover { color: var(--l-teal-deep); }
+
+.lp-nav-cta {
+  background: var(--l-navy);
+  color: #fff !important;
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.lp-nav-cta:hover { background: var(--l-teal-deep); }
+
+/* ---------- hero ---------- */
+.lp-main { flex: 1; }
+
+.lp-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.02fr);
+  gap: 56px;
+  align-items: center;
+  padding-top: 76px;
+  padding-bottom: 84px;
+}
+
+.lp-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--l-teal-deep);
+  background: var(--l-teal-soft);
+  padding: 7px 13px;
+  border-radius: 999px;
+  margin-bottom: 22px;
+}
+
+.lp-eyebrow-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--l-teal);
+  flex-shrink: 0;
+}
+
+.lp-h1 {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: clamp(34px, 4.4vw, 52px);
+  line-height: 1.06;
+  letter-spacing: -0.022em;
+  text-wrap: balance;
+  margin-bottom: 20px;
+}
+
+.lp-lede {
+  font-size: 17px;
+  line-height: 1.62;
+  color: var(--l-ink-soft);
+  max-width: 52ch;
+  margin-bottom: 30px;
+}
+
+.lp-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.lp-btn-primary,
+.lp-btn-secondary {
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 13px 24px;
+  border-radius: 9px;
+  text-decoration: none;
+  display: inline-block;
+  transition: background .15s, border-color .15s, color .15s;
+}
+
+.lp-btn-primary {
+  background: var(--l-teal);
+  color: #fff;
+  box-shadow: 0 10px 24px -12px rgba(15,125,132,.6);
+}
+
+.lp-btn-primary:hover { background: var(--l-teal-deep); }
+
+.lp-btn-secondary {
+  background: transparent;
+  color: var(--l-ink);
+  border: 1px solid var(--l-rule);
+}
+
+.lp-btn-secondary:hover { border-color: var(--l-teal); color: var(--l-teal-deep); }
+
+.lp-hero-note {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.03em;
+  color: var(--l-ink-faint);
+}
+
+.lp-hero-visual { min-width: 0; }
+
+/* ---------- bento grid ---------- */
+.lp-bento {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  padding-bottom: 84px;
+}
+
+.lp-tile {
+  background: var(--l-card);
+  border: 1px solid var(--l-rule);
+  border-radius: 16px;
+  padding: 26px 26px 28px;
+  box-shadow: var(--l-shadow);
+  display: flex;
+  flex-direction: column;
+}
+
+.lp-tile-wide { grid-column: span 2; }
+
+.lp-tile-safety {
+  background: linear-gradient(155deg, #12314f 0%, #0d2436 100%);
+  border-color: #12314f;
+  color: #eef4f6;
+}
+
+.lp-tile-safety h2 { color: #fff; }
+.lp-tile-safety p { color: #a8c0cd; }
+
+.lp-tile-safety .lp-tile-icon {
+  background: rgba(255,255,255,.1);
+  color: #7fd4d9;
+}
+
+.lp-tile-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  background: var(--l-teal-soft);
+  color: var(--l-teal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+  flex-shrink: 0;
+}
+
+.lp-tile-icon svg { width: 20px; height: 20px; }
+
+.lp-tile h2 {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 19px;
+  line-height: 1.28;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+  margin-bottom: 10px;
+}
+
+.lp-tile-wide h2 { font-size: 23px; max-width: 30ch; }
+
+.lp-tile p {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--l-ink-soft);
+}
+
+.lp-domain-chip {
+  margin-top: 16px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  background: var(--l-ground);
+  border: 1px solid var(--l-rule);
+  border-radius: 8px;
+  padding: 11px 13px;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.lp-domain-scheme { color: var(--l-ink-faint); }
+.lp-domain-sub { color: var(--l-teal-deep); font-weight: 500; }
+.lp-domain-rest { color: var(--l-ink-soft); }
+
+/* ---------- closing CTA ---------- */
+.lp-close {
+  text-align: center;
+  padding-bottom: 90px;
+}
+
+.lp-close h2 {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: clamp(24px, 3vw, 32px);
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+  margin-bottom: 12px;
+}
+
+.lp-close p {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--l-ink-soft);
+  max-width: 54ch;
+  margin: 0 auto 26px;
+}
+
+/* ---------- footer ---------- */
+.lp-footer {
+  border-top: 1px solid var(--l-rule);
+  padding-top: 26px;
+  padding-bottom: 40px;
+  background: rgba(255,255,255,.55);
+}
+
+.lp-footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.lp-footer-brand {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.03em;
+  color: var(--l-ink-faint);
+}
+
+.lp-footer-links { display: flex; flex-wrap: wrap; gap: 18px; font-size: 13.5px; }
+.lp-footer-links a { color: var(--l-ink-soft); text-decoration: none; }
+.lp-footer-links a:hover { color: var(--l-teal-deep); text-decoration: underline; }
+
+.lp-footer-note {
+  max-width: 1120px;
+  margin: 16px auto 0;
+  padding: 0 28px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--l-ink-faint);
+}
+
+/* ============================================================
+   CHAT PREVIEW (hero visual) — static replica, `cp-` scoped.
+   ============================================================ */
+.cp-frame {
+  background: var(--l-card);
+  border: 1px solid var(--l-rule);
+  border-radius: 14px;
+  box-shadow: var(--l-shadow-lg);
+  overflow: hidden;
+}
+
+.cp-chrome {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 12px 15px;
+  background: #fbfcfd;
+  border-bottom: 1px solid var(--l-rule);
+}
+
+.cp-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #d3dee3;
+  flex-shrink: 0;
+}
+
+.cp-url {
+  margin-left: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--l-ink-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cp-disclaimer {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #9c2532;
+  background: rgba(178,34,52,.06);
+  border-bottom: 1px solid var(--l-rule);
+  padding: 9px 15px;
+}
+
+.cp-body {
+  padding: 17px 15px 19px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.cp-row { display: flex; }
+.cp-row-user { justify-content: flex-end; }
+
+.cp-bubble {
+  max-width: 86%;
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 11px 14px;
+  border-radius: 12px;
+}
+
+.cp-bot {
+  background: var(--l-ground);
+  border: 1px solid var(--l-rule);
+  color: var(--l-ink);
+  border-bottom-left-radius: 4px;
+}
+
+.cp-user {
+  background: var(--l-navy);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.cp-care-badge {
+  /* Block, not inline-block — the message text must start on the line
+     below the badge, not wrap around it. */
+  display: block;
+  width: fit-content;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #9c5700;
+  background: rgba(224,138,0,.13);
+  border-radius: 5px;
+  padding: 3px 8px;
+  margin-bottom: 8px;
+}
+
+.cp-clinic {
+  position: relative;
+  border: 1px solid var(--l-teal);
+  border-radius: 11px;
+  padding: 16px 16px 15px;
+  margin-top: 3px;
+  background: var(--l-card);
+  box-shadow: 0 8px 22px -14px rgba(15,125,132,.4);
+}
+
+.cp-clinic-tag {
+  position: absolute;
+  top: -9px;
+  left: 14px;
+  background: var(--l-teal);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.cp-clinic-name {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 16px;
+  margin-bottom: 6px;
+}
+
+.cp-clinic-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+  font-size: 12.5px;
+  color: var(--l-ink-soft);
+  margin-bottom: 11px;
+}
+
+.cp-sep { color: var(--l-ink-faint); }
+.cp-open { color: #1c7a4f; font-weight: 600; }
+.cp-wait { color: var(--l-teal-deep); font-weight: 600; }
+
+.cp-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 13px; }
+
+.cp-tag {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--l-ink-soft);
+  background: var(--l-ground);
+  border: 1px solid var(--l-rule);
+  border-radius: 5px;
+  padding: 3px 7px;
+}
+
+.cp-actions { display: flex; gap: 8px; }
+
+.cp-btn {
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 8px 15px;
+  border-radius: 7px;
+  background: var(--l-teal);
+  color: #fff;
+}
+
+.cp-btn-ghost {
+  background: var(--l-ground);
+  color: var(--l-ink);
+  border: 1px solid var(--l-rule);
+}
+
+/* ---------- landing responsive ---------- */
+@media (max-width: 940px) {
+  .lp-hero {
+    grid-template-columns: 1fr;
+    gap: 44px;
+    padding-top: 52px;
+    padding-bottom: 60px;
+  }
+  .lp-bento { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lp-tile-wide { grid-column: span 2; }
+}
+
+@media (max-width: 600px) {
+  .lp-nav-inner,
+  .lp-footer-inner,
+  .lp-main > section,
+  .lp-footer-note { padding-left: 18px; padding-right: 18px; }
+
+  .lp-nav-links { gap: 14px; font-size: 13px; }
+  .lp-nav-links a:not(.lp-nav-cta) { display: none; }
+
+  .lp-hero { padding-top: 40px; padding-bottom: 48px; }
+  .lp-lede { font-size: 16px; }
+  .lp-btn-primary, .lp-btn-secondary { width: 100%; text-align: center; }
+
+  .lp-bento { grid-template-columns: 1fr; padding-bottom: 60px; }
+  .lp-tile-wide { grid-column: span 1; }
+  .lp-tile { padding: 22px 20px 24px; border-radius: 14px; }
+  .lp-tile-wide h2 { font-size: 20px; }
+
+  /* The preview is the whole screen width on a phone, not a shrunken
+     card beside copy — size its text for real reading. */
+  .cp-bubble { font-size: 15px; max-width: 91%; }
+  .cp-disclaimer { font-size: 12.5px; }
+  .cp-clinic-name { font-size: 17px; }
+  .cp-clinic-meta { font-size: 13.5px; }
+  .cp-tag { font-size: 11.5px; }
+  .cp-btn { font-size: 13.5px; padding: 9px 16px; }
+
+  .lp-close { padding-bottom: 64px; }
+}
