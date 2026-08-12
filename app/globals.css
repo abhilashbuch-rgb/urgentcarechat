@@ -1911,6 +1911,192 @@ body {
   margin-right: 1px;
 }
 
+/* ---------- security / trust page (reuses the .lp shell) ---------- */
+.sec-head { padding-top: 64px; padding-bottom: 8px; max-width: 780px; }
+.sec-h1 { font-size: clamp(30px, 3.7vw, 44px); margin-bottom: 18px; }
+
+.sec-block { padding-top: 44px; padding-bottom: 4px; }
+
+.sec-h2 {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: clamp(21px, 2.4vw, 27px);
+  letter-spacing: -0.012em;
+  margin-bottom: 12px;
+}
+
+.sec-intro {
+  font-size: 15.5px;
+  line-height: 1.62;
+  color: var(--l-ink-soft);
+  max-width: 68ch;
+  margin-bottom: 22px;
+}
+
+/* certifications */
+.sec-cert-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.sec-cert {
+  background: var(--l-card);
+  border: 1px solid var(--l-rule);
+  border-radius: 14px;
+  padding: 22px 22px 24px;
+  box-shadow: var(--l-shadow);
+}
+
+.sec-cert h3 {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 20px;
+  margin: 12px 0 9px;
+}
+
+.sec-cert p { font-size: 14.5px; line-height: 1.62; color: var(--l-ink-soft); }
+
+.sec-chip {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  padding: 4px 9px;
+  border-radius: 5px;
+}
+
+.sec-chip-no { color: #9c2532; background: rgba(178,34,52,.1); }
+.sec-chip-scope { color: var(--l-navy); background: var(--l-navy-soft); }
+
+.sec-callout {
+  border-left: 3px solid var(--l-teal);
+  background: var(--l-teal-soft);
+  border-radius: 0 10px 10px 0;
+  padding: 16px 18px;
+  font-size: 14.5px;
+  line-height: 1.62;
+  color: var(--l-ink);
+  max-width: 78ch;
+}
+
+.sec-callout strong { color: var(--l-navy-deep); }
+
+/* tables */
+.sec-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--l-rule);
+  border-radius: 14px;
+  background: var(--l-card);
+  box-shadow: var(--l-shadow);
+}
+
+.sec-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 660px;
+  font-size: 14px;
+}
+
+.sec-table thead th {
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--l-ink-faint);
+  font-weight: 600;
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--l-rule);
+  background: #fafcfc;
+  white-space: nowrap;
+}
+
+.sec-table tbody th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--l-ink);
+  padding: 15px 18px;
+  vertical-align: top;
+  width: 21%;
+  font-size: 14px;
+}
+
+.sec-table td {
+  padding: 15px 18px;
+  vertical-align: top;
+  line-height: 1.58;
+  color: var(--l-ink-soft);
+}
+
+.sec-table tbody tr + tr th,
+.sec-table tbody tr + tr td { border-top: 1px solid var(--l-rule); }
+
+.sec-table strong { color: var(--l-ink); }
+
+.sec-none { color: #1c7a4f !important; font-weight: 600; white-space: nowrap; }
+
+.sec-flag {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--l-ink-faint);
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+.sec-note {
+  display: block;
+  margin-top: 7px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--l-ink-faint);
+  font-weight: 400;
+}
+
+/* controls list */
+.sec-list {
+  list-style: none;
+  display: grid;
+  gap: 12px;
+  max-width: 82ch;
+}
+
+.sec-list li {
+  position: relative;
+  padding-left: 26px;
+  font-size: 14.8px;
+  line-height: 1.62;
+  color: var(--l-ink-soft);
+}
+
+.sec-list li::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 8px;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: var(--l-navy);
+}
+
+.sec-list strong { color: var(--l-ink); }
+
+.sec-close { padding-bottom: 88px; }
+.sec-close .lp-btn-primary { margin-top: 6px; }
+
+@media (max-width: 780px) {
+  .sec-cert-grid { grid-template-columns: 1fr; }
+  .sec-head { padding-top: 44px; }
+  .sec-block { padding-top: 34px; }
+}
+
 /* ---------- landing responsive ---------- */
 @media (max-width: 940px) {
   .lp-hero {
@@ -1952,3 +2138,14 @@ body {
 
   .lp-close { padding-bottom: 64px; }
 }
+
+.lp-tile-link { margin-top: auto; padding-top: 14px; }
+.lp-tile-link a {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  color: var(--l-navy);
+  font-weight: 600;
+  text-decoration: none;
+}
+.lp-tile-link a:hover { text-decoration: underline; }

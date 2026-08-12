@@ -151,6 +151,14 @@ create table if not exists follow_up_requests (
   created_at      timestamptz default now()
 );
 
+-- Phone is cleared to null once the single opt-in message has actually
+-- been sent (see app/api/cron/send-follow-ups), so the column has to
+-- allow null. Done as an alter rather than changing the create above,
+-- so databases that already ran the original not-null version get
+-- loosened too. Idempotent: dropping a not-null that's already dropped
+-- is a no-op.
+alter table follow_up_requests alter column phone drop not null;
+
 create index if not exists idx_follow_up_due on follow_up_requests(status, scheduled_for);
 
 -- ============================================================

@@ -136,6 +136,9 @@ export default function LandingPage() {
               anonymous session and a zip code is the entire data footprint —
               which keeps this out of HIPAA scope entirely.
             </p>
+            <p className="lp-tile-link">
+              <Link href="/security">Full security posture &rarr;</Link>
+            </p>
           </article>
 
           <article className="lp-tile lp-tile-domain">
@@ -183,6 +186,7 @@ export default function LandingPage() {
             <Link href="/terms">Terms</Link>
             <Link href="/privacy">Privacy</Link>
             <Link href="/disclaimer">Disclaimer</Link>
+            <Link href="/security">Security</Link>
             <Link href="/reads">Health Reads</Link>
           </span>
         </div>
