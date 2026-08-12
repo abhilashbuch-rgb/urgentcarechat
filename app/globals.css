@@ -2355,6 +2355,463 @@ body {
   .lp-case-cta { width: 100%; text-align: center; }
 }
 
+/* ============================================================
+   HEALTH MONITOR (/monitor) — data-viz surface. Reuses the .lp
+   palette; adds only chart-specific roles. Marks follow the viz
+   spec: 2px lines, >=8px end markers with a 2px surface ring,
+   recessive grid, direct end-labels, crosshair + tooltip.
+   Single committed light theme, matching the rest of the site.
+   ============================================================ */
+.mon { padding-bottom: 72px; }
+
+.mon-head { padding-top: 56px; padding-bottom: 26px; max-width: 760px; }
+.mon-h1 { font-size: clamp(30px, 3.8vw, 44px); margin-bottom: 16px; }
+
+/* ---------- stat row ---------- */
+.mon-stats {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.mon-hero, .mon-stat {
+  background: var(--l-card);
+  border: 1px solid var(--l-rule);
+  border-radius: 14px;
+  padding: 20px 22px;
+  box-shadow: var(--l-shadow);
+}
+
+.mon-stat-label {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--l-ink-faint);
+  margin-bottom: 10px;
+}
+
+/* hero figure — the one number the page leads with */
+.mon-hero-value {
+  font-family: var(--serif);
+  font-size: 52px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--l-navy);
+  font-variant-numeric: tabular-nums;
+}
+
+.mon-hero-meta {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--l-ink-soft);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+/* status colours ship with a WORD, never colour alone */
+.mon-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 5px;
+}
+
+.mon-badge-low { color: #17603f; background: rgba(23,96,63,.11); }
+.mon-badge-moderate { color: #8a5300; background: rgba(138,83,0,.12); }
+.mon-badge-high { color: #9c2532; background: rgba(156,37,50,.11); }
+.mon-badge-unknown { color: var(--l-ink-faint); background: rgba(0,0,0,.05); }
+
+.mon-stat-value {
+  font-family: var(--serif);
+  font-size: 27px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--l-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.mon-stat-unit { font-size: 14px; color: var(--l-ink-faint); margin-left: 4px; }
+
+.mon-stat-foot {
+  margin-top: 7px;
+  font-size: 12px;
+  color: var(--l-ink-faint);
+}
+
+/* ---------- panels ---------- */
+.mon-panel {
+  background: var(--l-card);
+  border: 1px solid var(--l-rule);
+  border-radius: 16px;
+  padding: 24px 24px 26px;
+  box-shadow: var(--l-shadow);
+  margin-bottom: 18px;
+}
+
+.mon-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.mon-panel-title {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 20px;
+  letter-spacing: -0.012em;
+  margin-bottom: 6px;
+}
+
+.mon-panel-sub {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--l-ink-soft);
+  max-width: 68ch;
+}
+
+.mon-toggle {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: var(--l-navy);
+  background: var(--l-ground);
+  border: 1px solid var(--l-rule);
+  border-radius: 8px;
+  padding: 8px 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mon-toggle:hover { border-color: var(--l-navy); }
+
+/* ---------- legend / filter chips ---------- */
+.mon-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.mon-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--l-ink);
+  background: var(--l-card);
+  border: 1px solid var(--l-rule);
+  border-radius: 999px;
+  padding: 7px 13px;
+  cursor: pointer;
+  transition: opacity .12s, border-color .12s;
+}
+
+.mon-chip:hover { border-color: var(--l-navy); }
+.mon-chip.is-off { opacity: 0.4; }
+.mon-chip.is-focus { border-color: var(--l-navy); box-shadow: 0 0 0 1px var(--l-navy); }
+
+.mon-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.mon-legend-hint {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--l-ink-faint);
+  letter-spacing: 0.04em;
+}
+
+/* ---------- chart ---------- */
+.mon-chart-wrap { position: relative; }
+.mon-chart { width: 100%; height: auto; display: block; overflow: visible; }
+
+.mon-axis-text {
+  font-family: var(--mono);
+  font-size: 10px;
+  fill: var(--l-ink-faint);
+}
+
+/* text never wears the data colour */
+.mon-end-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  fill: var(--l-ink-soft);
+}
+
+.mon-tooltip {
+  position: absolute;
+  top: 6px;
+  transform: translateX(-50%);
+  background: var(--l-card);
+  border: 1px solid var(--l-rule);
+  border-radius: 9px;
+  box-shadow: var(--l-shadow-lg);
+  padding: 9px 11px;
+  pointer-events: none;
+  min-width: 116px;
+  z-index: 3;
+}
+
+.mon-tooltip-week {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: var(--l-ink-faint);
+  margin-bottom: 6px;
+}
+
+.mon-tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  padding: 2px 0;
+}
+
+.mon-tooltip-state { color: var(--l-ink-soft); }
+.mon-tooltip-val {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--l-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- table view (the contrast-relief path) ---------- */
+.mon-table-wrap { overflow-x: auto; }
+
+.mon-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 520px;
+}
+
+.mon-table-caption {
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--l-ink-faint);
+  padding-bottom: 10px;
+}
+
+.mon-table th, .mon-table td {
+  padding: 8px 12px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  border-bottom: 1px solid var(--l-rule);
+}
+
+.mon-table thead th { color: var(--l-ink-faint); font-family: var(--mono); font-size: 11px; }
+.mon-table tbody th { text-align: left; font-weight: 500; color: var(--l-ink-soft); font-family: var(--mono); font-size: 11.5px; }
+.mon-table td { color: var(--l-ink); }
+
+/* ---------- topics ---------- */
+.mon-topics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.mon-topic {
+  border: 1px solid var(--l-rule);
+  border-radius: 12px;
+  padding: 17px 18px;
+  background: var(--l-ground);
+}
+
+.mon-topic h3 {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 16px;
+  margin-bottom: 7px;
+}
+
+.mon-topic p {
+  font-size: 13.5px;
+  line-height: 1.58;
+  color: var(--l-ink-soft);
+  margin-bottom: 10px;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.mon-topic a {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--l-navy);
+  text-decoration: none;
+}
+
+.mon-topic a:hover { text-decoration: underline; }
+
+/* ---------- source bars (magnitude: one hue, not categorical) ---------- */
+.mon-sources {
+  border: 1px solid var(--l-rule);
+  border-radius: 12px;
+  padding: 16px 18px;
+  background: var(--l-ground);
+  margin-bottom: 18px;
+}
+
+.mon-sources-title {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--l-ink-faint);
+  margin-bottom: 12px;
+}
+
+.mon-bar-row {
+  display: grid;
+  grid-template-columns: minmax(0, 190px) 1fr 30px;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.mon-bar-label {
+  font-size: 12.5px;
+  color: var(--l-ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mon-bar-track {
+  height: 12px;
+  background: rgba(18,58,92,.07);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.mon-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--l-navy);
+  border-radius: 0 3px 3px 0;
+}
+
+.mon-bar-val {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--l-ink);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- news ---------- */
+.mon-filters { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 16px; }
+
+.mon-tag {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.03em;
+  color: var(--l-ink-soft);
+  background: var(--l-ground);
+  border: 1px solid var(--l-rule);
+  border-radius: 999px;
+  padding: 6px 11px;
+  cursor: pointer;
+}
+
+.mon-tag:hover { border-color: var(--l-navy); color: var(--l-navy); }
+.mon-tag.is-on { background: var(--l-navy); border-color: var(--l-navy); color: #fff; }
+
+.mon-news { list-style: none; display: grid; gap: 2px; }
+
+.mon-news-item {
+  padding: 13px 0;
+  border-bottom: 1px solid var(--l-rule);
+}
+
+.mon-news-item:last-child { border-bottom: none; }
+
+.mon-news-item > a {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--l-ink);
+  text-decoration: none;
+  line-height: 1.45;
+}
+
+.mon-news-item > a:hover { color: var(--l-navy); text-decoration: underline; }
+
+.mon-news-meta {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--l-ink-faint);
+  margin-top: 5px;
+}
+
+.mon-news-topics { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+
+.mon-news-topic {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--l-navy);
+  background: var(--l-navy-soft);
+  border: none;
+  border-radius: 5px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+.mon-news-topic:hover { text-decoration: underline; }
+
+.mon-notes .sec-list { margin-top: 4px; }
+
+/* ---------- responsive ---------- */
+@media (max-width: 940px) {
+  .mon-stats { grid-template-columns: 1fr 1fr; }
+  .mon-topics { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 600px) {
+  .mon-head { padding-top: 38px; }
+  .mon-stats { grid-template-columns: 1fr; }
+  .mon-panel { padding: 20px 17px 22px; border-radius: 14px; }
+  .mon-hero-value { font-size: 44px; }
+  .mon-bar-row { grid-template-columns: minmax(0, 120px) 1fr 26px; gap: 9px; }
+  .mon-legend-hint { display: none; }
+  /* the chart needs real width — let it scroll rather than squash */
+  .mon-chart-wrap { overflow-x: auto; }
+  .mon-chart { min-width: 560px; }
+  /* SVG type is in viewBox units, so it shrinks with the plot: at 560 units
+     in a ~340px column, 10px renders near 6px. Bump the authored size so the
+     rendered size lands back around 10px. */
+  .mon-axis-text,
+  .mon-end-label { font-size: 13px; }
+}
+
 /* ---------- landing responsive ---------- */
 @media (max-width: 940px) {
   .lp-hero {

@@ -54,6 +54,7 @@ export default async function LandingPage() {
           </div>
           <nav className="lp-nav-links">
             <a href="#reads">Health Reads</a>
+            <Link href="/monitor">Health Monitor</Link>
             <a href="#for-clinics">For clinics</a>
             <a
               className="lp-nav-cta"

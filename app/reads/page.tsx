@@ -46,6 +46,12 @@ export default async function ReadsPage() {
           <Link href="/">triage chat</Link> instead.
         </p>
 
+        <p className="reads-sub">
+          Want the numbers behind this?{" "}
+          <Link href="/monitor">Open the Health Monitor</Link> for regional flu
+          trends and everything MedlinePlus published this week.
+        </p>
+
         {flu.level !== "unknown" && (
           <div className={`flu-banner flu-${flu.level}`}>
             <strong>
