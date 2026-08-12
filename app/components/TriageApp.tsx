@@ -83,11 +83,26 @@ function getSessionId(): string {
 // ============================================================
 export default function TriageApp({
   embed = false,
+  contained = false,
   tenant = null,
 }: {
   embed?: boolean;
+  /**
+   * Renders the chat as a bounded section inside a longer page (the root
+   * landing page) rather than owning the whole viewport. Needed because
+   * the default layout assumes it IS the page: the input bar is
+   * position:fixed to the bottom of the window, and new messages scroll
+   * the window itself. Dropped into a scrolling marketing page as-is,
+   * the input bar would float over every section below it and sending a
+   * message would jump the visitor to the page footer. Contained mode
+   * keeps the input bar and the scrolling inside its own box.
+   */
+  contained?: boolean;
   tenant?: Tenant | null;
 }) {
+  // Both modes drop the site header and hero — the host page supplies
+  // its own chrome in each case.
+  const chromeless = embed || contained;
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [conversationHistory, setConversationHistory] = useState<ChatMessage[]>(
     []
@@ -102,6 +117,7 @@ export default function TriageApp({
   const [language, setLanguage] = useState<Language>("en");
   const supportNoteShown = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(0);
   const t = STRINGS[language];
 
@@ -142,17 +158,25 @@ export default function TriageApp({
   // entirely inside a branded tenant portal — "buy us a coffee" doesn't
   // belong in someone else's white-labeled experience.
   const maybeShowSupportNote = useCallback(() => {
-    if (embed || tenant || supportNoteShown.current) return;
+    if (chromeless || tenant || supportNoteShown.current) return;
     supportNoteShown.current = true;
     addMessage({ type: "support-note" });
-  }, [embed, tenant, addMessage]);
+  }, [chromeless, tenant, addMessage]);
 
-  // Scroll to bottom when messages change
+  // Scroll to the newest message. In contained mode this scrolls the
+  // chat's own box; scrolling the window there would yank the visitor
+  // down to the page footer every time they send something.
   useEffect(() => {
-    setTimeout(() => {
-      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+    const timer = setTimeout(() => {
+      if (contained) {
+        const el = chatScrollRef.current;
+        if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+      } else {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+      }
     }, 50);
-  }, [messages]);
+    return () => clearTimeout(timer);
+  }, [messages, contained]);
 
   // Opening message — restores the saved language preference (if any) and
   // asks who this is for first, so pediatric triage can be sharper from
@@ -179,10 +203,11 @@ export default function TriageApp({
     });
   }, [addMessage, t]);
 
-  // Focus input on mount
+  // Focus the input on mount — but not in contained mode, where the
+  // browser would scroll the card into view and skip the page headline.
   useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+    if (!contained) inputRef.current?.focus();
+  }, [contained]);
 
   // The hero recedes as soon as the visitor actually engages, so it
   // reads as a warm intro rather than something permanently in the way.
@@ -461,6 +486,10 @@ export default function TriageApp({
 
   return (
     <div
+      /* In contained mode this wrapper is the card's only child, so it
+         has to carry the flex column itself — otherwise the composer
+         can't be pushed to the bottom of the card. */
+      className={contained ? "triage-contained" : undefined}
       style={
         tenant?.primaryColor
           ? ({ "--accent": tenant.primaryColor } as React.CSSProperties)
@@ -497,7 +526,7 @@ export default function TriageApp({
         </div>
       )}
 
-      {embed ? (
+      {chromeless ? (
         <div className="embed-topbar">
           <button className="lang-toggle" onClick={toggleLanguage}>
             {t.langToggleLabel}
@@ -556,7 +585,7 @@ export default function TriageApp({
         </header>
       )}
 
-      {!embed && !hasStarted && (
+      {!chromeless && !hasStarted && (
         <section className="hero">
           <div className="hero-blob hero-blob-a" aria-hidden="true" />
           <div className="hero-blob hero-blob-b" aria-hidden="true" />
@@ -613,12 +642,12 @@ export default function TriageApp({
         </section>
       )}
 
-      <main className={embed ? "app embed" : "app"}>
+      <main className={chromeless ? "app embed" : "app"}>
         <div className="disclaimer">
           <strong>{t.disclaimerBannerNotDoctor}</strong> {t.disclaimerBannerBody}
         </div>
 
-        <div className="chat" role="log" aria-label="Chat conversation" aria-live="polite">
+        <div className="chat" ref={chatScrollRef} role="log" aria-label="Chat conversation" aria-live="polite">
           {messages.map((msg) => {
             if (msg.type === "typing") {
               return (
@@ -900,7 +929,13 @@ export default function TriageApp({
           </button>
         </div>
         <div className="footer-note">
-          {embed ? (
+          {contained ? (
+            /* The host page has its own footer and legal links — don't
+               print a second set inside the chat card. */
+            <span className="chat-card-note">
+              Free &middot; no signup &middot; nothing about you is stored
+            </span>
+          ) : embed ? (
             <a
               href="https://urgentcare.chat"
               target="_blank"

@@ -39,11 +39,33 @@ export async function GET(req: NextRequest) {
           request.phone,
           `Hi, this is urgentcare.chat checking in — how did your visit to ${request.clinic_name} go? Reply STOP to opt out.`
         );
+        // Mark sent FIRST and on its own — this is the guard against
+        // texting someone twice, so nothing else may be bundled into it.
         await supabase
           .from("follow_up_requests")
           .update({ status: "sent", sent_at: new Date().toISOString() })
           .eq("id", request.id);
         sent++;
+
+        // Then drop the phone number, since the single message it was
+        // collected for has now gone out. The row survives for reporting
+        // (which clinic, when, delivered) but stops holding anything
+        // identifying — which is what /privacy and /security both claim.
+        // Best-effort and deliberately separate: if the nullable-column
+        // migration hasn't been applied yet this fails harmlessly, and
+        // must not roll back the 'sent' marker above or the patient gets
+        // a second text.
+        const { error: clearErr } = await supabase
+          .from("follow_up_requests")
+          .update({ phone: null })
+          .eq("id", request.id);
+
+        if (clearErr) {
+          console.error(
+            "[cron/send-follow-ups] could not clear phone (is the follow_up_requests.phone nullable migration applied?):",
+            clearErr.message
+          );
+        }
       } catch (smsErr) {
         console.error("[cron/send-follow-ups] SMS failed:", smsErr);
         await supabase

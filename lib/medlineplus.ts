@@ -17,7 +17,16 @@ const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_
 // service embeds in title/summary fields, decoding to plain text.
 function stripHtml(value: string): string {
   return value
-    .replace(/<\/(p|li|ul|ol)>/gi, " ")
+    // Closing block tags become a space, or sentences run together —
+    // MedlinePlus summaries lead with an <h3> question, which produced
+    // "What is the common cold?The common cold is..." without this.
+    // Inline tags (span, b, em) are dropped with no space so the
+    // highlight markup in titles doesn't split words.
+    // Both OPENING and closing block tags, because MedlinePlus runs the
+    // lead-in question straight into the body with an opening tag and no
+    // close: "What is the common cold?<p>The common cold is..."
+    .replace(/<\/?(p|li|ul|ol|h[1-6]|div|section|tr|td|blockquote)\s*>/gi, " ")
+    .replace(/<br\s*\/?>/gi, " ")
     .replace(/<[^>]+>/g, "")
     .replace(/\s+/g, " ")
     .trim();
