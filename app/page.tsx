@@ -67,6 +67,11 @@ export default function LandingPage() {
 
           <div className="lp-hero-visual">
             <ChatPreview />
+            <p className="cp-caption">
+              <span className="cp-swatch" aria-hidden="true" />{" "}
+              Shown in <strong>AFC Urgent Care&apos;s</strong> brand color, on
+              their own subdomain. Yours would use your logo and your color.
+            </p>
           </div>
         </section>
 
@@ -140,10 +145,11 @@ export default function LandingPage() {
                 <path d="M3 12h18M12 3c2.5 3 2.5 15 0 18M12 3c-2.5 3-2.5 15 0 18" />
               </svg>
             </div>
-            <h2>Runs on your domain.</h2>
+            <h2>Your brand, not ours.</h2>
             <p>
-              Your logo, your colors, your subdomain — patients never see our
-              name.
+              Your logo in the header, your brand color through the whole
+              interface, your own subdomain. Patients never see our name — we
+              set the color from your brand guide, down to the exact hex.
             </p>
             <div className="lp-domain-chip">
               <span className="lp-domain-scheme">https://</span>

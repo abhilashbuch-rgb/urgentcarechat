@@ -1393,6 +1393,8 @@ body {
   --l-teal-deep: #0a5c62;
   --l-teal-soft: rgba(15,125,132,.09);
   --l-navy: #123a5c;
+  --l-navy-deep: #0c2b46;
+  --l-navy-soft: rgba(18,58,92,.09);
   --l-rule: #dde8ec;
   --l-shadow: 0 1px 2px rgba(13,36,54,.04), 0 12px 32px -14px rgba(13,36,54,.14);
   --l-shadow-lg: 0 1px 2px rgba(13,36,54,.04), 0 30px 60px -24px rgba(13,36,54,.22);
@@ -1461,7 +1463,7 @@ body {
   transition: color .15s;
 }
 
-.lp-nav-links a:hover { color: var(--l-teal-deep); }
+.lp-nav-links a:hover { color: var(--l-navy); }
 
 .lp-nav-cta {
   background: var(--l-navy);
@@ -1472,7 +1474,7 @@ body {
   white-space: nowrap;
 }
 
-.lp-nav-cta:hover { background: var(--l-teal-deep); }
+.lp-nav-cta:hover { background: var(--l-navy-deep); }
 
 /* ---------- hero ---------- */
 .lp-main { flex: 1; }
@@ -1494,8 +1496,8 @@ body {
   font-size: 11px;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: var(--l-teal-deep);
-  background: var(--l-teal-soft);
+  color: var(--l-navy);
+  background: var(--l-navy-soft);
   padding: 7px 13px;
   border-radius: 999px;
   margin-bottom: 22px;
@@ -1547,12 +1549,12 @@ body {
 }
 
 .lp-btn-primary {
-  background: var(--l-teal);
+  background: var(--l-navy);
   color: #fff;
-  box-shadow: 0 10px 24px -12px rgba(15,125,132,.6);
+  box-shadow: 0 10px 24px -12px rgba(18,58,92,.55);
 }
 
-.lp-btn-primary:hover { background: var(--l-teal-deep); }
+.lp-btn-primary:hover { background: var(--l-navy-deep); }
 
 .lp-btn-secondary {
   background: transparent;
@@ -1560,7 +1562,7 @@ body {
   border: 1px solid var(--l-rule);
 }
 
-.lp-btn-secondary:hover { border-color: var(--l-teal); color: var(--l-teal-deep); }
+.lp-btn-secondary:hover { border-color: var(--l-navy); color: var(--l-navy); }
 
 .lp-hero-note {
   font-family: var(--mono);
@@ -1602,15 +1604,15 @@ body {
 
 .lp-tile-safety .lp-tile-icon {
   background: rgba(255,255,255,.1);
-  color: #7fd4d9;
+  color: #9dc4dd;
 }
 
 .lp-tile-icon {
   width: 40px;
   height: 40px;
   border-radius: 11px;
-  background: var(--l-teal-soft);
-  color: var(--l-teal);
+  background: var(--l-navy-soft);
+  color: var(--l-navy);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1651,7 +1653,7 @@ body {
 }
 
 .lp-domain-scheme { color: var(--l-ink-faint); }
-.lp-domain-sub { color: var(--l-teal-deep); font-weight: 500; }
+.lp-domain-sub { color: var(--l-navy); font-weight: 600; }
 .lp-domain-rest { color: var(--l-ink-soft); }
 
 /* ---------- closing CTA ---------- */
@@ -1702,7 +1704,7 @@ body {
 
 .lp-footer-links { display: flex; flex-wrap: wrap; gap: 18px; font-size: 13.5px; }
 .lp-footer-links a { color: var(--l-ink-soft); text-decoration: none; }
-.lp-footer-links a:hover { color: var(--l-teal-deep); text-decoration: underline; }
+.lp-footer-links a:hover { color: var(--l-navy); text-decoration: underline; }
 
 .lp-footer-note {
   max-width: 1120px;
@@ -1717,6 +1719,13 @@ body {
    CHAT PREVIEW (hero visual) — static replica, `cp-` scoped.
    ============================================================ */
 .cp-frame {
+  /* Accent = the tenant's own brand colour. This preview is AFC's
+     portal, so it renders in AFC's real red (#E61D30) — the same value
+     stored on their tenants row. Swap this one variable and the whole
+     preview re-themes, which is exactly what happens per tenant. */
+  --cp-accent: #E61D30;
+  --cp-accent-deep: #b8121f;
+
   background: var(--l-card);
   border: 1px solid var(--l-rule);
   border-radius: 14px;
@@ -1786,7 +1795,7 @@ body {
 }
 
 .cp-user {
-  background: var(--l-navy);
+  background: #1f2933;
   color: #fff;
   border-bottom-right-radius: 4px;
 }
@@ -1810,19 +1819,19 @@ body {
 
 .cp-clinic {
   position: relative;
-  border: 1px solid var(--l-teal);
+  border: 1px solid var(--cp-accent);
   border-radius: 11px;
   padding: 16px 16px 15px;
   margin-top: 3px;
   background: var(--l-card);
-  box-shadow: 0 8px 22px -14px rgba(15,125,132,.4);
+  box-shadow: 0 8px 22px -14px rgba(230,29,48,.35);
 }
 
 .cp-clinic-tag {
   position: absolute;
   top: -9px;
   left: 14px;
-  background: var(--l-teal);
+  background: var(--cp-accent);
   color: #fff;
   font-family: var(--mono);
   font-size: 9px;
@@ -1851,7 +1860,7 @@ body {
 
 .cp-sep { color: var(--l-ink-faint); }
 .cp-open { color: #1c7a4f; font-weight: 600; }
-.cp-wait { color: var(--l-teal-deep); font-weight: 600; }
+.cp-wait { color: var(--cp-accent-deep); font-weight: 600; }
 
 .cp-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 13px; }
 
@@ -1872,7 +1881,7 @@ body {
   font-weight: 600;
   padding: 8px 15px;
   border-radius: 7px;
-  background: var(--l-teal);
+  background: var(--cp-accent);
   color: #fff;
 }
 
@@ -1880,6 +1889,26 @@ body {
   background: var(--l-ground);
   color: var(--l-ink);
   border: 1px solid var(--l-rule);
+}
+
+.cp-caption {
+  margin-top: 13px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--l-ink-faint);
+  text-align: center;
+}
+
+.cp-caption strong { color: var(--l-ink-soft); font-weight: 600; }
+
+.cp-swatch {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #E61D30;
+  vertical-align: baseline;
+  margin-right: 1px;
 }
 
 /* ---------- landing responsive ---------- */
