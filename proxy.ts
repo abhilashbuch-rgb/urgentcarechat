@@ -13,6 +13,63 @@ import { getTenantBySlug } from "@/lib/tenants";
 
 const ROOT_DOMAIN = "urgentcare.chat";
 
+// Paths on the root domain that belong to the main site. A first path
+// segment in here is never treated as a tenant slug, so adding a tenant can
+// never shadow a real page.
+const RESERVED_ROOT_PATHS = new Set([
+  "api",
+  "t",
+  "clinics",
+  "disclaimer",
+  "monitor",
+  "partners",
+  "privacy",
+  "reads",
+  "security",
+  "terms",
+  "widget",
+  "embed",
+]);
+
+// Conservative slug shape — also keeps files (anything with a dot, e.g.
+// sitemap.xml, robots.txt, llms.txt, favicon.ico) out of tenant lookups.
+const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{1,31}$/;
+
+// Path-based tenant portals on the root domain: urgentcare.chat/afc serves
+// the same page as afc.urgentcare.chat.
+//
+// This is not just a fallback for tenants whose DNS isn't set up yet — it
+// means a tenant portal is shareable the moment the row exists, with no
+// domain work at all, and it gives every tenant a stable URL that survives
+// DNS changes. The subdomain stays the nicer front door.
+//
+// Cost is bounded: only an unreserved, slug-shaped first segment triggers a
+// lookup, and getTenantBySlug caches for a minute, so an unknown path costs
+// at most one Supabase read per minute before falling through to the normal
+// 404.
+async function handleRootDomain(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const [, first, ...rest] = pathname.split("/");
+
+  if (!first || RESERVED_ROOT_PATHS.has(first) || !SLUG_PATTERN.test(first)) {
+    return NextResponse.next();
+  }
+
+  const tenant = await getTenantBySlug(first);
+  if (!tenant) return NextResponse.next();
+
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-tenant-slug", tenant.slug);
+
+  const rewrittenUrl = new URL(
+    `/t/${tenant.slug}${rest.length ? `/${rest.join("/")}` : ""}`,
+    request.url
+  );
+  rewrittenUrl.search = request.nextUrl.search;
+
+  return NextResponse.rewrite(rewrittenUrl, { request: { headers: requestHeaders } });
+}
+
 export async function proxy(request: NextRequest) {
   const hostname = (request.headers.get("host") || "").split(":")[0];
 
@@ -23,7 +80,7 @@ export async function proxy(request: NextRequest) {
       : null;
 
   if (!subdomain) {
-    return NextResponse.next();
+    return handleRootDomain(request);
   }
 
   const tenant = await getTenantBySlug(subdomain);
