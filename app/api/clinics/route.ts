@@ -96,6 +96,59 @@ function formatHoursStatus(openingHours: {
 // flag, and the current-wait signal. Deliberately run fresh on every
 // request (never cached — see the 1-hour Google Places cache below)
 // since wait time in particular needs to stay near-real-time.
+// Columns added by migrations after the original clinics table. PostgREST
+// rejects an ENTIRE select when one named column doesn't exist, so naming
+// these unconditionally means a database that hasn't caught up takes down
+// every Supabase-backed feature at once — insurance tags, network boost,
+// wait times, and tenant scoping — while the endpoint still returns 200
+// with plausible-looking clinics. That exact failure was live: the AFC
+// portal returned zero clinics because of it.
+//
+// So they're requested as extras: try the full set, and on rejection fall
+// back to the columns the base schema guarantees. Clinics keep flowing and
+// the extras light up on their own as migrations land.
+const OPTIONAL_CLINIC_COLUMNS = [
+  "brand",
+  "current_wait_minutes",
+  "wait_updated_at",
+] as const;
+
+async function selectClinicRows<T>(
+  supabaseUrl: string,
+  supabaseKey: string,
+  filter: string,
+  coreColumns: string[],
+  optionalColumns: readonly string[]
+): Promise<T[] | null> {
+  const attempt = async (columns: string[]) => {
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/clinics?${filter}&select=${columns.join(",")}`,
+      { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+    );
+    return res.ok ? ((await res.json()) as T[]) : { status: res.status, body: await res.text() };
+  };
+
+  const full = await attempt([...coreColumns, ...optionalColumns]);
+  if (Array.isArray(full)) return full;
+
+  const core = await attempt(coreColumns);
+  if (Array.isArray(core)) {
+    console.warn(
+      `[clinics] optional columns unavailable (${optionalColumns.join(
+        ", "
+      )}) — serving core fields only. Run supabase/schema.sql to enable them.`
+    );
+    return core;
+  }
+
+  console.error(
+    "[clinics] Supabase rejected even the core select:",
+    core.status,
+    core.body.slice(0, 300)
+  );
+  return null;
+}
+
 async function enrichWithSupabase(results: PlaceResult[]): Promise<void> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey =
@@ -106,42 +159,23 @@ async function enrichWithSupabase(results: PlaceResult[]): Promise<void> {
   if (placeIds.length === 0) return;
 
   try {
-    const overrideRes = await fetch(
-      `${supabaseUrl}/rest/v1/clinics?google_place_id=in.(${placeIds
-        .map((id) => `"${id}"`)
-        .join(",")})&select=google_place_id,services,insurance_tags,is_featured,brand,current_wait_minutes,wait_updated_at`,
-      {
-        headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-        },
-      }
-    );
-
-    if (!overrideRes.ok) {
-      // Log loudly. A non-2xx here means EVERY Supabase-backed feature
-      // silently degrades to defaults — no insurance tags, no
-      // featured/network boost, no wait times — while the endpoint still
-      // returns 200 with plausible-looking clinics. The usual cause is a
-      // column in the select above not existing in the database yet, in
-      // which case PostgREST rejects the whole query.
-      console.error(
-        "[clinics] Supabase enrichment query rejected:",
-        overrideRes.status,
-        (await overrideRes.text()).slice(0, 300)
-      );
-      return;
-    }
-
-    const overrides: {
+    const overrides = await selectClinicRows<{
       google_place_id: string;
       services: string[];
       insurance_tags: string[];
       is_featured: boolean | null;
-      brand: string | null;
-      current_wait_minutes: number | null;
-      wait_updated_at: string | null;
-    }[] = await overrideRes.json();
+      brand?: string | null;
+      current_wait_minutes?: number | null;
+      wait_updated_at?: string | null;
+    }>(
+      supabaseUrl,
+      supabaseKey,
+      `google_place_id=in.(${placeIds.map((id) => `"${id}"`).join(",")})`,
+      ["google_place_id", "services", "insurance_tags", "is_featured"],
+      OPTIONAL_CLINIC_COLUMNS
+    );
+
+    if (!overrides) return;
 
     // A paid is_featured on ANY location of a brand boosts every
     // location of that brand in this result set — a chain (e.g.
@@ -162,9 +196,12 @@ async function enrichWithSupabase(results: PlaceResult[]): Promise<void> {
       match.featured = !!override.is_featured || networkBoosted;
       match.network = networkBoosted && !override.is_featured;
 
+      // `?? null` because these columns are optional: on a database that
+      // predates the wait-time migration they're absent, not null.
+      const waitMinutes = override.current_wait_minutes ?? null;
       match.waitMinutes =
-        override.current_wait_minutes !== null && !isWaitStale(override.wait_updated_at)
-          ? override.current_wait_minutes
+        waitMinutes !== null && !isWaitStale(override.wait_updated_at ?? null)
+          ? waitMinutes
           : null;
     }
   } catch (enrichErr) {
@@ -238,30 +275,7 @@ async function handleTenantClinics(
   }
 
   try {
-    const res = await fetch(
-      `${supabaseUrl}/rest/v1/clinics?tenant_slug=eq.${encodeURIComponent(
-        tenantSlug
-      )}&select=google_place_id,name,address,phone,lat,lng,services,insurance_tags,is_featured,current_wait_minutes,wait_updated_at`,
-      {
-        headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-        },
-      }
-    );
-
-    if (!res.ok) {
-      // A tenant portal showing zero clinics is indistinguishable from
-      // "no locations configured" without this, so say which it is.
-      console.error(
-        `[clinics] tenant '${tenantSlug}' lookup rejected:`,
-        res.status,
-        (await res.text()).slice(0, 300)
-      );
-      return NextResponse.json({ clinics: [] });
-    }
-
-    const rows: {
+    const rows = await selectClinicRows<{
       google_place_id: string | null;
       name: string;
       address: string | null;
@@ -271,9 +285,27 @@ async function handleTenantClinics(
       services: string[];
       insurance_tags: string[];
       is_featured: boolean | null;
-      current_wait_minutes: number | null;
-      wait_updated_at: string | null;
-    }[] = await res.json();
+      current_wait_minutes?: number | null;
+      wait_updated_at?: string | null;
+    }>(
+      supabaseUrl,
+      supabaseKey,
+      `tenant_slug=eq.${encodeURIComponent(tenantSlug)}`,
+      [
+        "google_place_id",
+        "name",
+        "address",
+        "phone",
+        "lat",
+        "lng",
+        "services",
+        "insurance_tags",
+        "is_featured",
+      ],
+      ["current_wait_minutes", "wait_updated_at"]
+    );
+
+    if (!rows) return NextResponse.json({ clinics: [] });
 
     const results: PlaceResult[] = await Promise.all(
       rows.map(async (row) => {
@@ -304,9 +336,12 @@ async function handleTenantClinics(
           websiteUrl: details?.websiteUrl || "",
           featured: !!row.is_featured,
           network: false,
+          // `?? null` — optional columns are absent, not null, on a
+          // database that predates the wait-time migration.
           waitMinutes:
-            row.current_wait_minutes !== null && !isWaitStale(row.wait_updated_at)
-              ? row.current_wait_minutes
+            (row.current_wait_minutes ?? null) !== null &&
+            !isWaitStale(row.wait_updated_at ?? null)
+              ? row.current_wait_minutes ?? null
               : null,
         };
       })
