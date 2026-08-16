@@ -122,6 +122,23 @@ const sectionSchema = z.discriminatedUnion("type", [
 ]);
 
 export const tenantConfigSchema = z.object({
+  // ---------- how this tenant's locations are found ----------
+  // Absent is the norm: the brand's own display name is used as the search
+  // query, which covers a franchise nationwide without seeding a row per
+  // clinic. Present only when the legal/Google name differs from the
+  // display name, or the default name filter is too loose or too strict.
+  locations: z
+    .object({
+      /** Text sent to Google Places. Defaults to the tenant display name. */
+      searchQuery: z.string().min(2).max(80).optional(),
+      /** Every token must appear in a result's name for it to count as this
+       *  brand. Defaults to the distinguishing words of the display name. */
+      nameIncludes: z.array(z.string().min(1).max(40)).max(4).optional(),
+      /** How far out to look, in miles. */
+      radiusMiles: z.number().min(5).max(200).optional(),
+    })
+    .optional(),
+
   // ---------- theme ----------
   theme: z
     .object({
