@@ -3236,3 +3236,264 @@ body {
   .tp-nearest { padding: 8px 13px; gap: 3px 7px; }
   .tp-nearest-name { font-size: 13.5px; }
 }
+
+/* ========== STAFF AREA (/staff) ==========
+   Internal tooling, so it deliberately doesn't look like the patient
+   portal: flat surfaces, denser type, no marketing gradients. Someone
+   glancing at a screen across the room should be able to tell which side
+   of the product they're looking at. */
+
+.st {
+  min-height: 100vh;
+  width: 100%;
+  background: #fbfbfc;
+  display: flex;
+  flex-direction: column;
+}
+
+.st-top {
+  background: #fff;
+  border-bottom: 1px solid var(--rule);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.st-top-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 20px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.st-brand { display: flex; align-items: baseline; gap: 8px; flex-shrink: 0; }
+.st-brand-name { font-weight: 650; font-size: 15px; letter-spacing: -.01em; }
+.st-brand-tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: #fff;
+  background: var(--accent);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.st-nav { display: flex; gap: 2px; flex: 1; min-width: 0; overflow-x: auto; }
+
+.st-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--ink-soft);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.st-nav-link:hover { background: #f1f2f5; color: var(--ink); }
+
+/* Nav items that exist but aren't built. Shown rather than hidden so the
+   shape of the product is legible, with a marker that says "not yet"
+   instead of a link that goes nowhere. */
+.st-nav-soon { color: #9aa0aa; cursor: default; }
+.st-nav-soon:hover { background: none; color: #9aa0aa; }
+.st-soon-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #c9ced6;
+}
+
+.st-me {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.st-me-email { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-me-role {
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+}
+.st-signout {
+  border: 1px solid var(--rule);
+  background: #fff;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.st-signout:hover { background: #f1f2f5; color: var(--ink); }
+
+.st-main { flex: 1; }
+
+.st-page { max-width: 1080px; margin: 0 auto; padding: 32px 20px 64px; }
+.st-page-head { margin-bottom: 24px; }
+.st-h1 { font-size: 24px; font-weight: 650; letter-spacing: -.02em; }
+.st-h2 { font-size: 15px; font-weight: 650; margin-bottom: 10px; }
+.st-page-sub { font-size: 13px; color: var(--ink-soft); margin-top: 4px; }
+
+.st-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.st-card {
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 16px;
+}
+.st-card-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: #8b919b;
+}
+.st-card-value {
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -.02em;
+  margin: 6px 0 8px;
+}
+.st-card-note { font-size: 12px; line-height: 1.45; color: var(--ink-soft); }
+
+.st-next { margin-top: 28px; }
+.st-next-list {
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.st-next-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  padding: 11px 16px;
+  border-top: 1px solid var(--rule);
+  font-size: 13px;
+}
+.st-next-list li:first-child { border-top: none; }
+.st-next-name { font-weight: 600; min-width: 88px; }
+.st-next-note { color: var(--ink-soft); }
+
+.st-foot {
+  margin-top: 28px;
+  font-size: 12px;
+  color: #8b919b;
+  max-width: 60ch;
+}
+
+.st-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--blue);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  text-align: left;
+}
+.st-notice strong { color: var(--ink); font-weight: 600; }
+.st-notice code {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: #f1f2f5;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+.st-notice-warn { border-left-color: var(--accent); }
+.st-notice-detail {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: #8b919b;
+  word-break: break-word;
+}
+
+/* ---------- sign-in ---------- */
+
+.st-signin {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+}
+
+.st-signin-card {
+  width: 100%;
+  max-width: 400px;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 28px;
+  box-shadow: var(--shadow);
+}
+
+.st-signin-eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--accent);
+  font-weight: 600;
+}
+.st-signin-title {
+  font-size: 21px;
+  font-weight: 650;
+  letter-spacing: -.02em;
+  margin: 6px 0 8px;
+}
+.st-signin-sub {
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.st-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 16px;
+  border: 1px solid #d3d7de;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 14px;
+  font-weight: 550;
+  color: var(--ink);
+  text-decoration: none;
+}
+.st-google:hover { background: #f7f8fa; }
+
+.st-signin-fine {
+  margin-top: 16px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #8b919b;
+}
+
+@media (max-width: 720px) {
+  .st-top-inner { height: auto; flex-wrap: wrap; gap: 10px; padding: 10px 16px; }
+  .st-me { width: 100%; justify-content: flex-start; }
+  .st-me-email { max-width: none; flex: 1; }
+}

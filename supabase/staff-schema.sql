@@ -51,7 +51,7 @@ end $$;
 
 create table if not exists staff.users (
   id          uuid primary key default gen_random_uuid(),
-  google_sub  text unique,               -- Google's stable subject id; set on first sign-in
+  google_sub  text,                      -- Google's stable subject id; set on first sign-in
   email       text not null,
   name        text,
   org_slug    text references staff.orgs(slug) on delete restrict,
@@ -64,8 +64,17 @@ create table if not exists staff.users (
     check (role = 'platform_super_admin' or org_slug is not null)
 );
 
+-- Identity is unique WITHIN an org, not globally. One person can be staff
+-- at two franchises with the same Google account, and a global unique on
+-- google_sub would make the second org's invite fail with a constraint
+-- error that looks like a bug.
+alter table staff.users drop constraint if exists staff_users_google_sub_key;
+
 create unique index if not exists staff_users_email_org
   on staff.users (lower(email), coalesce(org_slug, ''));
+
+create unique index if not exists staff_users_google_org
+  on staff.users (google_sub, coalesce(org_slug, '')) where google_sub is not null;
 
 -- INVITES — the actual access control.
 -- "Sign in with Google" is authentication, not authorization: without this
@@ -245,17 +254,61 @@ create policy staff_orgs_isolation on staff.orgs
   with check (staff.is_super_admin());
 
 -- ============================================================
+-- APPLICATION ROLE
+--
+-- The app connects as this role, NOT as `postgres`. A superuser bypasses
+-- row-level security entirely, which would turn every policy above into
+-- decoration while still looking correct in code review. This role has no
+-- BYPASSRLS and owns nothing, so the policies actually apply to it.
+--
+-- Set the password yourself and put the resulting connection string in
+-- STAFF_DATABASE_URL:
+--
+--   alter role staff_app with password 'a-long-random-password';
+--
+--   STAFF_DATABASE_URL=postgresql://staff_app:<password>@<host>:6543/postgres
+-- ============================================================
+
+do $$ begin
+  create role staff_app with login password null;
+exception when duplicate_object then null;
+end $$;
+
+grant usage on schema staff to staff_app;
+grant select, insert, update, delete on all tables in schema staff to staff_app;
+grant usage, select on all sequences in schema staff to staff_app;
+alter default privileges in schema staff
+  grant select, insert, update, delete on tables to staff_app;
+alter default privileges in schema staff
+  grant usage, select on sequences to staff_app;
+
+-- ============================================================
 -- SEED — the first org.
 -- Slug matches public.tenants.slug ('afc') by convention so the staff area
 -- and the patient portal agree on what "afc" means.
 -- ============================================================
 
+-- Keep `name` matching public.tenants.display_name for the same slug. They
+-- are separate columns in separate schemas on purpose, but a staff screen
+-- shows the tenant's display name in the header and this one in the body,
+-- and two different names for one clinic on one screen reads as a bug.
 insert into staff.orgs (slug, name, plan)
-values ('afc', 'AFC Urgent Care Narberth', 'internal')
+values ('afc', 'AFC Urgent Care', 'internal')
 on conflict (slug) do nothing;
 
 -- ============================================================
--- Done. Next: set the Google OAuth env vars, then add the first invite —
+-- Done. Next:
+--
+--   1. alter role staff_app with password '…'  (see above)
+--   2. Set these env vars:
+--        STAFF_DATABASE_URL       postgres://staff_app:…  (pooler, port 6543)
+--        STAFF_SESSION_SECRET     32+ random characters
+--        GOOGLE_OAUTH_CLIENT_ID
+--        GOOGLE_OAUTH_CLIENT_SECRET
+--   3. In the Google Cloud console, add
+--        https://afc.urgentcare.chat/api/staff/auth/callback
+--      as an authorized redirect URI (one per staff hostname).
+--   4. Add the first invite —
 --
 --   insert into staff.org_invites (org_slug, email_domain, role)
 --   values ('afc', 'buchmedical.com', 'staff');

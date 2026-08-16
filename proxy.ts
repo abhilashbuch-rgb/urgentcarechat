@@ -26,6 +26,7 @@ const RESERVED_ROOT_PATHS = new Set([
   "privacy",
   "reads",
   "security",
+  "staff",
   "terms",
   "widget",
   "embed",
@@ -125,16 +126,34 @@ function tenantGate(request: NextRequest): NextResponse | null {
   );
 }
 
-async function handleRootDomain(request: NextRequest) {
+// x-tenant-slug is set by this proxy and trusted by everything downstream
+// — /api/clinics scopes its search by it, and the staff area resolves
+// which organization you are in from it. So it has to be impossible to
+// send one: a request arriving with its own x-tenant-slug header must
+// have that header removed before any handler can read it.
+//
+// Without this, `curl -H 'x-tenant-slug: afc'` against the root domain
+// would have been enough to make the staff area believe the request
+// belonged to an org. The header is only trustworthy because it is
+// stripped here first and re-set only after a real lookup.
+function baseHeaders(request: NextRequest): Headers {
+  const headers = new Headers(request.headers);
+  headers.delete("x-tenant-slug");
+  return headers;
+}
+
+async function handleRootDomain(request: NextRequest, headers: Headers) {
   const { pathname } = request.nextUrl;
   const [, first, ...rest] = pathname.split("/");
 
+  const passThrough = () => NextResponse.next({ request: { headers } });
+
   if (!first || RESERVED_ROOT_PATHS.has(first) || !SLUG_PATTERN.test(first)) {
-    return NextResponse.next();
+    return passThrough();
   }
 
   const tenant = await getTenantBySlug(first);
-  if (!tenant) return NextResponse.next();
+  if (!tenant) return passThrough();
 
   // The subdomain is the canonical home for a tenant portal, so the path
   // URL redirects to it rather than serving a duplicate. Held back until
@@ -155,8 +174,7 @@ async function handleRootDomain(request: NextRequest) {
   const gated = tenantGate(request);
   if (gated) return gated;
 
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-tenant-slug", tenant.slug);
+  headers.set("x-tenant-slug", tenant.slug);
 
   const rewrittenUrl = new URL(
     `/t/${tenant.slug}${rest.length ? `/${rest.join("/")}` : ""}`,
@@ -164,7 +182,7 @@ async function handleRootDomain(request: NextRequest) {
   );
   rewrittenUrl.search = request.nextUrl.search;
 
-  return NextResponse.rewrite(rewrittenUrl, { request: { headers: requestHeaders } });
+  return NextResponse.rewrite(rewrittenUrl, { request: { headers } });
 }
 
 export async function proxy(request: NextRequest) {
@@ -176,8 +194,10 @@ export async function proxy(request: NextRequest) {
       ? hostname.slice(0, -(`.${ROOT_DOMAIN}`.length))
       : null;
 
+  const requestHeaders = baseHeaders(request);
+
   if (!subdomain) {
-    return handleRootDomain(request);
+    return handleRootDomain(request, requestHeaders);
   }
 
   const tenant = await getTenantBySlug(subdomain);
@@ -188,14 +208,34 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL(`https://${ROOT_DOMAIN}`, request.url));
   }
 
-  // Same gate as the path route — one implementation, both doors.
-  const gated = tenantGate(request);
-  if (gated) return gated;
-
-  const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-tenant-slug", tenant.slug);
 
   const { pathname } = request.nextUrl;
+
+  // The staff area keeps its real path and skips the preview gate.
+  //
+  // Skipping is deliberate: TENANT_PREVIEW_KEY is a shared code that hides
+  // an unfinished marketing page, and /staff is already behind Google
+  // sign-in plus an invite — a strictly stronger door. Making staff type a
+  // shared code first would add no security and would break the OAuth
+  // round trip, since Google redirects back to a URL the gate would answer
+  // with its own HTML.
+  //
+  // It is also NOT rewritten under /t/<slug>: the org arrives in the
+  // header, the same way API routes get it.
+  if (
+    pathname === "/staff" ||
+    pathname.startsWith("/staff/") ||
+    pathname.startsWith("/api/staff/")
+  ) {
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
+
+  // Same gate as the path route — one implementation, both doors. Still
+  // ahead of the API passthrough, so the preview key covers the portal's
+  // own data endpoints and not just its HTML.
+  const gated = tenantGate(request);
+  if (gated) return gated;
 
   // API routes keep their real path — they read the tenant from the
   // header instead of the URL.
