@@ -35,6 +35,25 @@ const RESERVED_ROOT_PATHS = new Set([
 // sitemap.xml, robots.txt, llms.txt, favicon.ico) out of tenant lookups.
 const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{1,31}$/;
 
+// Tenants whose subdomain is confirmed working — comma-separated slugs in
+// TENANT_CANONICAL_SUBDOMAIN_SLUGS, e.g. "afc". Only these redirect from
+// urgentcare.chat/<slug> to <slug>.urgentcare.chat.
+//
+// Per-tenant rather than a single on/off switch, because a subdomain only
+// works after someone adds it in Vercel. The wildcard domain cannot issue
+// a certificate while DNS lives outside Vercel, so each tenant's subdomain
+// is added by hand — and redirecting to one that hasn't been added yet
+// would send visitors to a name that doesn't resolve.
+//
+// Unset means no redirects, which is the safe default: the path URL keeps
+// working and nothing breaks.
+const CANONICAL_SUBDOMAIN_SLUGS = new Set(
+  (process.env.TENANT_CANONICAL_SUBDOMAIN_SLUGS ?? "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
+);
+
 // Shared pages that live only on the root domain. Under a tenant subdomain
 // these would be rewritten to /t/<slug>/<page>, which doesn't exist, so
 // they're redirected to the real page instead of 404ing.
@@ -116,6 +135,22 @@ async function handleRootDomain(request: NextRequest) {
 
   const tenant = await getTenantBySlug(first);
   if (!tenant) return NextResponse.next();
+
+  // The subdomain is the canonical home for a tenant portal, so the path
+  // URL redirects to it rather than serving a duplicate. Held back until
+  // afc.urgentcare.chat had a valid certificate — redirecting here while
+  // HTTPS was failing would have pointed every visitor at a TLS error.
+  //
+  // The path route still exists and still matters: it is what works on day
+  // one for a tenant whose subdomain isn't set up yet, and this redirect
+  // only fires for tenants that have one.
+  if (CANONICAL_SUBDOMAIN_SLUGS.has(tenant.slug)) {
+    const target = new URL(
+      `${rest.length ? `/${rest.join("/")}` : "/"}${request.nextUrl.search}`,
+      `https://${tenant.slug}.${ROOT_DOMAIN}`
+    );
+    return NextResponse.redirect(target, 308);
+  }
 
   const gated = tenantGate(request);
   if (gated) return gated;

@@ -38,16 +38,29 @@ export default function TenantPortal({
   const headlineClass =
     theme.headline === "sans" ? "lp-h1 tp-h1-sans" : "lp-h1";
 
+  // The logo URL comes from the database and is about to be interpolated
+  // into a CSS url() — so anything that could terminate the url() or the
+  // declaration is rejected rather than escaped. Only a root-relative path
+  // or an https URL, and no quotes, parentheses, semicolons, backslashes,
+  // or whitespace.
+  const watermarkUrl =
+    tenant.logoUrl &&
+    /^(?:\/|https:\/\/)[^"'()\\;\s]+$/.test(tenant.logoUrl)
+      ? tenant.logoUrl
+      : null;
+
   return (
     <div className="lp tp" style={themeVars}>
-      {/* Oversized brand watermark, rotated and bled off the right edge.
-          Purely decorative: aria-hidden and pointer-events:none, sitting
-          behind every interactive element, at an opacity low enough that
-          body text keeps its contrast ratio. */}
-      {tenant.logoUrl && (
+      {/* Tiled brand watermark across the right half, rotated. Purely
+          decorative: aria-hidden and pointer-events:none, behind every
+          interactive element, at an opacity low enough that body text
+          keeps its contrast ratio. */}
+      {watermarkUrl && (
         <div
           className="tp-watermark"
-          style={{ backgroundImage: `url(${tenant.logoUrl})` }}
+          style={
+            { "--tp-watermark-src": `url("${watermarkUrl}")` } as React.CSSProperties
+          }
           aria-hidden="true"
         />
       )}
