@@ -12,12 +12,9 @@ import { isLocalRequest, redirectTo } from "@/lib/staff/http";
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
-  const org = req.headers.get("x-tenant-slug");
-  if (!org) {
-    // /staff only exists under an org's own hostname.
-    return redirectTo("/staff/signin?e=no_org");
-  }
-
+  // No org needed to START sign-in. Which org someone belongs to is a
+  // question about them, answered after Google says who they are — not a
+  // question about the URL they arrived at.
   if (!isConfigured()) {
     return redirectTo("/staff/signin?e=unconfigured");
   }

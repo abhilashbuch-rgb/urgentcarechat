@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
-import { resolve, hostOrg } from "@/lib/staff/auth";
-import { getTenantBySlug } from "@/lib/tenants";
+import { resolve } from "@/lib/staff/auth";
 import { isConfigured } from "@/lib/staff/google";
+import { PRODUCT_NAME } from "@/lib/site";
 
 // Sign-in, and every way sign-in can fail.
 //
@@ -12,12 +12,16 @@ import { isConfigured } from "@/lib/staff/google";
 
 const MESSAGES: Record<string, { title: string; body: string }> = {
   no_org: {
-    title: "Open your clinic's own address",
-    body: "The staff area lives on your organization's hostname — for AFC that's afc.urgentcare.chat/staff. This address doesn't belong to one organization, so there's nothing to sign in to.",
+    title: "Your account isn't attached to a clinic",
+    body: "Sign-in worked, but your account has no organization. An administrator has to assign you to one before there's anything to show you.",
   },
   wrong_org: {
     title: "Signed in somewhere else",
-    body: "Your session belongs to a different organization than this address. Sign out and sign back in here.",
+    body: "Your session doesn't match your current organization. Sign out and sign back in.",
+  },
+  ambiguous: {
+    title: "Your email is set up at more than one clinic",
+    body: "That's a situation this can't resolve on its own without risking putting you in the wrong clinic's records. Ask an administrator to remove the duplicate.",
   },
   no_invite: {
     title: "That account hasn't been invited",
@@ -72,21 +76,17 @@ export default async function StaffSignIn({
   if (existing.ok) redirect("/staff");
 
   const { e } = await searchParams;
-  const org = await hostOrg();
-  const tenant = org ? await getTenantBySlug(org) : null;
   const message = e ? MESSAGES[e] : undefined;
 
-  // Two different "can't sign in" cases: there's no org here at all, or
-  // the server is missing its OAuth credentials. Neither is fixed by
-  // pressing a button, so neither gets one.
-  const canSignIn = Boolean(org) && isConfigured();
+  // One staff door for every clinic, so the only thing that can stop the
+  // button appearing is the server missing its OAuth credentials — which
+  // is not something pressing a button would fix.
+  const canSignIn = isConfigured();
 
   return (
     <div className="st-signin">
       <div className="st-signin-card">
-        <p className="st-signin-eyebrow">
-          {tenant?.displayName ?? "urgentcare.chat"}
-        </p>
+        <p className="st-signin-eyebrow">{PRODUCT_NAME}</p>
         <h1 className="st-signin-title">Staff sign-in</h1>
         <p className="st-signin-sub">
           For clinic staff only. Patients don&rsquo;t need an account &mdash; the
@@ -108,8 +108,8 @@ export default async function StaffSignIn({
         ) : (
           !message && (
             <div className="st-notice" role="status">
-              <strong>{MESSAGES.no_org.title}</strong>
-              <span>{MESSAGES.no_org.body}</span>
+              <strong>{MESSAGES.unconfigured.title}</strong>
+              <span>{MESSAGES.unconfigured.body}</span>
             </div>
           )
         )}

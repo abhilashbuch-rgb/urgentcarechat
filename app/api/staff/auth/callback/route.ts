@@ -16,6 +16,14 @@ import {
 // email with no matching invite is turned away — it does not get an
 // account created for it "pending approval", because a row in staff.users
 // is the thing every other policy keys off.
+//
+// ONE CALLBACK URL FOR EVERY CUSTOMER. This used to run per-subdomain,
+// which meant a Google redirect URI registered by hand for each one. The
+// cost of that convenience is that this handler does not know which org
+// the person belongs to when it starts — the hostname no longer says. It
+// asks the database, through the two narrow SECURITY DEFINER functions in
+// staff-single-domain.sql, and refuses rather than guessing if the answer
+// is ambiguous.
 
 export const runtime = "nodejs";
 
@@ -37,9 +45,6 @@ function deny(reason: string) {
 }
 
 export async function GET(req: NextRequest) {
-  const org = req.headers.get("x-tenant-slug");
-  if (!org) return deny("no_org");
-
   const params = req.nextUrl.searchParams;
 
   // The user pressed "Cancel" on Google's screen, or Google refused.
@@ -58,16 +63,36 @@ export async function GET(req: NextRequest) {
   // An unverified Google address can be one someone merely claims to own.
   if (!identity.emailVerified) return deny("unverified_email");
 
-  const emailDomain = identity.email.split("@")[1] ?? "";
-
   let outcome:
     | { user: UserRow; mfaRequired: boolean }
-    | { denied: "no_invite" | "deactivated" | "wrong_domain" };
+    | { denied: "no_invite" | "deactivated" | "wrong_domain" | "ambiguous" };
+  let org = "";
   try {
-    // Every statement below runs with the org context of the HOSTNAME —
-    // there is no session yet, so the host is the only trustworthy source
-    // of "which org". RLS therefore confines the whole sign-in to this org
-    // even if a query below were written carelessly.
+    // Which org, before any org context exists. Deliberately the only
+    // cross-org read in the system, and it happens exactly once per
+    // sign-in — everything after this line is scoped to the answer.
+    const found = await withOrg("", "staff", async (sql) => {
+      const member = await sql<{ org_slug: string }[]>`
+        select org_slug from staff.resolve_signin(${identity.email}, ${identity.sub})
+      `;
+      if (member.length === 1) return { org: member[0].org_slug };
+      // Two rows means the same person exists in two orgs. That is a
+      // real situation this build has no screen for, and picking one for
+      // them would put someone in the wrong clinic's records.
+      if (member.length > 1) return { ambiguous: true as const };
+
+      const invite = await sql<{ org_slug: string }[]>`
+        select org_slug from staff.resolve_invite(${identity.email})
+      `;
+      if (invite.length === 1) return { org: invite[0].org_slug };
+      if (invite.length > 1) return { ambiguous: true as const };
+      return { none: true as const };
+    });
+
+    if ("ambiguous" in found) return deny("ambiguous");
+    if ("none" in found) return deny("no_invite");
+    org = found.org;
+
     outcome = await withOrg(org, "staff", async (sql) => {
       const orgs = await sql<
         { google_hosted_domain: string | null; mfa_required_roles: StaffRole[] }[]
@@ -127,13 +152,16 @@ export async function GET(req: NextRequest) {
         return { user, mfaRequired: mfaRoles.includes(user.role) };
       }
 
+      // Scoped normally now that the org is known. The role still comes
+      // from the invite rather than the resolver, so an invite revoked
+      // between the two reads correctly denies here.
       const invite = await sql<InviteRow[]>`
         select role
           from staff.org_invites
          where org_slug = ${org}
            and revoked_at is null
            and (lower(email) = ${identity.email}
-                or lower(email_domain) = ${emailDomain})
+                or lower(email_domain) = ${identity.email.split("@")[1] ?? ""})
          -- An invite addressed to this person beats a blanket domain
          -- invite, so a named org_admin isn't demoted to the domain's
          -- default role.

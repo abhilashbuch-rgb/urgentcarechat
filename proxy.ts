@@ -215,23 +215,23 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // The staff area keeps its real path and skips the preview gate.
+  // THERE IS ONE STAFF DOOR, AND IT IS ON THE ROOT DOMAIN.
   //
-  // Skipping is deliberate: TENANT_PREVIEW_KEY is a shared code that hides
-  // an unfinished marketing page, and /staff is already behind Google
-  // sign-in plus an invite — a strictly stronger door. Making staff type a
-  // shared code first would add no security and would break the OAuth
-  // round trip, since Google redirects back to a URL the gate would answer
-  // with its own HTML.
+  // Staff used to sign in at their own org's subdomain, which meant a
+  // Google OAuth redirect URI registered by hand for every customer. One
+  // address means one callback URL forever, which is the difference
+  // between onboarding a customer and provisioning one.
   //
-  // It is also NOT rewritten under /t/<slug>: the org arrives in the
-  // header, the same way API routes get it.
+  // Subdomains keep serving the white-label PATIENT portal, where the
+  // branding is the whole point. They just don't serve /staff.
   if (
     pathname === "/staff" ||
     pathname.startsWith("/staff/") ||
     pathname.startsWith("/api/staff/")
   ) {
-    return NextResponse.next({ request: { headers: requestHeaders } });
+    return NextResponse.redirect(
+      new URL(`${pathname}${request.nextUrl.search}`, `https://${ROOT_DOMAIN}`)
+    );
   }
 
   // Same gate as the path route — one implementation, both doors. Still
