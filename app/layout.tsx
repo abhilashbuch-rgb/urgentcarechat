@@ -38,17 +38,17 @@ const fraunces = localFont({
 
 const SITE_URL = "https://urgentcare.chat";
 const SITE_DESCRIPTION =
-  "Free AI-powered symptom triage and urgent care finder. Not a doctor — helps you find the right clinic, right now.";
+  "Compliance software for urgent care: daily logs that can't be backdated, staff onboarding with real signatures, and an audit trail nobody can edit. Includes a free patient symptom checker.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "urgentcare.chat — find care nearby",
+  title: "urgentcare.chat — compliance software for urgent care",
   description: SITE_DESCRIPTION,
   alternates: {
     canonical: "/",
   },
   openGraph: {
-    title: "urgentcare.chat — find care nearby",
+    title: "urgentcare.chat — compliance software for urgent care",
     description: SITE_DESCRIPTION,
     url: SITE_URL,
     siteName: "urgentcare.chat",
@@ -56,15 +56,17 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "urgentcare.chat — find care nearby",
+    title: "urgentcare.chat — compliance software for urgent care",
     description: SITE_DESCRIPTION,
   },
 };
 
 // Structured data (schema.org) describing what this site is and who runs
-// it — helps search/AI systems represent it accurately instead of guessing:
-// a free triage tool operated by a technology company, not a medical
-// practice, consistent with the disclaimer copy elsewhere on the site.
+// it — helps search/AI systems represent it accurately instead of
+// guessing. Updated when the product became a compliance engine with a
+// triage tool attached rather than the other way round. Still explicitly
+// a technology company and not a medical practice, consistent with the
+// disclaimer copy elsewhere on the site.
 const structuredData = {
   "@context": "https://schema.org",
   "@graph": [
@@ -85,14 +87,17 @@ const structuredData = {
       name: "urgentcare.chat",
       url: SITE_URL,
       description: SITE_DESCRIPTION,
-      applicationCategory: "HealthApplication",
+      applicationCategory: "BusinessApplication",
       operatingSystem: "Any",
-      isAccessibleForFree: true,
-      offers: {
-        "@type": "Offer",
-        price: "0",
-        priceCurrency: "USD",
-      },
+      // The patient symptom checker is free and always will be. The staff
+      // compliance side is not, so the blanket isAccessibleForFree that
+      // used to sit here would now be a false claim about the product.
+      featureList: [
+        "Digital compliance logs with immutable timestamps",
+        "Staff onboarding with electronic signatures",
+        "Role-based access with two-step verification",
+        "Free patient symptom triage",
+      ],
       publisher: { "@id": `${SITE_URL}/#organization` },
     },
   ],
