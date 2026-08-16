@@ -3196,3 +3196,43 @@ body {
 .tp .lp-tile {
   border-color: color-mix(in srgb, var(--l-teal) 18%, transparent);
 }
+
+/* --------- nearest location, above the hero headline --------- */
+.tp-nearest {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 9px;
+  margin-bottom: 14px;
+  padding: 9px 15px;
+  border-radius: 999px;
+  background: var(--l-teal-soft);
+  border: 1px solid color-mix(in srgb, var(--l-teal) 30%, transparent);
+  text-decoration: none;
+  color: var(--l-ink);
+  max-width: 100%;
+}
+.tp-nearest:hover { border-color: var(--l-teal); }
+
+.tp-nearest-label {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--l-teal-deep);
+}
+
+.tp-nearest-name { font-weight: 650; font-size: 14.5px; }
+
+.tp-nearest-meta {
+  font-size: 13px;
+  color: var(--l-ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.tp-nearest-open { color: var(--l-teal-deep); font-weight: 600; }
+
+@media (max-width: 600px) {
+  .tp-nearest { padding: 8px 13px; gap: 3px 7px; }
+  .tp-nearest-name { font-size: 13.5px; }
+}

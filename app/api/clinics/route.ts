@@ -564,6 +564,16 @@ async function handleTenantClinics(
   }
 }
 
+// Coordinates Vercel attaches at the edge, derived from the request IP.
+// Absent locally and for requests it can't place, in which case callers
+// fall back to asking for a zip.
+function edgeCoords(req: NextRequest): { lat: number; lng: number } | null {
+  const lat = parseFloat(req.headers.get("x-vercel-ip-latitude") ?? "");
+  const lng = parseFloat(req.headers.get("x-vercel-ip-longitude") ?? "");
+  if (isNaN(lat) || isNaN(lng)) return null;
+  return { lat, lng };
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const zip = searchParams.get("zip");
@@ -638,6 +648,16 @@ export async function GET(req: NextRequest) {
     }
     centerLat = coords.lat;
     centerLng = coords.lng;
+  } else if (edgeCoords(req)) {
+    // No zip and no coordinates: fall back to the position Vercel derives
+    // from the request IP at the edge. Precise enough for "which of your
+    // locations is closest", costs nothing, and asks the visitor for
+    // nothing — the browser geolocation prompt is a real drop-off point
+    // for something the page shows before they've engaged.
+    const edge = edgeCoords(req)!;
+    centerLat = edge.lat;
+    centerLng = edge.lng;
+    cacheKey = `${centerLat.toFixed(2)},${centerLng.toFixed(2)}`;
   } else {
     return NextResponse.json(
       { error: "Please provide a valid 5-digit zip code" },
