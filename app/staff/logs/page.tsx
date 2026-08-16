@@ -1,6 +1,7 @@
 import { requireStaff } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
 import { todaysBoard } from "@/lib/staff/logs";
+import { billingState } from "@/lib/staff/billing";
 import { SLOT_LABELS, currentSlot } from "@/lib/staff/forms";
 import { formatSignedAt } from "@/lib/staff/labels";
 
@@ -18,10 +19,13 @@ export default async function LogsBoard({
 }: {
   searchParams: Promise<{ done?: string }>;
 }) {
-  const { session } = await requireStaff();
+  const { session, org } = await requireStaff();
   const { done } = await searchParams;
 
-  const rows = await withSession(session, (sql) => todaysBoard(sql));
+  const { rows, billing } = await withSession(session, async (sql) => ({
+    rows: await todaysBoard(sql),
+    billing: await billingState(sql, org),
+  }));
   const now = currentSlot();
 
   const outstanding = rows.filter((r) => !r.response_id).length;
@@ -38,6 +42,17 @@ export default async function LogsBoard({
           {flagged > 0 && ` · ${flagged} out of range`}
         </p>
       </header>
+
+      {billing.is_read_only && (
+        <div className="st-notice st-notice-warn" role="status">
+          <strong>Read-only — new entries are paused</strong>
+          <span>
+            Everything already recorded is still here, still searchable, and
+            still exportable for a surveyor. Only new submissions are on hold
+            until an administrator sorts out billing.
+          </span>
+        </div>
+      )}
 
       {done && (
         <div className="st-notice" role="status">
@@ -94,6 +109,8 @@ export default async function LogsBoard({
                 )}
                 {doneAt ? (
                   <span className="st-pill st-pill-ok">Done</span>
+                ) : billing.is_read_only ? (
+                  <span className="st-pill st-pill-new">Paused</span>
                 ) : (
                   <a
                     className={`st-board-btn${isNow ? "" : " st-board-btn-later"}`}

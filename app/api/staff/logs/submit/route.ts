@@ -121,6 +121,11 @@ export async function POST(req: NextRequest) {
     if (message.includes("staff_responses_one_live")) {
       return NextResponse.json({ error: "already_submitted" }, { status: 409 });
     }
+    // The read-only trigger. 402 rather than 403: this is about payment,
+    // and the distinction matters to whoever reads the logs later.
+    if (message.includes("read_only:")) {
+      return NextResponse.json({ error: "read_only" }, { status: 402 });
+    }
     console.error("[staff-logs] submit failed:", message);
     return NextResponse.json({ error: "server_error" }, { status: 500 });
   }

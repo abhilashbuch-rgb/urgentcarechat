@@ -93,7 +93,9 @@ export default function LogForm({
       setError(
         res?.status === 409
           ? "This log was already submitted for this shift."
-          : "That didn't save. Nothing was recorded — try again."
+          : res?.status === 402
+            ? "This account is in read-only mode, so new entries can't be filed. Everything already recorded is still here and still exportable — an administrator needs to sort out billing."
+            : "That didn't save. Nothing was recorded — try again."
       );
       return;
     }
