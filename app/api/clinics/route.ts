@@ -499,7 +499,17 @@ async function handleTenantClinics(
       const tokens = cfg?.nameIncludes?.length
         ? cfg.nameIncludes.map((t) => t.toLowerCase())
         : brandTokens(tenant.displayName);
-      const radiusMeters = Math.round((cfg?.radiusMiles ?? 60) * 1609.34);
+      // Google Places caps circle.radius at 50,000 m and rejects the whole
+      // request above it — which silently degraded every brand search to
+      // the seeded-rows fallback. Clamped rather than validated so an
+      // over-large config value is capped instead of invalidating the
+      // tenant's entire config. locationBias only *weights* results, so a
+      // 31-mile bias still surfaces the brand's locations further out.
+      const PLACES_MAX_RADIUS_M = 50000;
+      const radiusMeters = Math.min(
+        PLACES_MAX_RADIUS_M,
+        Math.round((cfg?.radiusMiles ?? 30) * 1609.34)
+      );
 
       const live = await searchBrandLocations(
         cfg?.searchQuery || tenant.displayName,
