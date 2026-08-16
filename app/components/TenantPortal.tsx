@@ -5,49 +5,9 @@ import type { Tenant } from "@/lib/tenants";
 import type { TenantSection } from "@/lib/tenant-config";
 import type { TenantLocation } from "@/lib/tenant-locations";
 import type { HealthTopic } from "@/lib/medlineplus";
+import { serviceLabel } from "@/lib/service-labels";
 
 const ROOT_URL = "https://urgentcare.chat";
-
-// Service tags are stored as database slugs. Patients shouldn't be reading
-// "covid_testing" off a clinic card.
-const SERVICE_LABELS: Record<string, string> = {
-  covid_testing: "COVID testing",
-  occupational_health: "Occupational health",
-  x_ray: "X-ray",
-  "x-ray": "X-ray",
-  lab: "Lab work",
-  physicals: "Physicals",
-  vaccinations: "Vaccinations",
-  pediatric: "Pediatrics",
-  stitches: "Stitches",
-  sports_physicals: "Sports physicals",
-  std_testing: "STD testing",
-  iv_fluids: "IV fluids",
-};
-
-function serviceLabel(slug: string): string {
-  const known = SERVICE_LABELS[slug.toLowerCase()];
-  if (known) return known;
-  // Unknown tag: at least turn it into words rather than showing the slug.
-  const words = slug.replace(/[_-]+/g, " ").trim();
-  return words.charAt(0).toUpperCase() + words.slice(1);
-}
-
-// ============================================================
-// Renders a tenant's portal from their config. Nothing about the layout is
-// hardcoded per brand: the section list, its order, the copy, and the
-// theme all come from `tenants.config`, so changing afc.urgentcare.chat is
-// a SQL update rather than a deploy.
-//
-// Styling reuses the root site's `.lp-*` system and re-points its accent
-// variables at the tenant's color, so a tenant page inherits every future
-// layout fix instead of drifting into a fork.
-//
-// Links out of here (nav, CTAs, footer) are absolute to the root domain
-// when they refer to shared pages. A relative /reads under
-// afc.urgentcare.chat would be rewritten by proxy.ts to /t/afc/reads,
-// which doesn't exist.
-// ============================================================
 
 export default function TenantPortal({
   tenant,

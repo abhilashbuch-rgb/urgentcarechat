@@ -8,6 +8,7 @@ import ClaimListing from "./ClaimListing";
 import { checkRedFlags } from "@/lib/red-flags";
 import BrandIcon from "@/app/components/BrandIcon";
 import type { Tenant } from "@/lib/tenants";
+import { serviceLabel, insuranceLabel } from "@/lib/service-labels";
 
 // Quiet, optional footer link — never shown during 911/988 alerts.
 const TIP_JAR_URL = "https://ko-fi.com/urgentcarechat";
@@ -785,19 +786,37 @@ export default function TriageApp({
                           <div className="clinic-tags">
                             {c.services.map((s) => (
                               <span key={s} className="tag">
-                                {s.replace(/_/g, " ")}
+                                {serviceLabel(s)}
                               </span>
                             ))}
                             {c.insurance.map((ins) => (
                               <span key={ins} className="tag insurance">
-                                {ins}
+                                {insuranceLabel(ins)}
                               </span>
                             ))}
                           </div>
                         )}
                         <div className="clinic-actions">
+                          {/* Inside a branded portal the clinic's own site is
+                              its check-in page, so that becomes the primary
+                              action — the visit starts in the brand's own
+                              funnel rather than at a third party. On the
+                              public directory the same URL is just a website,
+                              which is all we can honestly call it. */}
+                          {tenant && c.websiteUrl && (
+                            <a
+                              className="clinic-btn"
+                              href={c.websiteUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={() => logClick(c.name, "website", c.placeId)}
+                              aria-label={`Check in online at ${c.name}`}
+                            >
+                              Check in online
+                            </a>
+                          )}
                           <a
-                            className="clinic-btn"
+                            className={`clinic-btn${tenant && c.websiteUrl ? " secondary" : ""}`}
                             href={c.directionsUrl}
                             target="_blank"
                             rel="noopener noreferrer"
@@ -816,7 +835,7 @@ export default function TriageApp({
                               Call {c.phone}
                             </a>
                           )}
-                          {c.websiteUrl && (
+                          {!tenant && c.websiteUrl && (
                             <a
                               className="clinic-btn secondary"
                               href={c.websiteUrl}

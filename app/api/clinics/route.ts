@@ -303,8 +303,11 @@ function brandTokens(displayName: string): string[] {
 
 // Nothing beyond this is a usable answer to "where should I go right now".
 // Before this cap, a Nashville search padded its list with the seeded
-// Philadelphia rows at 680 miles.
-const MAX_USEFUL_MILES = 100;
+// Philadelphia rows at 680 miles. Set at 50 rather than 100 because nobody
+// drives 99 miles to an urgent care — Detroit and St. Louis were both
+// surfacing a "nearest" clinic at 99 miles, which reads as a result but
+// isn't one.
+const MAX_USEFUL_MILES = 50;
 
 function withinRange(results: PlaceResult[]): PlaceResult[] {
   return results.filter(
