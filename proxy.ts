@@ -61,6 +61,51 @@ const ROOT_ONLY_PATHS = new Set([
 // lookup, and getTenantBySlug caches for a minute, so an unknown path costs
 // at most one Supabase read per minute before falling through to the normal
 // 404.
+// Access gate for tenant portals. Inactive unless TENANT_PREVIEW_KEY is
+// set, so going fully live means unsetting one env var.
+//
+// Deliberately applied on BOTH routes a portal is reachable through — the
+// subdomain and urgentcare.chat/<slug>. Gating only the subdomain would
+// have left the path URL wide open, which is exactly the kind of hole that
+// makes a "private preview" not private.
+//
+// Returns null when the request may proceed.
+function tenantGate(request: NextRequest): NextResponse | null {
+  const previewKey = process.env.TENANT_PREVIEW_KEY;
+  if (!previewKey) return null;
+
+  const cookieMatches = request.cookies.get("uc_tenant_key")?.value === previewKey;
+  if (cookieMatches) return null;
+
+  const queryKey = request.nextUrl.searchParams.get("key");
+  if (queryKey === previewKey) {
+    const cleanUrl = new URL(request.url);
+    cleanUrl.searchParams.delete("key");
+    const unlocked = NextResponse.redirect(cleanUrl);
+    unlocked.cookies.set("uc_tenant_key", previewKey, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 30,
+      path: "/",
+    });
+    return unlocked;
+  }
+
+  return new NextResponse(
+    `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1" /><title>Private preview</title></head>
+    <body style="font-family:-apple-system,system-ui,sans-serif;max-width:380px;margin:96px auto;text-align:center;color:#1a1a1a;padding:0 20px;">
+      <h1 style="font-size:18px;margin-bottom:8px;">Private preview</h1>
+      <p style="color:#555;font-size:14px;margin-bottom:20px;">This link needs an access code.</p>
+      <form method="GET" style="display:flex;gap:8px;justify-content:center;">
+        <input name="key" placeholder="Access code" autofocus style="padding:9px 12px;font-size:14px;border:1px solid #ccc;border-radius:6px;flex:1;max-width:200px;" />
+        <button style="padding:9px 16px;font-size:14px;border:none;border-radius:6px;background:#3c3b6e;color:#fff;cursor:pointer;">Enter</button>
+      </form>
+    </body></html>`,
+    { status: 401, headers: { "content-type": "text/html; charset=utf-8" } }
+  );
+}
+
 async function handleRootDomain(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const [, first, ...rest] = pathname.split("/");
@@ -71,6 +116,9 @@ async function handleRootDomain(request: NextRequest) {
 
   const tenant = await getTenantBySlug(first);
   if (!tenant) return NextResponse.next();
+
+  const gated = tenantGate(request);
+  if (gated) return gated;
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-tenant-slug", tenant.slug);
@@ -105,46 +153,9 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL(`https://${ROOT_DOMAIN}`, request.url));
   }
 
-  // Optional access gate for tenant subdomains only — root urgentcare.chat
-  // is never affected by this. Vercel's own deployment password protection
-  // is project-wide, so it can't gate just afc.urgentcare.chat while
-  // leaving the public root page open; this does that instead. Inactive
-  // unless TENANT_PREVIEW_KEY is actually set, so a real customer going
-  // fully live just needs that env var removed/unset.
-  const previewKey = process.env.TENANT_PREVIEW_KEY;
-  if (previewKey) {
-    const cookieMatches = request.cookies.get("uc_tenant_key")?.value === previewKey;
-    const queryKey = request.nextUrl.searchParams.get("key");
-
-    if (!cookieMatches && queryKey === previewKey) {
-      const cleanUrl = new URL(request.url);
-      cleanUrl.searchParams.delete("key");
-      const unlocked = NextResponse.redirect(cleanUrl);
-      unlocked.cookies.set("uc_tenant_key", previewKey, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 30,
-        path: "/",
-      });
-      return unlocked;
-    }
-
-    if (!cookieMatches) {
-      return new NextResponse(
-        `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1" /><title>Private preview</title></head>
-        <body style="font-family:-apple-system,system-ui,sans-serif;max-width:380px;margin:96px auto;text-align:center;color:#1a1a1a;padding:0 20px;">
-          <h1 style="font-size:18px;margin-bottom:8px;">Private preview</h1>
-          <p style="color:#555;font-size:14px;margin-bottom:20px;">This link needs an access code.</p>
-          <form method="GET" style="display:flex;gap:8px;justify-content:center;">
-            <input name="key" placeholder="Access code" autofocus style="padding:9px 12px;font-size:14px;border:1px solid #ccc;border-radius:6px;flex:1;max-width:200px;" />
-            <button style="padding:9px 16px;font-size:14px;border:none;border-radius:6px;background:#3c3b6e;color:#fff;cursor:pointer;">Enter</button>
-          </form>
-        </body></html>`,
-        { status: 401, headers: { "content-type": "text/html; charset=utf-8" } }
-      );
-    }
-  }
+  // Same gate as the path route — one implementation, both doors.
+  const gated = tenantGate(request);
+  if (gated) return gated;
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-tenant-slug", tenant.slug);
@@ -152,18 +163,22 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // API routes keep their real path — they read the tenant from the
-  // header instead of the URL. Only page requests get rewritten into
-  // the tenant-scoped route tree.
+  // header instead of the URL.
   if (pathname.startsWith("/api/")) {
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
-  // NOTE: do not add a redirect for /t/* here. The rewrite below targets
-  // /t/<slug>, and this proxy runs again on that path — so a rule matching
-  // /t/* turns the portal root into a 307 redirect loop from "/" to "/".
-  // That is exactly what shipped in #20 and took the subdomain down.
-  // Anything that needs to special-case the internal route tree has to
-  // distinguish the original request from the rewritten one first.
+  // THE REWRITE RE-ENTERS THIS PROXY. On Vercel (though not under a local
+  // `next start`, which is why this passed every local test) the rewritten
+  // path comes back through here, so prefixing unconditionally turned "/"
+  // into /t/afc and then /t/afc/t/afc — a 404 on the portal root. Making
+  // the prefix idempotent is the fix.
+  //
+  // It must be a pass-through, not a redirect: a redirect here is what
+  // turned the 404 into an infinite 307 loop in #20.
+  if (pathname === `/t/${tenant.slug}` || pathname.startsWith(`/t/${tenant.slug}/`)) {
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
 
   // Pages that only exist on the root domain. Rewriting them under the
   // tenant prefix produces /t/afc/reads, which doesn't exist, so a
