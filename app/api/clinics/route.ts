@@ -226,6 +226,18 @@ function sortClinics(results: PlaceResult[]): void {
   });
 }
 
+// Inside a tenant portal, rank by distance and nothing else.
+//
+// sortClinics above puts featured/paid placement first, which is the right
+// behaviour for the public directory — that's the business model. It is the
+// wrong behaviour here: every result already belongs to the same brand, so
+// "featured" would only mean showing a patient a FARTHER location of the
+// same chain than the one down the road. A branded portal answers one
+// question — which of our locations is closest to you.
+function sortByDistance(results: PlaceResult[]): void {
+  results.sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
+}
+
 // Live rating/hours/website for one known clinic, by Google Place ID
 // (Place Details, not Text Search — Text Search has no way to filter
 // to "just this chain's locations", which is the whole reason a
@@ -361,7 +373,7 @@ async function handleTenantClinics(
       })
     );
 
-    sortClinics(results);
+    sortByDistance(results);
 
     let filtered = results;
     if (insurance && insurance.toLowerCase() !== "skip" && insurance.toLowerCase() !== "none") {
