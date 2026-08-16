@@ -12,8 +12,12 @@ const KOFI_URL = "https://ko-fi.com/urgentcarechat";
 const CASE_STUDIES = [
   {
     brand: "AFC Urgent Care",
-    url: "https://afc.urgentcare.chat",
-    host: "afc.urgentcare.chat",
+    // The path URL, not afc.urgentcare.chat — the wildcard DNS record for
+    // *.urgentcare.chat isn't in place yet, so the subdomain does not
+    // resolve and this button was a dead link. Both serve the identical
+    // portal; flip these two lines once DNS lands.
+    url: "https://urgentcare.chat/afc",
+    host: "urgentcare.chat/afc",
     blurb:
       "Four Philadelphia-area locations, routed by their own branded assistant.",
     accent: "#E61D30",
@@ -146,7 +150,7 @@ export default async function LandingPage() {
             <div>
               <h2 className="lp-section-title">See it live</h2>
               <p className="lp-section-sub">
-                Urgent care groups run this on their own subdomain, with their
+                Urgent care groups run this under their own name, with their
                 logo and their brand color, routing only to their locations.
               </p>
             </div>

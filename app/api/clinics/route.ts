@@ -151,8 +151,15 @@ async function selectClinicRows<T>(
 
 async function enrichWithSupabase(results: PlaceResult[]): Promise<void> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  // Anon key FIRST, deliberately. These are public reads and RLS already
+  // grants anon SELECT on clinics, so the elevated key buys nothing here —
+  // but preferring it made every Supabase-backed feature depend on a
+  // credential this endpoint doesn't need. When that key went stale in
+  // production the result was a 401 on every query while the endpoint kept
+  // returning 200 with plausible-looking clinics: insurance tags empty,
+  // network boost dead, wait times gone, and tenant search returning zero.
   const supabaseKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !supabaseKey) return;
 
   const placeIds = results.map((r) => r.placeId).filter(Boolean);
@@ -267,8 +274,15 @@ async function handleTenantClinics(
   insurance: string | null
 ): Promise<NextResponse> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  // Anon key FIRST, deliberately. These are public reads and RLS already
+  // grants anon SELECT on clinics, so the elevated key buys nothing here —
+  // but preferring it made every Supabase-backed feature depend on a
+  // credential this endpoint doesn't need. When that key went stale in
+  // production the result was a 401 on every query while the endpoint kept
+  // returning 200 with plausible-looking clinics: insurance tags empty,
+  // network boost dead, wait times gone, and tenant search returning zero.
   const supabaseKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
     return NextResponse.json({ clinics: [] });
