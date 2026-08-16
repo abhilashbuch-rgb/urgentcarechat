@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { distanceMiles } from "@/lib/geo";
 import { isWaitStale } from "@/lib/wait-time";
+import { getTenantBySlug } from "@/lib/tenants";
 
 // ============================================================
 // /api/clinics — Real clinic search via Google Places API (New)
@@ -278,6 +279,120 @@ async function fetchPlaceDetails(placeId: string, apiKey: string) {
 // Tenant-scoped search (e.g. afc.urgentcare.chat): reads only that
 // tenant's own clinics rows — never Google's broad "urgent care near
 // X" search — since Google has no concept of "only AFC's locations".
+// Words that don't distinguish one urgent-care brand from another. Used to
+// derive a name filter from a tenant's display name: "AFC Urgent Care" ->
+// ["afc"], so a Places search for that brand keeps AFC's locations and
+// drops the generic urgent cares Google mixes in.
+const GENERIC_BRAND_WORDS = new Set([
+  "urgent", "care", "health", "healthcare", "medical", "clinic", "clinics",
+  "center", "centre", "centers", "walk", "in", "walk-in", "express",
+  "immediate", "family", "the", "and", "of", "&",
+]);
+
+function brandTokens(displayName: string): string[] {
+  const tokens = displayName
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length > 1 && !GENERIC_BRAND_WORDS.has(w));
+  // If every word was generic, fall back to the full name so we never
+  // accidentally match everything.
+  return tokens.length ? tokens : [displayName.toLowerCase()];
+}
+
+// Live, nationwide lookup of one brand's locations near a patient.
+//
+// The alternative — seeding every location into Supabase — doesn't scale to
+// a franchise with hundreds of clinics and goes stale the moment one opens
+// or closes. Searching Google for the brand name near the patient covers
+// the entire chain from day one with no data entry, and Google keeps it
+// current. Seeded rows still matter: they carry what Google doesn't have
+// (insurance tags, wait times), merged in afterwards by place ID.
+//
+// Google returns generic urgent cares alongside the brand, so results are
+// filtered to names containing every distinguishing token of the brand.
+async function searchBrandLocations(
+  displayName: string,
+  tokens: string[],
+  centerLat: number,
+  centerLng: number,
+  apiKey: string,
+  radiusMeters: number
+): Promise<PlaceResult[]> {
+  const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Goog-Api-Key": apiKey,
+      "X-Goog-FieldMask":
+        "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.rating,places.currentOpeningHours,places.location,places.websiteUri",
+    },
+    body: JSON.stringify({
+      textQuery: displayName,
+      locationBias: {
+        circle: {
+          center: { latitude: centerLat, longitude: centerLng },
+          radius: radiusMeters,
+        },
+      },
+      pageSize: 20,
+    }),
+  });
+
+  if (!res.ok) {
+    console.error(
+      "[clinics] brand search failed:",
+      res.status,
+      (await res.text()).slice(0, 200)
+    );
+    return [];
+  }
+
+  const data = await res.json();
+  const places: Array<{
+    id?: string;
+    displayName?: { text?: string };
+    formattedAddress?: string;
+    nationalPhoneNumber?: string;
+    rating?: number;
+    currentOpeningHours?: { openNow?: boolean; weekdayDescriptions?: string[] };
+    location?: { latitude?: number; longitude?: number };
+    websiteUri?: string;
+  }> = data.places || [];
+
+  return places
+    .filter((p) => {
+      const name = (p.displayName?.text || "").toLowerCase();
+      return tokens.every((t) => name.includes(t));
+    })
+    .map((place) => {
+      const lat = place.location?.latitude || 0;
+      const lng = place.location?.longitude || 0;
+      const hoursInfo = formatHoursStatus(place.currentOpeningHours);
+      const address = place.formattedAddress || "";
+      return {
+        name: place.displayName?.text || "Urgent Care",
+        address,
+        phone: place.nationalPhoneNumber || "",
+        lat,
+        lng,
+        rating: place.rating || 0,
+        open: hoursInfo.open,
+        hours: hoursInfo.hours,
+        placeId: place.id || "",
+        distance: `${distanceMiles(centerLat, centerLng, lat, lng).toFixed(1)} mi`,
+        services: [...DEFAULT_URGENT_CARE_SERVICES],
+        insurance: [],
+        directionsUrl: `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+          address || place.displayName?.text || ""
+        )}${place.id ? `&destination_place_id=${place.id}` : ""}`,
+        websiteUrl: place.websiteUri || "",
+        featured: false,
+        network: false,
+        waitMinutes: null,
+      } satisfies PlaceResult;
+    });
+}
+
 async function handleTenantClinics(
   tenantSlug: string,
   centerLat: number,
@@ -333,7 +448,7 @@ async function handleTenantClinics(
 
     if (!rows) return NextResponse.json({ clinics: [] });
 
-    const results: PlaceResult[] = await Promise.all(
+    const seeded: PlaceResult[] = await Promise.all(
       rows.map(async (row) => {
         const details = row.google_place_id
           ? await fetchPlaceDetails(row.google_place_id, apiKey)
@@ -372,6 +487,40 @@ async function handleTenantClinics(
         };
       })
     );
+
+    // Live brand search FIRST, so the portal covers the whole chain
+    // nationwide rather than only the locations someone remembered to seed.
+    // Seeded rows remain the fallback (and the source of insurance tags).
+    const tenant = await getTenantBySlug(tenantSlug);
+    let results = seeded;
+
+    if (tenant) {
+      const cfg = tenant.config.locations;
+      const tokens = cfg?.nameIncludes?.length
+        ? cfg.nameIncludes.map((t) => t.toLowerCase())
+        : brandTokens(tenant.displayName);
+      const radiusMeters = Math.round((cfg?.radiusMiles ?? 60) * 1609.34);
+
+      const live = await searchBrandLocations(
+        cfg?.searchQuery || tenant.displayName,
+        tokens,
+        centerLat,
+        centerLng,
+        apiKey,
+        radiusMeters
+      );
+
+      if (live.length > 0) {
+        // Prefer live results, but keep any seeded location the search
+        // missed so a hand-curated clinic never disappears.
+        const seenIds = new Set(live.map((r) => r.placeId).filter(Boolean));
+        const missed = seeded.filter((r) => r.placeId && !seenIds.has(r.placeId));
+        results = [...live, ...missed];
+        // Live results carry no insurance tags or wait times — those live in
+        // our own table, merged back on by place ID.
+        await enrichWithSupabase(results);
+      }
+    }
 
     sortByDistance(results);
 
