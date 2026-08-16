@@ -70,7 +70,14 @@ export async function POST(req: NextRequest) {
       // Which org? A Payment Link can carry the slug in
       // client_reference_id for an existing clinic adding a location or
       // reactivating. Otherwise this is a new customer and we provision.
-      const claimed = obj.client_reference_id ?? obj.metadata?.org_slug ?? null;
+      // Three accepted keys because a Payment Link can be configured any
+      // of these ways and getting it wrong silently provisions a second
+      // org instead of updating the intended one.
+      const claimed =
+        obj.client_reference_id ??
+        obj.metadata?.org_slug ??
+        obj.metadata?.org_id ??
+        null;
 
       let slug: string | null = null;
       const byCustomer = await sql<{ slug: string }[]>`
