@@ -4017,3 +4017,71 @@ body {
   .st-board-row { flex-direction: column; align-items: stretch; gap: 10px; }
   .st-board-action { justify-content: flex-end; }
 }
+
+/* ---------- second factor ---------- */
+
+.st-signin-card-wide { max-width: 460px; }
+
+.st-mfa-steps { margin: 0 0 16px 18px; }
+.st-mfa-steps li { font-size: 13px; line-height: 1.5; color: var(--ink-soft); margin-bottom: 6px; }
+
+.st-mfa-qr {
+  display: block;
+  margin: 0 auto 14px;
+  width: 200px;
+  height: 200px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  /* The QR must stay pure black on pure white — a tinted background is a
+     reliable way to make a phone camera give up on it. */
+  background: #fff;
+  padding: 6px;
+}
+
+.st-mfa-manual { margin-bottom: 16px; }
+.st-mfa-manual summary { font-size: 12.5px; color: var(--ink-soft); cursor: pointer; }
+.st-mfa-manual p { font-size: 12.5px; color: var(--ink-soft); margin: 8px 0 6px; }
+.st-mfa-secret {
+  display: block;
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: .04em;
+  background: #f1f2f5;
+  padding: 9px 11px;
+  border-radius: 6px;
+  word-break: break-all;
+  user-select: all;
+}
+
+/* Six characters, spaced out and centered — reads like a code, not like
+   a name field, and the tabular figures stop it shifting as digits land. */
+.st-mfa-input {
+  font-family: var(--mono);
+  font-size: 26px;
+  letter-spacing: .34em;
+  text-align: center;
+  padding: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.st-mfa-busy { font-size: 12.5px; color: #8b919b; text-align: center; }
+
+/* ---------- team administration ---------- */
+
+.st-cell-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.st-danger, .st-quiet {
+  border: 1px solid var(--rule);
+  background: #fff;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.st-danger { border-color: #e8c3c8; color: #8c1c29; }
+.st-danger:hover { background: #fdeaec; }
+.st-quiet { color: var(--ink-soft); }
+.st-quiet:hover { background: #f1f2f5; color: var(--ink); }
+
+.st-row-off { opacity: .55; }
+.st-row-off .st-cell-name { text-decoration: line-through; }

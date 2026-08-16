@@ -24,6 +24,8 @@ interface UserRow {
   role: StaffRole;
   active: boolean;
   name: string | null;
+  session_epoch: number;
+  mfa_enrolled: boolean;
 }
 
 interface InviteRow {
@@ -58,15 +60,48 @@ export async function GET(req: NextRequest) {
 
   const emailDomain = identity.email.split("@")[1] ?? "";
 
-  let outcome: { user: UserRow } | { denied: "no_invite" | "deactivated" };
+  let outcome:
+    | { user: UserRow; mfaRequired: boolean }
+    | { denied: "no_invite" | "deactivated" | "wrong_domain" };
   try {
     // Every statement below runs with the org context of the HOSTNAME —
     // there is no session yet, so the host is the only trustworthy source
     // of "which org". RLS therefore confines the whole sign-in to this org
     // even if a query below were written carelessly.
     outcome = await withOrg(org, "staff", async (sql) => {
+      const orgs = await sql<
+        { google_hosted_domain: string | null; mfa_required_roles: StaffRole[] }[]
+      >`
+        select google_hosted_domain, mfa_required_roles
+          from staff.orgs where slug = ${org}
+      `;
+      const policy = orgs[0];
+
+      // Checked BEFORE the invite lookup, and before any row is touched.
+      // An org that has bound itself to a Workspace domain is saying that
+      // no account outside it is theirs — including one that matches an
+      // invite, because a personal address on an invite is exactly the
+      // mistake this catches.
+      if (
+        policy?.google_hosted_domain &&
+        identity.hostedDomain !== policy.google_hosted_domain.toLowerCase()
+      ) {
+        await sql`
+          insert into staff.audit_log (org_slug, action, entity, detail)
+          values (${org}, 'signin_denied', 'email', ${sql.json({
+            email: identity.email,
+            reason: "wrong_domain",
+            presented: identity.hostedDomain,
+          })})
+        `;
+        return { denied: "wrong_domain" as const };
+      }
+
+      const mfaRoles = policy?.mfa_required_roles ?? [];
+
       const existing = await sql<UserRow[]>`
-        select id, role, active, name
+        select id, role, active, name, session_epoch,
+               (totp_confirmed_at is not null) as mfa_enrolled
           from staff.users
          where org_slug = ${org}
            and (google_sub = ${identity.sub} or lower(email) = ${identity.email})
@@ -89,7 +124,7 @@ export async function GET(req: NextRequest) {
                  last_seen_at = now()
            where id = ${user.id}
         `;
-        return { user };
+        return { user, mfaRequired: mfaRoles.includes(user.role) };
       }
 
       const invite = await sql<InviteRow[]>`
@@ -121,9 +156,13 @@ export async function GET(req: NextRequest) {
         insert into staff.users (google_sub, email, name, org_slug, role)
         values (${identity.sub}, ${identity.email}, ${identity.name},
                 ${org}, ${invite[0].role}::staff.user_role)
-        returning id, role, active, name
+        returning id, role, active, name, session_epoch,
+                  (totp_confirmed_at is not null) as mfa_enrolled
       `;
-      return { user: created[0] };
+      return {
+        user: created[0],
+        mfaRequired: mfaRoles.includes(created[0].role),
+      };
     });
   } catch (err) {
     console.error(
@@ -135,7 +174,7 @@ export async function GET(req: NextRequest) {
 
   if ("denied" in outcome) return deny(outcome.denied);
 
-  const { user } = outcome;
+  const { user, mfaRequired } = outcome;
 
   await withOrg(org, user.role, async (sql) => {
     await sql`
@@ -148,15 +187,21 @@ export async function GET(req: NextRequest) {
     // by postgres; the sign-in proceeds.
   });
 
+  // A session that still owes a second factor is minted as "pending": it
+  // proves who you are and unlocks nothing but the MFA screens.
   const token = await signSession({
     uid: user.id,
     org: user.role === "platform_super_admin" ? null : org,
     role: user.role,
     email: identity.email,
     name: user.name ?? identity.name,
+    ep: user.session_epoch,
+    mfa: mfaRequired ? "pending" : "ok",
   });
 
-  const res = redirectTo("/staff");
+  const res = redirectTo(
+    !mfaRequired ? "/staff" : user.mfa_enrolled ? "/staff/mfa" : "/staff/mfa/enroll"
+  );
   res.cookies.set(STAFF_COOKIE, token, {
     httpOnly: true,
     secure: !isLocalRequest(req),

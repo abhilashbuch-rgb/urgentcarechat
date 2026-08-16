@@ -33,6 +33,13 @@ export interface StaffSession {
   name: string | null;
   /** Unix seconds. */
   exp: number;
+  /** staff.users.session_epoch at the moment this session was issued.
+   *  A session whose epoch is behind the user's has been revoked. */
+  ep: number;
+  /** Whether the second factor has been presented in THIS session.
+   *  "pending" sessions exist only so someone can reach the MFA screens;
+   *  every other route treats them as signed out. */
+  mfa: "ok" | "pending";
 }
 
 function b64urlEncode(bytes: Uint8Array): string {
@@ -119,6 +126,12 @@ export async function verifySession(
       new TextDecoder().decode(b64urlDecode(body))
     ) as StaffSession;
     if (!parsed?.uid || !parsed?.role || !parsed?.exp) return null;
+    // Sessions minted before revocation existed carry no epoch. Treating a
+    // missing one as 0 is right — 0 is what every user starts at, so those
+    // sessions stay valid until someone is actually revoked, and are
+    // refused the moment anyone is.
+    if (typeof parsed.ep !== "number") parsed.ep = 0;
+    if (parsed.mfa !== "pending") parsed.mfa = "ok";
     if (parsed.exp * 1000 < Date.now()) return null;
     return parsed;
   } catch {

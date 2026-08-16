@@ -130,17 +130,31 @@ export interface TeamMember {
   assigned_count: number;
   outstanding_count: number;
   last_signed_at: string | null;
+  active: boolean;
+  mfa_enrolled: boolean;
+  mfa_required: boolean;
 }
 
+/** The roster, including deactivated people.
+ *
+ *  compliance_status only covers active users — correct for a completion
+ *  report, wrong for an admin screen, where the whole point is to see
+ *  someone you switched off and be able to switch them back on. So this
+ *  reads staff.users directly and joins the counts on. */
 export async function teamStatus(sql: StaffSql): Promise<TeamMember[]> {
   return sql<TeamMember[]>`
-    select user_id, email, name, legal_name, job_title, role,
-           start_date::text as start_date,
-           esign_consented_at::text as esign_consented_at,
-           assigned_count::int as assigned_count,
-           outstanding_count::int as outstanding_count,
-           last_signed_at::text as last_signed_at
-      from staff.compliance_status
-     order by outstanding_count desc, email
+    select u.id as user_id, u.email, u.name, u.legal_name, u.job_title, u.role,
+           u.start_date::text as start_date,
+           u.esign_consented_at::text as esign_consented_at,
+           u.active,
+           (u.totp_confirmed_at is not null) as mfa_enrolled,
+           (u.role = any (o.mfa_required_roles)) as mfa_required,
+           coalesce(c.assigned_count, 0)::int as assigned_count,
+           coalesce(c.outstanding_count, 0)::int as outstanding_count,
+           c.last_signed_at::text as last_signed_at
+      from staff.users u
+      join staff.orgs o on o.slug = u.org_slug
+      left join staff.compliance_status c on c.user_id = u.id
+     order by u.active desc, coalesce(c.outstanding_count, 0) desc, u.email
   `;
 }

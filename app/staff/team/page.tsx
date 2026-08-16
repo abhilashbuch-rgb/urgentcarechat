@@ -13,25 +13,54 @@ import { formatSignedAt } from "@/lib/staff/labels";
 
 export const dynamic = "force-dynamic";
 
-export default async function Team() {
+const NOTICES: Record<string, string> = {
+  deactivated: "Access switched off. Their live sessions stopped working immediately.",
+  activated: "Access switched back on. They will need to sign in again.",
+  mfa_reset: "Second factor cleared. They will set up a new one at next sign-in.",
+  sessions_revoked: "Signed out of every device.",
+  not_yourself: "You can't deactivate your own account from here.",
+  last_admin: "That would leave this organization with no active administrator.",
+  not_found: "No such person in this organization.",
+  server_error: "That didn't go through. Nothing changed.",
+};
+
+export default async function Team({
+  searchParams,
+}: {
+  searchParams: Promise<{ done?: string; e?: string }>;
+}) {
   const { session } = await requireStaff();
+  const { done, e } = await searchParams;
 
   // The nav already hides this link below org_admin, but hiding a link is
   // not access control — someone who types the URL gets the same answer.
   if (!atLeast(session.role, "org_admin")) redirect("/staff");
 
   const team = await withSession(session, (sql) => teamStatus(sql));
-  const behind = team.filter((m) => m.outstanding_count > 0).length;
+  const active = team.filter((m) => m.active);
+  const behind = active.filter((m) => m.outstanding_count > 0).length;
+  const mfaGaps = active.filter((m) => m.mfa_required && !m.mfa_enrolled).length;
 
   return (
     <div className="st-page">
       <header className="st-page-head">
         <h1 className="st-h1">Team</h1>
         <p className="st-page-sub">
-          {team.length} active {team.length === 1 ? "person" : "people"}
+          {active.length} active {active.length === 1 ? "person" : "people"}
           {behind > 0 ? ` · ${behind} with outstanding documents` : " · all current"}
+          {mfaGaps > 0 && ` · ${mfaGaps} without a second factor`}
         </p>
       </header>
+
+      {(done || e) && (
+        <div
+          className={`st-notice${e ? " st-notice-warn" : ""}`}
+          role={e ? "alert" : "status"}
+        >
+          <strong>{e ? "Not done" : "Done"}</strong>
+          <span>{NOTICES[(e ?? done)!] ?? "Updated."}</span>
+        </div>
+      )}
 
       <div className="st-table-wrap">
         <table className="st-table">
@@ -41,14 +70,15 @@ export default async function Team() {
               <th>Role</th>
               <th className="st-num">Signed</th>
               <th>Status</th>
-              <th>Last signature</th>
+              <th>2FA</th>
+              <th>Access</th>
             </tr>
           </thead>
           <tbody>
             {team.map((m) => {
               const signedCount = m.assigned_count - m.outstanding_count;
               return (
-                <tr key={m.user_id}>
+                <tr key={m.user_id} className={m.active ? "" : "st-row-off"}>
                   <td>
                     <span className="st-cell-name">
                       {m.legal_name ?? m.name ?? m.email}
@@ -72,8 +102,70 @@ export default async function Team() {
                     ) : (
                       <span className="st-pill st-pill-ok">Current</span>
                     )}
+                    {/* Only when there is one. A bare em-dash under a
+                        status pill reads as a broken value. */}
+                    {m.last_signed_at && (
+                      <span className="st-cell-sub">
+                        {formatSignedAt(m.last_signed_at)}
+                      </span>
+                    )}
                   </td>
-                  <td className="st-cell-when">{formatSignedAt(m.last_signed_at)}</td>
+
+                  <td>
+                    {m.mfa_enrolled ? (
+                      <span className="st-pill st-pill-ok">On</span>
+                    ) : m.mfa_required ? (
+                      <span className="st-pill st-pill-due">Required</span>
+                    ) : (
+                      <span className="st-pill st-pill-new">Off</span>
+                    )}
+                  </td>
+
+                  {/* Plain forms. Each is one POST that navigates, so
+                      there is never a button that looks like it worked
+                      when it didn't. */}
+                  <td className="st-cell-actions">
+                    {m.active ? (
+                      <>
+                        {/* Not offered for yourself. The API refuses it
+                            too — this just means nobody is invited to
+                            click the button that locks them out. */}
+                        {m.user_id !== session.uid && (
+                          <form method="POST" action="/api/staff/team/user">
+                            <input type="hidden" name="user_id" value={m.user_id} />
+                            <input type="hidden" name="action" value="deactivate" />
+                            <button className="st-danger" type="submit">
+                              Deactivate
+                            </button>
+                          </form>
+                        )}
+                        {m.mfa_enrolled && (
+                          <form method="POST" action="/api/staff/team/user">
+                            <input type="hidden" name="user_id" value={m.user_id} />
+                            <input type="hidden" name="action" value="reset_mfa" />
+                            <button className="st-quiet" type="submit">
+                              Reset 2FA
+                            </button>
+                          </form>
+                        )}
+                        <form method="POST" action="/api/staff/team/user">
+                          <input type="hidden" name="user_id" value={m.user_id} />
+                          <input type="hidden" name="action" value="revoke_sessions" />
+                          <button className="st-quiet" type="submit">
+                            Sign out
+                          </button>
+                        </form>
+                      </>
+                    ) : (
+                      <form method="POST" action="/api/staff/team/user">
+                        <input type="hidden" name="user_id" value={m.user_id} />
+                        <input type="hidden" name="action" value="activate" />
+                        <button className="st-quiet" type="submit">
+                          Reactivate
+                        </button>
+                      </form>
+                    )}
+                  </td>
                 </tr>
               );
             })}
@@ -82,10 +174,10 @@ export default async function Team() {
       </div>
 
       <p className="st-foot">
-        &ldquo;Signed&rdquo; counts documents published to this organization that
-        apply to that person&rsquo;s role. Draft documents are not counted and
-        cannot be signed &mdash; publish one and it appears in everyone&rsquo;s
-        outstanding list immediately.
+        Deactivating someone takes effect on their very next request, not at
+        their next sign-in &mdash; the session already open on their phone
+        stops working. Reactivating does not restore it; they sign in again.
+        Every action here is written to the audit log with your name on it.
       </p>
     </div>
   );

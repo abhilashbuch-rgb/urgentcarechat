@@ -16,6 +16,10 @@ export interface GoogleIdentity {
   email: string;
   emailVerified: boolean;
   name: string | null;
+  /** The Google Workspace domain this account belongs to, from the `hd`
+   *  claim. Absent for personal accounts — which is precisely what the
+   *  hosted-domain restriction uses to tell them apart. */
+  hostedDomain: string | null;
 }
 
 export function isConfigured(): boolean {
@@ -97,6 +101,7 @@ export async function exchangeCode(
     email: String(payload.email).toLowerCase(),
     emailVerified: payload.email_verified === true || payload.email_verified === "true",
     name: payload.name ? String(payload.name) : null,
+    hostedDomain: payload.hd ? String(payload.hd).toLowerCase() : null,
   };
 }
 

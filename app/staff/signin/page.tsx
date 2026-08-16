@@ -23,6 +23,14 @@ const MESSAGES: Record<string, { title: string; body: string }> = {
     title: "That account hasn't been invited",
     body: "Sign-in is limited to people your administrator has invited. If you think that's you, ask them to add your work email — and check you picked the right Google account.",
   },
+  revoked: {
+    title: "Your session ended",
+    body: "Your access was changed or your sessions were signed out. Sign in again — if that doesn't work, your account was deactivated and an administrator has to switch it back on.",
+  },
+  wrong_domain: {
+    title: "Use your work Google account",
+    body: "This organization only accepts sign-ins from its own Google Workspace domain. A personal Gmail account won't work here, even one that has been invited.",
+  },
   deactivated: {
     title: "That account has been turned off",
     body: "Your access to this organization was deactivated. An administrator can switch it back on — a new invitation isn't needed.",
