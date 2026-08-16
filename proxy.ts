@@ -35,6 +35,20 @@ const RESERVED_ROOT_PATHS = new Set([
 // sitemap.xml, robots.txt, llms.txt, favicon.ico) out of tenant lookups.
 const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{1,31}$/;
 
+// Shared pages that live only on the root domain. Under a tenant subdomain
+// these would be rewritten to /t/<slug>/<page>, which doesn't exist, so
+// they're redirected to the real page instead of 404ing.
+const ROOT_ONLY_PATHS = new Set([
+  "reads",
+  "monitor",
+  "security",
+  "privacy",
+  "terms",
+  "disclaimer",
+  "partners",
+  "widget",
+]);
+
 // Path-based tenant portals on the root domain: urgentcare.chat/afc serves
 // the same page as afc.urgentcare.chat.
 //
@@ -144,7 +158,32 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
-  const rewrittenUrl = new URL(`/t/${tenant.slug}${pathname}`, request.url);
+  // The internal route tree is an implementation detail. If someone lands
+  // on it directly under the subdomain — a pasted link, a stale bookmark —
+  // send them to the portal root rather than rewriting it a second time
+  // into /t/afc/t/afc, which is a 404.
+  if (pathname === "/t" || pathname.startsWith("/t/")) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  // Pages that only exist on the root domain. Rewriting them under the
+  // tenant prefix produces /t/afc/reads, which doesn't exist, so a
+  // franchisee pasting a link to Health Reads got a 404. Send them to the
+  // real page instead.
+  const firstSegment = pathname.split("/")[1] ?? "";
+  if (ROOT_ONLY_PATHS.has(firstSegment)) {
+    return NextResponse.redirect(
+      new URL(`${pathname}${request.nextUrl.search}`, `https://${ROOT_DOMAIN}`)
+    );
+  }
+
+  // No trailing slash: at the subdomain root `pathname` is "/", which would
+  // make this "/t/afc/". Next normalizes that with a 308 to "/t/afc" — and
+  // because the redirect is visible to the browser, the next request comes
+  // back through here and gets prefixed AGAIN into /t/afc/t/afc. That is
+  // why afc.urgentcare.chat served a 404 the moment DNS started resolving.
+  const suffix = pathname === "/" ? "" : pathname;
+  const rewrittenUrl = new URL(`/t/${tenant.slug}${suffix}`, request.url);
   rewrittenUrl.search = request.nextUrl.search;
 
   return NextResponse.rewrite(rewrittenUrl, { request: { headers: requestHeaders } });
