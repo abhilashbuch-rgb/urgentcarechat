@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import BrandIcon from "@/app/components/BrandIcon";
 import TriageApp from "@/app/components/TriageApp";
-import { getTodaysReads } from "@/lib/health-reads";
-import { type HealthTopic } from "@/lib/medlineplus";
 
 const CONTACT =
   "mailto:urgentcarechat@icloud.com?subject=Compliance%20walkthrough";
@@ -40,9 +38,10 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-// Hourly ISR: the Health Reads topic set rotates once a day, so there's no
-// reason to hit MedlinePlus on every visit. The chat further down is a
-// client component and stays fully live regardless.
+// Hourly ISR. This page no longer fetches anything at build time — the
+// Health Reads preview used to call MedlinePlus on every revalidation of
+// the most-visited page on the site, for one sentence of link text. The
+// chat further down is a client component and stays live regardless.
 export const revalidate = 3600;
 
 // Root urgentcare.chat. This page now sells the compliance engine to the
@@ -54,14 +53,7 @@ export const revalidate = 3600;
 // genuinely nearest, competitors included. Tenant scoping only ever comes
 // from the x-tenant-slug header proxy.ts sets for a recognised subdomain,
 // which the root domain never receives.
-export default async function LandingPage() {
-  let reads: HealthTopic[] = [];
-  try {
-    reads = await getTodaysReads(3);
-  } catch {
-    // Optional chrome — an outage here must not take the homepage down.
-  }
-
+export default function LandingPage() {
   return (
     <div className="lp">
       <header className="lp-nav">
@@ -310,14 +302,6 @@ export default async function LandingPage() {
                 <strong>Not a diagnosis.</strong> It says so, repeatedly, and
                 sends real emergencies to 911 or 988 rather than to a clinic.
               </p>
-              {reads.length > 0 && (
-                <p>
-                  <strong>Health Reads.</strong> Plain-language topics from the
-                  National Library of Medicine, refreshed daily —{" "}
-                  <Link href="/reads">see today&rsquo;s</Link>, or the{" "}
-                  <Link href="/monitor">flu monitor</Link>.
-                </p>
-              )}
             </div>
           </div>
         </section>
@@ -381,8 +365,6 @@ export default async function LandingPage() {
             <Link href="/privacy">Privacy</Link>
             <Link href="/disclaimer">Disclaimer</Link>
             <Link href="/security">Security</Link>
-            <Link href="/reads">Health Reads</Link>
-            <Link href="/monitor">Health Monitor</Link>
             <Link href="/partners">White-label</Link>
           </span>
         </div>

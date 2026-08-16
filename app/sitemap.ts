@@ -11,8 +11,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${SITE_URL}/terms`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
     { url: `${SITE_URL}/partners`, lastModified: now, changeFrequency: "monthly", priority: 0.4 },
     { url: `${SITE_URL}/widget`, lastModified: now, changeFrequency: "monthly", priority: 0.4 },
-    { url: `${SITE_URL}/reads`, lastModified: now, changeFrequency: "weekly", priority: 0.5 },
-    { url: `${SITE_URL}/monitor`, lastModified: now, changeFrequency: "daily", priority: 0.6 },
+    // /reads and /monitor are deliberately absent. Both still work and
+    // still resolve for anyone holding a link — they are just no longer
+    // advertised. They are a consumer health media property that serves
+    // neither the compliance product nor the clinics buying it, and every
+    // hour a crawler revalidates them is a MedlinePlus and a CDC fetch
+    // paid for by nobody.
     { url: `${SITE_URL}/security`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
   ];
 }
