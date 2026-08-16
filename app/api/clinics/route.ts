@@ -279,24 +279,37 @@ async function fetchPlaceDetails(placeId: string, apiKey: string) {
 // Tenant-scoped search (e.g. afc.urgentcare.chat): reads only that
 // tenant's own clinics rows — never Google's broad "urgent care near
 // X" search — since Google has no concept of "only AFC's locations".
-// Words that don't distinguish one urgent-care brand from another. Used to
-// derive a name filter from a tenant's display name: "AFC Urgent Care" ->
-// ["afc"], so a Places search for that brand keeps AFC's locations and
-// drops the generic urgent cares Google mixes in.
-const GENERIC_BRAND_WORDS = new Set([
-  "urgent", "care", "health", "healthcare", "medical", "clinic", "clinics",
-  "center", "centre", "centers", "walk", "in", "walk-in", "express",
-  "immediate", "family", "the", "and", "of", "&",
-]);
+// Every meaningful word of the brand's display name must appear in a
+// result's name — not just the distinctive one.
+//
+// Matching on the distinctive token alone was actively dangerous: "AFC
+// Urgent Care" reduced to "afc", and an Atlanta search returned "AFC
+// (Automotive Finance Corp.)" — a car auction house — as a place to take a
+// bleeding hand. Requiring "urgent" and "care" too is what separates the
+// clinic from the company that happens to share an acronym.
+//
+// The generic words don't weaken the filter, because the distinctive word
+// is still required alongside them: a plain "Urgent Care" without "afc"
+// still fails.
+const STOP_WORDS = new Set(["the", "and", "of", "at", "for", "a", "an", "&"]);
 
 function brandTokens(displayName: string): string[] {
   const tokens = displayName
     .toLowerCase()
     .split(/[^a-z0-9]+/)
-    .filter((w) => w.length > 1 && !GENERIC_BRAND_WORDS.has(w));
-  // If every word was generic, fall back to the full name so we never
-  // accidentally match everything.
+    .filter((w) => w.length > 1 && !STOP_WORDS.has(w));
   return tokens.length ? tokens : [displayName.toLowerCase()];
+}
+
+// Nothing beyond this is a usable answer to "where should I go right now".
+// Before this cap, a Nashville search padded its list with the seeded
+// Philadelphia rows at 680 miles.
+const MAX_USEFUL_MILES = 100;
+
+function withinRange(results: PlaceResult[]): PlaceResult[] {
+  return results.filter(
+    (r) => parseFloat(r.distance) <= MAX_USEFUL_MILES
+  );
 }
 
 // Live, nationwide lookup of one brand's locations near a patient.
@@ -534,9 +547,11 @@ async function handleTenantClinics(
 
     sortByDistance(results);
 
-    let filtered = results;
+    // An empty list is a better answer than a clinic in another state:
+    // the chat says it found nothing nearby, which is true and useful.
+    let filtered = withinRange(results);
     if (insurance && insurance.toLowerCase() !== "skip" && insurance.toLowerCase() !== "none") {
-      filtered = filterByInsurance(results, insurance);
+      filtered = filterByInsurance(filtered, insurance);
     }
 
     return NextResponse.json({ clinics: filtered.slice(0, 5) });
