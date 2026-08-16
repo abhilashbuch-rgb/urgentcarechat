@@ -12,7 +12,7 @@ import { serviceLabel, insuranceLabel } from "@/lib/service-labels";
 
 // Quiet, optional footer link — never shown during 911/988 alerts.
 const TIP_JAR_URL = "https://ko-fi.com/urgentcarechat";
-const ROOT_URL = "https://urgentcare.chat";
+import { ROOT_URL, PRODUCT_NAME } from "@/lib/site";
 
 // ============================================================
 // Types
@@ -999,7 +999,7 @@ export default function TriageApp({
             </span>
           ) : embed ? (
             <a
-              href="https://urgentcare.chat"
+              href={ROOT_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="embed-attribution"
@@ -1014,7 +1014,7 @@ export default function TriageApp({
               {" · "}
               <a href={`${ROOT_URL}/disclaimer`}>Disclaimer</a>
               {" · "}
-              <a href={ROOT_URL}>Powered by urgentcare.chat</a>
+              <a href={ROOT_URL}>Powered by {PRODUCT_NAME}</a>
             </>
           ) : (
             <>

@@ -7,7 +7,7 @@ import { z } from "zod";
 // only best-effort per-IP rate limiting, and MCP clients typically call
 // through a shared IP, which would make usage far harder to rate-limit
 // or cost-cap than a normal per-visitor limit on the website itself.
-const SITE_URL = "https://urgentcare.chat";
+import { ROOT_URL as SITE_URL } from "@/lib/site";
 
 const handler = createMcpHandler((server) => {
   server.registerTool(

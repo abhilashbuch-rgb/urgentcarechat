@@ -2,13 +2,14 @@ import Image from "next/image";
 import TriageApp from "@/app/components/TriageApp";
 import FluBanner from "@/app/components/FluBanner";
 import NearestLocation from "@/app/components/NearestLocation";
+import { ROOT_URL, PRODUCT_NAME } from "@/lib/site";
 import type { Tenant } from "@/lib/tenants";
 import type { TenantSection } from "@/lib/tenant-config";
 import type { TenantLocation } from "@/lib/tenant-locations";
 import type { HealthTopic } from "@/lib/medlineplus";
 import { serviceLabel } from "@/lib/service-labels";
 
-const ROOT_URL = "https://urgentcare.chat";
+
 
 export default function TenantPortal({
   tenant,
@@ -133,7 +134,7 @@ export default function TenantPortal({
             <a href={`${ROOT_URL}/privacy`}>Privacy</a>
             <a href={`${ROOT_URL}/terms`}>Terms</a>
             {config.showPoweredBy !== false && (
-              <a href={ROOT_URL}>Powered by urgentcare.chat</a>
+              <a href={ROOT_URL}>Powered by {PRODUCT_NAME}</a>
             )}
           </span>
         </div>

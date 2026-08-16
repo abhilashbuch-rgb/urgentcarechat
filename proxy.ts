@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getTenantBySlug } from "@/lib/tenants";
+import { ROOT_DOMAIN } from "@/lib/site";
 
 // ============================================================
 // Subdomain routing for branded tenant portals (e.g.
@@ -11,7 +12,9 @@ import { getTenantBySlug } from "@/lib/tenants";
 // header so downstream code can scope data without needing the URL.
 // ============================================================
 
-const ROOT_DOMAIN = "urgentcare.chat";
+// Imported rather than declared — see lib/site.ts. The proxy is where
+// the domain does the most work, so it is the last place that should
+// carry its own copy of the string.
 
 // Paths on the root domain that belong to the main site. A first path
 // segment in here is never treated as a tenant slug, so adding a tenant can

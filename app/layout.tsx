@@ -36,7 +36,7 @@ const fraunces = localFont({
   display: "swap",
 });
 
-const SITE_URL = "https://urgentcare.chat";
+import { ROOT_URL as SITE_URL, PRODUCT_NAME, OPERATOR } from "@/lib/site";
 const SITE_DESCRIPTION =
   "Compliance software for urgent care: daily logs that can't be backdated, staff onboarding with real signatures, and an audit trail nobody can edit. Includes a free patient symptom checker.";
 
@@ -73,18 +73,18 @@ const structuredData = {
     {
       "@type": "Organization",
       "@id": `${SITE_URL}/#organization`,
-      name: "urgentcare.chat",
+      name: PRODUCT_NAME,
       url: SITE_URL,
       description: SITE_DESCRIPTION,
       parentOrganization: {
         "@type": "Organization",
-        name: "Medicin.io LLC",
+        name: OPERATOR,
       },
     },
     {
       "@type": "WebApplication",
       "@id": `${SITE_URL}/#webapplication`,
-      name: "urgentcare.chat",
+      name: PRODUCT_NAME,
       url: SITE_URL,
       description: SITE_DESCRIPTION,
       applicationCategory: "BusinessApplication",
