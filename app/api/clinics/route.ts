@@ -382,10 +382,15 @@ export async function GET(req: NextRequest) {
   const lat = searchParams.get("lat");
   const lng = searchParams.get("lng");
 
-  // Set by proxy.ts when this request came in through a recognized
-  // tenant subdomain (e.g. afc.urgentcare.chat) — routes to a completely
-  // different, narrower lookup below instead of the public Google search.
-  const tenantSlug = req.headers.get("x-tenant-slug");
+  // Two ways a request can be tenant-scoped:
+  //   header — set by proxy.ts for a branded subdomain (afc.urgentcare.chat)
+  //   query  — sent by the portal itself, which is also served at
+  //            urgentcare.chat/<slug>, where /api/* is a reserved root path
+  //            that proxy.ts passes through without tagging
+  // Without the second, the path-based portal searched unscoped and showed
+  // competitors inside a tenant's own branded page.
+  const tenantSlug =
+    req.headers.get("x-tenant-slug") || searchParams.get("tenant");
 
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   if (!apiKey) {

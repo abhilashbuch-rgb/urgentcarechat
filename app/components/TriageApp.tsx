@@ -237,16 +237,25 @@ export default function TriageApp({
     }
   };
 
-  // Fetch clinics from the real API. Tenant scoping (when this page is
-  // served under a branded subdomain) happens transparently — proxy.ts
-  // tags the actual HTTP request with the tenant before it reaches
-  // /api/clinics, so this fetch doesn't need to know about it.
+  // Tenant scoping has to be explicit, not inferred from the request.
+  //
+  // On a branded SUBDOMAIN, proxy.ts tags every request — pages and API
+  // alike — with x-tenant-slug, so this would work without help. But the
+  // same portal is also served at urgentcare.chat/<slug>, and there
+  // /api/clinics is a reserved root path that proxy.ts deliberately passes
+  // through untouched. The browser's fetch therefore arrived with no
+  // tenant at all, and AFC's branded portal listed their competitors.
+  //
+  // Passing it explicitly makes both routes behave identically. Spoofing
+  // the value only narrows results to another tenant's own public
+  // locations, so this stays a query parameter rather than a credential.
   const fetchClinics = async (
     zip: string,
     insurance: string | null
   ): Promise<Clinic[]> => {
     const params = new URLSearchParams({ zip });
     if (insurance) params.set("insurance", insurance);
+    if (tenant) params.set("tenant", tenant.slug);
 
     const res = await fetch(`/api/clinics?${params}`);
     if (!res.ok) return [];
@@ -272,6 +281,7 @@ export default function TriageApp({
             lat: latitude.toString(),
             lng: longitude.toString(),
           });
+          if (tenant) params.set("tenant", tenant.slug);
           const res = await fetch(`/api/clinics?${params}`);
           removeMessage(typingId);
 
