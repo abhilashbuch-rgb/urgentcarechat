@@ -4233,3 +4233,149 @@ body {
 @media (max-width: 860px) {
   .lp-triage-demo { grid-template-columns: 1fr; gap: 20px; }
 }
+
+/* ========== MINIMAL HOMEPAGE ==========
+   One message, one action. Generous vertical rhythm because the page is
+   short — a cramped short page reads as unfinished, a spacious one reads
+   as confident. */
+
+/* min-width: 0 is load-bearing. .lp is a flex container, and a flex item
+   keeps min-width:auto by default — so .lp-main sized itself to its
+   content's minimum rather than to the viewport, and the page overflowed
+   398px sideways on a 390px phone. On a product whose entire pitch is
+   "your staff do this on their phones", that is not a cosmetic bug. */
+.lp-min .lp-main {
+  width: 100%;
+  min-width: 0;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+.lp-min .lp-main > section { min-width: 0; max-width: 100%; padding-left: 0; padding-right: 0; }
+.lp-min .mh-h1 { overflow-wrap: break-word; }
+
+.mh-hero { text-align: center; padding: 96px 0 72px; }
+.mh-h1 {
+  font-family: var(--serif);
+  font-size: clamp(34px, 6.2vw, 60px);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -.025em;
+}
+.mh-lede {
+  font-size: clamp(16px, 2.2vw, 19px);
+  line-height: 1.6;
+  color: var(--ink-soft);
+  max-width: 46ch;
+  margin: 20px auto 32px;
+}
+.mh-cta {
+  display: inline-block;
+  background: var(--accent);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 14px 30px;
+  border-radius: 10px;
+  text-decoration: none;
+}
+.mh-cta:hover { background: var(--accent-deep); }
+.mh-cta-block { display: block; text-align: center; margin-top: 22px; }
+.mh-cta-note { font-size: 13px; color: #8b919b; margin-top: 10px; }
+
+.mh-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 28px;
+  padding: 40px 0 72px;
+  border-top: 1px solid var(--rule);
+}
+.mh-feature h2 { font-size: 16px; font-weight: 650; letter-spacing: -.01em; margin-bottom: 6px; }
+.mh-feature p { font-size: 14px; line-height: 1.55; color: var(--ink-soft); }
+
+.mh-h2 {
+  font-family: var(--serif);
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -.02em;
+  text-align: center;
+  margin-bottom: 28px;
+}
+.mh-pricing { padding: 56px 0 72px; border-top: 1px solid var(--rule); }
+.mh-plan {
+  max-width: 420px;
+  margin: 0 auto;
+  background: var(--bg-card);
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  padding: 28px;
+  box-shadow: var(--shadow);
+}
+.mh-plan-name {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  font-weight: 650;
+  color: var(--accent);
+}
+.mh-plan-price {
+  font-family: var(--serif);
+  font-size: 42px;
+  font-weight: 600;
+  letter-spacing: -.03em;
+  margin: 8px 0 2px;
+}
+.mh-plan-price span { font-family: var(--sans); font-size: 15px; font-weight: 400; color: var(--ink-soft); letter-spacing: 0; }
+.mh-plan-annual { font-size: 13px; color: var(--ink-soft); margin-bottom: 20px; }
+.mh-plan-list { list-style: none; }
+.mh-plan-list li {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #33383f;
+  padding: 7px 0 7px 24px;
+  position: relative;
+}
+/* A check drawn in CSS rather than an icon font or an inline SVG per row
+   — six of them on the page and none of them worth a request. */
+.mh-plan-list li::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 12px;
+  width: 5px;
+  height: 9px;
+  border: solid var(--accent);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.mh-multi { text-align: center; font-size: 14px; color: var(--ink-soft); margin-top: 24px; }
+.mh-multi a { color: var(--accent); }
+
+.mh-install { padding: 48px 0 80px; border-top: 1px solid var(--rule); text-align: center; }
+.mh-install p { font-size: 15px; line-height: 1.65; color: var(--ink-soft); max-width: 54ch; margin: 0 auto; }
+.mh-install strong { color: var(--ink); font-weight: 650; }
+
+/* ---------- trial signup ---------- */
+.tr-main { display: flex; align-items: center; justify-content: center; padding: 64px 24px; }
+.tr-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--bg-card);
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  padding: 32px;
+  box-shadow: var(--shadow);
+}
+.tr-h1 { font-family: var(--serif); font-size: 27px; font-weight: 600; letter-spacing: -.02em; }
+.tr-lede { font-size: 14.5px; line-height: 1.55; color: var(--ink-soft); margin: 8px 0 24px; }
+.tr-form .st-primary { margin-top: 6px; }
+.tr-fine { font-size: 12px; color: #8b919b; text-align: center; margin-top: 12px; line-height: 1.5; }
+.tr-done h2 { font-family: var(--serif); font-size: 22px; font-weight: 600; margin-bottom: 10px; }
+.tr-done p { font-size: 14.5px; line-height: 1.6; color: var(--ink-soft); margin-bottom: 20px; }
+.tr-done .lp-btn-primary { display: block; text-align: center; }
+
+@media (max-width: 700px) {
+  .mh-hero { padding: 64px 0 48px; }
+  .mh-features { padding: 32px 0 48px; gap: 22px; }
+  .tr-card { padding: 24px 20px; }
+}
