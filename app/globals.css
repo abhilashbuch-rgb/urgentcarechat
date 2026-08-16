@@ -3109,38 +3109,44 @@ body {
     radial-gradient(circle at 0% 100%, color-mix(in srgb, var(--l-teal) 5%, transparent), transparent 34%);
 }
 
-/* --------- watermark --------- */
+/* --------- watermark ---------
+   Tiled, rotated, and confined to the right half of the viewport.
+
+   Two elements rather than one: the outer box defines the half-screen
+   region and clips, the inner pseudo-element carries the rotated tile
+   pattern. Rotating the clipping box itself would rotate the boundary
+   too, leaving the "half" as a diagonal wedge with bare corners. */
 .tp-watermark {
   position: fixed;
-  top: 50%;
-  right: -14vw;
-  width: 92vw;
-  height: 46vw;
-  transform: translateY(-50%) rotate(-28deg);
-  transform-origin: center;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
-  /* 0.05 keeps every text/background pair on the page above 4.5:1 — the
-     mark reads as a tint, not as content competing with the copy. */
-  opacity: 0.05;
+  top: 0;
+  right: 0;
+  width: 50vw;
+  height: 100vh;
+  overflow: hidden;
   pointer-events: none;
   z-index: 0;
 }
 
-/* Everything real sits above the watermark. */
-.tp > header,
-.tp > main,
-.tp > footer { position: relative; z-index: 1; }
-
-@media (max-width: 700px) {
-  /* Narrow screens are mostly text; a diagonal mark behind a full column
-     of copy is noise rather than branding. */
-  .tp-watermark { opacity: 0.035; right: -30vw; width: 130vw; height: 70vw; }
+.tp-watermark::before {
+  content: "";
+  position: absolute;
+  /* Oversized so the rotation never exposes an untiled corner. */
+  inset: -60%;
+  background-image: var(--tp-watermark-src);
+  background-repeat: repeat;
+  background-size: 210px auto;
+  transform: rotate(-28deg);
+  /* 0.05 keeps every text/background pair on the page above 4.5:1 — the
+     tile reads as a texture, not as content competing with the copy. */
+  opacity: 0.05;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .tp-watermark { will-change: auto; }
+@media (max-width: 700px) {
+  /* Half of a phone screen is a narrow strip, so the mark spans more of
+     it — but fainter, since a repeating pattern behind a single column of
+     body copy is far more intrusive than one large mark. */
+  .tp-watermark { width: 62vw; }
+  .tp-watermark::before { background-size: 150px auto; opacity: 0.035; }
 }
 
 /* --------- red chat chrome --------- */
