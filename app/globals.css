@@ -3092,3 +3092,101 @@ body {
   .tp-cta { padding: 22px 19px; }
   .tp-loc-grid, .tp-card-grid { grid-template-columns: 1fr; }
 }
+
+/* ============================================================
+   TENANT: red-and-white treatment + brand watermark
+   The accent already comes from the tenant's own hex; this makes the
+   surrounding page read as that colour on white rather than as our
+   navy/teal with a coloured button.
+   ============================================================ */
+
+/* White ground with only a whisper of the brand colour, replacing the
+   two-tone teal/navy wash the root site uses. */
+.tp {
+  --l-ground: #ffffff;
+  background-image:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--l-teal) 7%, transparent), transparent 38%),
+    radial-gradient(circle at 0% 100%, color-mix(in srgb, var(--l-teal) 5%, transparent), transparent 34%);
+}
+
+/* --------- watermark --------- */
+.tp-watermark {
+  position: fixed;
+  top: 50%;
+  right: -14vw;
+  width: 92vw;
+  height: 46vw;
+  transform: translateY(-50%) rotate(-28deg);
+  transform-origin: center;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  /* 0.05 keeps every text/background pair on the page above 4.5:1 — the
+     mark reads as a tint, not as content competing with the copy. */
+  opacity: 0.05;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Everything real sits above the watermark. */
+.tp > header,
+.tp > main,
+.tp > footer { position: relative; z-index: 1; }
+
+@media (max-width: 700px) {
+  /* Narrow screens are mostly text; a diagonal mark behind a full column
+     of copy is noise rather than branding. */
+  .tp-watermark { opacity: 0.035; right: -30vw; width: 130vw; height: 70vw; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tp-watermark { will-change: auto; }
+}
+
+/* --------- red chat chrome --------- */
+/* The card itself carries the brand edge. */
+.tp .lp-chat-card {
+  border: 2px solid var(--l-teal);
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--l-teal) 12%, transparent),
+    0 24px 48px -20px color-mix(in srgb, var(--l-teal) 26%, transparent);
+}
+
+/* Divider above the composer, and the composer's own field. */
+.tp .lp-chat-card .input-bar {
+  border-top: 1px solid color-mix(in srgb, var(--l-teal) 26%, transparent);
+}
+
+.tp .lp-chat-card .input-wrap {
+  border-color: color-mix(in srgb, var(--l-teal) 45%, transparent);
+}
+
+.tp .lp-chat-card .input-wrap:focus-within {
+  border-color: var(--l-teal);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--l-teal) 18%, transparent);
+}
+
+/* Assistant bubbles get a brand-tinted left edge; user bubbles already
+   carry the accent as their fill. */
+.tp .lp-chat-card .msg-bubble {
+  border-color: color-mix(in srgb, var(--l-teal) 22%, transparent);
+}
+
+/* Quick-reply chips and clinic cards inside the branded chat. */
+.tp .lp-chat-card .chip {
+  border-color: color-mix(in srgb, var(--l-teal) 38%, transparent);
+}
+.tp .lp-chat-card .chip:hover {
+  border-color: var(--l-teal);
+  background: color-mix(in srgb, var(--l-teal) 7%, transparent);
+}
+
+.tp .lp-chat-card .clinic-card {
+  border-color: color-mix(in srgb, var(--l-teal) 30%, transparent);
+}
+
+/* Tiles across the rest of the page pick up the same edge, so the card
+   doesn't look like the only branded thing on a white page. */
+.tp .lp-tile {
+  border-color: color-mix(in srgb, var(--l-teal) 18%, transparent);
+}

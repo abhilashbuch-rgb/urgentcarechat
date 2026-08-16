@@ -40,6 +40,18 @@ export default function TenantPortal({
 
   return (
     <div className="lp tp" style={themeVars}>
+      {/* Oversized brand watermark, rotated and bled off the right edge.
+          Purely decorative: aria-hidden and pointer-events:none, sitting
+          behind every interactive element, at an opacity low enough that
+          body text keeps its contrast ratio. */}
+      {tenant.logoUrl && (
+        <div
+          className="tp-watermark"
+          style={{ backgroundImage: `url(${tenant.logoUrl})` }}
+          aria-hidden="true"
+        />
+      )}
+
       <header className="lp-nav">
         <div className="lp-nav-inner">
           {tenant.logoUrl ? (
