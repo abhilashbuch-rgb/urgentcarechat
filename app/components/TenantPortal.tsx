@@ -1,6 +1,7 @@
 import Image from "next/image";
 import TriageApp from "@/app/components/TriageApp";
 import FluBanner from "@/app/components/FluBanner";
+import NearestLocation from "@/app/components/NearestLocation";
 import type { Tenant } from "@/lib/tenants";
 import type { TenantSection } from "@/lib/tenant-config";
 import type { TenantLocation } from "@/lib/tenant-locations";
@@ -167,6 +168,9 @@ function Section({
               <span className="lp-eyebrow-dot" aria-hidden="true" />
               {tenant.displayName}
             </span>
+            {/* Their closest location, immediately above the headline. */}
+            <NearestLocation tenantSlug={tenant.slug} />
+
             <h1 className={headlineClass}>
               {section.headline ??
                 "Tell us what's wrong. We'll point you to the right location."}
