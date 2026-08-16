@@ -39,13 +39,7 @@ export interface NavItem {
 export const NAV: NavItem[] = [
   { href: "/staff", label: "Today", minRole: "staff" },
   { href: "/staff/me", label: "My record", minRole: "staff" },
-  {
-    href: "/staff/logs",
-    label: "Logs",
-    minRole: "staff",
-    placeholder: true,
-    note: "Daily and per-shift compliance logs land here next.",
-  },
+  { href: "/staff/logs", label: "Logs", minRole: "staff" },
   {
     href: "/staff/review",
     label: "Review",
