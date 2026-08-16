@@ -3497,3 +3497,342 @@ body {
   .st-me { width: 100%; justify-content: flex-start; }
   .st-me-email { max-width: none; flex: 1; }
 }
+
+/* ---------- onboarding, documents, signatures ---------- */
+
+.st-page-narrow { max-width: 760px; }
+
+.st-onb-head { margin-bottom: 20px; }
+.st-onb-eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.st-onb-intro { font-size: 14px; color: var(--ink-soft); margin: 14px 0 20px; max-width: 58ch; }
+.st-onb-rest { margin-top: 16px; font-size: 12px; color: #8b919b; }
+
+.st-progress { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.st-progress-track {
+  flex: 1;
+  height: 4px;
+  background: #e8eaee;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.st-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width .25s ease;
+}
+.st-progress-label { font-size: 11px; color: #8b919b; white-space: nowrap; }
+
+.st-doc-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+.st-tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-weight: 650;
+  padding: 3px 7px;
+  border-radius: 4px;
+  background: #eef0f4;
+  color: #55606e;
+}
+.st-tag-due { background: #fdeaec; color: #8c1c29; }
+.st-doc-citation { font-family: var(--mono); font-size: 11px; color: #8b919b; }
+
+/* The document itself. Measure capped near 70ch and line-height opened up
+   — these are read start to finish, unlike the rest of the app. */
+.st-doc {
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 28px 32px;
+  max-width: 70ch;
+  font-size: 15px;
+  line-height: 1.62;
+  color: #26292e;
+}
+.st-doc h3 { font-size: 15px; font-weight: 700; margin: 24px 0 8px; letter-spacing: -.01em; }
+.st-doc h3:first-child { margin-top: 0; }
+.st-doc h4 { font-size: 14px; font-weight: 650; margin: 18px 0 6px; }
+.st-doc p { margin-bottom: 12px; }
+.st-doc ul { margin: 0 0 14px 20px; }
+.st-doc li { margin-bottom: 7px; }
+.st-doc strong { font-weight: 650; color: var(--ink); }
+.st-doc code {
+  font-family: var(--mono);
+  font-size: 13px;
+  background: #f1f2f5;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+.st-doc-callout {
+  background: #fdf6f7;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 6px 6px 0;
+  padding: 12px 14px;
+  margin: 0 0 18px;
+  font-size: 14px;
+}
+.st-doc-callout p:last-child { margin-bottom: 0; }
+
+.st-sign {
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 22px 24px;
+  margin-top: 16px;
+  max-width: 70ch;
+}
+.st-sign-statement {
+  font-size: 15px;
+  line-height: 1.55;
+  font-weight: 550;
+  color: var(--ink);
+  border-left: 3px solid var(--accent);
+  padding-left: 14px;
+  margin-bottom: 18px;
+}
+
+.st-field { display: block; margin-bottom: 16px; }
+.st-field-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  color: #55606e;
+  margin-bottom: 5px;
+}
+.st-field-hint { display: block; font-size: 11.5px; color: #8b919b; margin-top: 5px; line-height: 1.45; }
+.st-input {
+  width: 100%;
+  padding: 9px 11px;
+  font: inherit;
+  font-size: 15px;
+  border: 1px solid #d3d7de;
+  border-radius: 7px;
+  background: #fff;
+  color: var(--ink);
+}
+.st-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+.st-input-date { max-width: 200px; }
+
+.st-check {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #33383f;
+  margin-bottom: 16px;
+  cursor: pointer;
+}
+.st-check input { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--accent); flex-shrink: 0; }
+
+.st-clear {
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.st-pad {
+  width: 100%;
+  height: 150px;
+  border: 1px solid #d3d7de;
+  border-radius: 8px;
+  background: #fcfcfd;
+  touch-action: none;   /* the finger draws; it must not scroll the page */
+  cursor: crosshair;
+  display: block;
+}
+.st-pad-rule { stroke: #d8dce2; stroke-width: 1; }
+.st-pad-ink { fill: none; stroke: #16181c; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.st-pad-hint { font-size: 11.5px; color: #8b919b; margin-top: 6px; }
+
+.st-primary {
+  width: 100%;
+  padding: 11px 18px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.st-primary:hover:not(:disabled) { background: var(--accent-deep); }
+.st-primary:disabled { background: #c9ced6; cursor: not-allowed; }
+
+.st-sign-error {
+  font-size: 13px;
+  color: #8c1c29;
+  background: #fdeaec;
+  border-radius: 6px;
+  padding: 9px 11px;
+  margin-bottom: 12px;
+}
+.st-sign-fine { font-size: 11.5px; color: #8b919b; margin-top: 12px; line-height: 1.5; }
+
+.st-consent {
+  background: #f7f8fa;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.st-consent h3 { font-size: 13px; font-weight: 650; margin-bottom: 8px; }
+.st-consent ul { margin-left: 18px; }
+.st-consent li { font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); margin-bottom: 6px; }
+
+.st-callout {
+  display: block;
+  background: #fdf6f7;
+  border: 1px solid #f2d6da;
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  padding: 13px 16px;
+  margin-bottom: 16px;
+  text-decoration: none;
+}
+.st-callout:hover { background: #fcf0f2; }
+.st-callout-title { display: block; font-size: 14px; font-weight: 600; color: var(--ink); }
+.st-callout-sub { display: block; font-size: 12.5px; color: var(--accent); margin-top: 2px; }
+
+/* ---------- the compliance record ---------- */
+
+.st-record-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.st-print {
+  border: 1px solid var(--rule);
+  background: #fff;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.st-print:hover { background: #f1f2f5; }
+
+.st-card-due { border-color: #f2d6da; background: #fefafa; }
+.st-card-value-sm { font-size: 14px; font-weight: 600; }
+.st-card-note a { color: var(--accent); }
+
+.st-record-section { margin-top: 28px; }
+.st-record-list {
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.st-record-row {
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border-top: 1px solid var(--rule);
+}
+.st-record-row:first-child { border-top: none; }
+.st-record-row-due { background: #fefafa; }
+
+.st-record-main { min-width: 0; flex: 1; }
+.st-record-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.st-record-version { font-size: 11px; font-weight: 500; color: #8b919b; }
+.st-record-citation, .st-record-hash {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: #8b919b;
+  margin-top: 4px;
+}
+.st-record-statement {
+  display: block;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  margin-top: 5px;
+  max-width: 62ch;
+}
+.st-record-sig { text-align: right; flex-shrink: 0; }
+.st-record-sig-mark { width: 150px; height: 44px; display: block; margin-left: auto; }
+.st-record-sig-mark .st-pad-ink { stroke-width: 3.4; }
+.st-record-signer { display: block; font-size: 13px; font-weight: 550; }
+.st-record-when { display: block; font-size: 11.5px; color: #8b919b; white-space: nowrap; }
+.st-empty { font-size: 13px; color: #8b919b; }
+
+/* ---------- team roster ---------- */
+
+.st-table-wrap {
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  overflow-x: auto;
+}
+.st-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.st-table th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #8b919b;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
+}
+.st-table td { padding: 11px 16px; border-top: 1px solid var(--rule); vertical-align: top; }
+.st-table tbody tr:first-child td { border-top: none; }
+.st-num { text-align: right; font-variant-numeric: tabular-nums; }
+.st-cell-name { display: block; font-weight: 600; }
+.st-cell-sub { display: block; font-size: 11.5px; color: #8b919b; margin-top: 2px; }
+.st-cell-when { color: var(--ink-soft); white-space: nowrap; }
+
+.st-pill {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.st-pill-ok  { background: #e3f1ea; color: #1e5740; }
+.st-pill-due { background: #fdeaec; color: #8c1c29; }
+.st-pill-new { background: #eef0f4; color: #55606e; }
+
+@media (max-width: 720px) {
+  .st-doc { padding: 20px 18px; font-size: 14.5px; }
+  .st-sign { padding: 18px 16px; }
+  .st-record-row { flex-direction: column; gap: 10px; }
+  .st-record-sig { text-align: left; }
+  .st-record-sig-mark { margin-left: 0; }
+}
+
+/* Printing a compliance record is a real workflow — HR files it, a
+   surveyor asks for it. Strip the app chrome and let the record fill the
+   page. */
+@media print {
+  .st-top, .st-print, .st-callout { display: none; }
+  .st { background: #fff; }
+  .st-page { padding: 0; max-width: none; }
+  .st-record-list, .st-card, .st-table-wrap { border-color: #bbb; }
+  .st-record-row { break-inside: avoid; }
+}

@@ -1,5 +1,7 @@
+import { redirect } from "next/navigation";
 import { requireStaff } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
+import { getProfile, outstandingFor } from "@/lib/staff/compliance";
 import { navFor, ROLE_LABELS } from "@/lib/staff/roles";
 
 // The staff landing screen.
@@ -15,6 +17,8 @@ export const dynamic = "force-dynamic";
 interface Overview {
   orgName: string;
   teamCount: number;
+  outstanding: number;
+  needsOnboarding: boolean;
 }
 
 export default async function StaffHome() {
@@ -31,14 +35,25 @@ export default async function StaffHome() {
       const users = await sql<{ count: string }[]>`
         select count(*)::text as count from staff.users where active
       `;
+      const profile = await getProfile(sql, session.uid);
+      const outstanding = await outstandingFor(sql, session.uid);
       return {
         orgName: orgs[0]?.name ?? org,
         teamCount: Number(users[0]?.count ?? 0),
+        outstanding: outstanding.length,
+        needsOnboarding:
+          !profile?.esign_consented_at || !profile?.legal_name,
       };
     });
   } catch (err) {
     dbError = err instanceof Error ? err.message : "Unknown error";
   }
+
+  // First sign-in goes straight into the packet rather than to a
+  // dashboard with a notification on it. Someone who has never consented
+  // or signed anything has nothing to look at here yet, and a banner they
+  // can dismiss is exactly how "we never knew" happens.
+  if (overview?.needsOnboarding) redirect("/staff/onboarding");
 
   const upcoming = navFor(session.role).filter((item) => item.placeholder);
 
@@ -66,6 +81,19 @@ export default async function StaffHome() {
           </span>
           <span className="st-notice-detail">{dbError}</span>
         </div>
+      )}
+
+      {overview && overview.outstanding > 0 && (
+        <a className="st-callout" href="/staff/onboarding">
+          <span className="st-callout-title">
+            {overview.outstanding === 1
+              ? "1 document is waiting for your signature"
+              : `${overview.outstanding} documents are waiting for your signature`}
+          </span>
+          <span className="st-callout-sub">
+            Review and sign them &rarr;
+          </span>
+        </a>
       )}
 
       <section className="st-cards">

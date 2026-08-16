@@ -38,12 +38,13 @@ export interface NavItem {
 // control: every route behind these links re-checks the session itself.
 export const NAV: NavItem[] = [
   { href: "/staff", label: "Today", minRole: "staff" },
+  { href: "/staff/me", label: "My record", minRole: "staff" },
   {
     href: "/staff/logs",
     label: "Logs",
     minRole: "staff",
     placeholder: true,
-    note: "Compliance forms land here next.",
+    note: "Daily and per-shift compliance logs land here next.",
   },
   {
     href: "/staff/review",
@@ -52,13 +53,7 @@ export const NAV: NavItem[] = [
     placeholder: true,
     note: "Approve or flag submitted logs.",
   },
-  {
-    href: "/staff/team",
-    label: "Team",
-    minRole: "org_admin",
-    placeholder: true,
-    note: "Invites and roles.",
-  },
+  { href: "/staff/team", label: "Team", minRole: "org_admin" },
   {
     href: "/staff/messages",
     label: "Messages",
