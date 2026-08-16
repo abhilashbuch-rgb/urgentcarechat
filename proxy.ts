@@ -158,13 +158,12 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
-  // The internal route tree is an implementation detail. If someone lands
-  // on it directly under the subdomain — a pasted link, a stale bookmark —
-  // send them to the portal root rather than rewriting it a second time
-  // into /t/afc/t/afc, which is a 404.
-  if (pathname === "/t" || pathname.startsWith("/t/")) {
-    return NextResponse.redirect(new URL("/", request.url));
-  }
+  // NOTE: do not add a redirect for /t/* here. The rewrite below targets
+  // /t/<slug>, and this proxy runs again on that path — so a rule matching
+  // /t/* turns the portal root into a 307 redirect loop from "/" to "/".
+  // That is exactly what shipped in #20 and took the subdomain down.
+  // Anything that needs to special-case the internal route tree has to
+  // distinguish the original request from the rewritten one first.
 
   // Pages that only exist on the root domain. Rewriting them under the
   // tenant prefix produces /t/afc/reads, which doesn't exist, so a
