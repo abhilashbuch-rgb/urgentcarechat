@@ -3,9 +3,11 @@ import BrandIcon from "@/app/components/BrandIcon";
 import { type HealthTopic } from "@/lib/medlineplus";
 import { getTodaysReads } from "@/lib/health-reads";
 import FluBanner from "@/app/components/FluBanner";
+import Wordmark from "@/app/components/Wordmark";
+import { PRODUCT_NAME } from "@/lib/site";
 
 export const metadata = {
-  title: "Health Reads — urgentcare.chat",
+  title: `Health Reads — ${PRODUCT_NAME}`,
   description:
     "General, plain-language health reading — not personalized medical advice.",
 };
@@ -28,13 +30,13 @@ export default async function ReadsPage() {
       <header className="site-header">
         <div className="brand">
           <BrandIcon />
-          urgentcare<span className="tld">.chat</span>
+          <Wordmark />
         </div>
       </header>
 
       <main className="reads-main">
         <Link href="/" className="reads-back">
-          ← Back to urgentcare.chat
+          ← Back to {PRODUCT_NAME}
         </Link>
 
         <h1 className="reads-title">Health Reads</h1>

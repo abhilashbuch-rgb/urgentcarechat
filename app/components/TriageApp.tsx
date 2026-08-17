@@ -12,7 +12,8 @@ import { serviceLabel, insuranceLabel } from "@/lib/service-labels";
 
 // Quiet, optional footer link — never shown during 911/988 alerts.
 const TIP_JAR_URL = "https://ko-fi.com/urgentcarechat";
-const ROOT_URL = "https://urgentcare.chat";
+import { ROOT_URL, PRODUCT_NAME } from "@/lib/site";
+import Wordmark from "@/app/components/Wordmark";
 
 // ============================================================
 // Types
@@ -85,6 +86,7 @@ function getSessionId(): string {
 export default function TriageApp({
   embed = false,
   contained = false,
+  deferDisclaimer = false,
   tenant = null,
 }: {
   embed?: boolean;
@@ -99,6 +101,13 @@ export default function TriageApp({
    * keeps the input bar and the scrolling inside its own box.
    */
   contained?: boolean;
+  /** Hold the disclaimer back until the visitor actually engages with the
+   *  chat, instead of showing it on mount. For a page where the chat is
+   *  the main event, on-mount is right — you should read it before you
+   *  start typing. On a page where the chat is one section among many, a
+   *  modal on load covers content the visitor came for and gets dismissed
+   *  unread, which is worse for them and worse for us. */
+  deferDisclaimer?: boolean;
   tenant?: Tenant | null;
 }) {
   // Both modes drop the site header and hero — the host page supplies
@@ -128,14 +137,34 @@ export default function TriageApp({
     localStorage.setItem("uc_lang", next);
   };
 
-  // Show the full disclaimer modal once per browser session
+  // Show the full disclaimer modal once per browser session. Still before
+  // anyone can use the chat either way — deferring moves it to first
+  // contact rather than removing it.
+  const needsDisclaimer = useCallback(() => {
+    try {
+      return !sessionStorage.getItem("uc_disclaimer_ack");
+    } catch {
+      // Private browsing with storage blocked. Show it: erring towards
+      // displaying a medical disclaimer more often is the safe direction.
+      return true;
+    }
+  }, []);
+
   useEffect(() => {
+    if (deferDisclaimer) return;
     const timer = setTimeout(() => {
-      const ack = sessionStorage.getItem("uc_disclaimer_ack");
-      if (!ack) setShowDisclaimer(true);
+      if (needsDisclaimer()) setShowDisclaimer(true);
     }, 0);
     return () => clearTimeout(timer);
-  }, []);
+  }, [deferDisclaimer, needsDisclaimer]);
+
+  /** Called on first interaction when deferred. Returns true if the modal
+   *  was raised, so the caller knows the interaction was intercepted. */
+  const gateOnInteract = useCallback((): boolean => {
+    if (!deferDisclaimer || !needsDisclaimer()) return false;
+    setShowDisclaimer(true);
+    return true;
+  }, [deferDisclaimer, needsDisclaimer]);
 
   const acknowledgeDisclaimer = () => {
     sessionStorage.setItem("uc_disclaimer_ack", "1");
@@ -317,6 +346,11 @@ export default function TriageApp({
   const handleSend = async (overrideText?: string) => {
     const text = (overrideText || inputValue).trim();
     if (!text || isLoading) return;
+
+    // Deferred mode: the disclaimer has to be read before the first
+    // message goes anywhere, so the send is stopped here and the modal
+    // raised. Whatever was typed stays in the box for after.
+    if (gateOnInteract()) return;
 
     // Intercept the "who is this for" quick replies
     if (text === t.whoForMyself || text === t.whoForChild || text === t.whoForOther) {
@@ -584,7 +618,7 @@ export default function TriageApp({
             ) : (
               <>
                 <BrandIcon />
-                urgentcare<span className="tld">.chat</span>
+                <Wordmark />
               </>
             )}
           </div>
@@ -966,12 +1000,12 @@ export default function TriageApp({
             </span>
           ) : embed ? (
             <a
-              href="https://urgentcare.chat"
+              href={ROOT_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="embed-attribution"
             >
-              Powered by urgentcare.chat
+              Powered by {PRODUCT_NAME}
             </a>
           ) : tenant ? (
             <>
@@ -981,7 +1015,7 @@ export default function TriageApp({
               {" · "}
               <a href={`${ROOT_URL}/disclaimer`}>Disclaimer</a>
               {" · "}
-              <a href={ROOT_URL}>Powered by urgentcare.chat</a>
+              <a href={ROOT_URL}>Powered by {PRODUCT_NAME}</a>
             </>
           ) : (
             <>

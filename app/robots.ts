@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const SITE_URL = "https://urgentcare.chat";
+import { ROOT_URL as SITE_URL } from "@/lib/site";
 
 // Explicitly allow known AI crawlers/answer-engines alongside standard search
 // bots — the default rule already allows everyone, but naming them keeps

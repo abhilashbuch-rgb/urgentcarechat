@@ -1,10 +1,12 @@
 import Link from "next/link";
 import BrandIcon from "@/app/components/BrandIcon";
+import Wordmark from "@/app/components/Wordmark";
+import { PRODUCT_NAME, OPERATOR, contactMailto } from "@/lib/site";
 
 export const metadata = {
-  title: "Security & compliance — urgentcare.chat",
+  title: `Security & compliance — ${PRODUCT_NAME}`,
   description:
-    "What urgentcare.chat collects, what it doesn't, our subprocessors, and where we are on SOC 2 and HIPAA.",
+    `What ${PRODUCT_NAME} collects, what it doesn't, our subprocessors, and where we are on SOC 2 and HIPAA.`,
 };
 
 // Deliberately plain-spoken and current-state. Written to be handed
@@ -19,7 +21,7 @@ export default function SecurityPage() {
           <Link className="lp-brand" href="/" style={{ textDecoration: "none" }}>
             <BrandIcon />
             <span>
-              urgentcare<span className="lp-tld">.chat</span>
+              <Wordmark tldClass="lp-tld" />
             </span>
           </Link>
           <nav className="lp-nav-links">
@@ -27,7 +29,7 @@ export default function SecurityPage() {
             <Link href="/terms">Terms</Link>
             <a
               className="lp-nav-cta"
-              href="mailto:urgentcarechat@icloud.com?subject=Security%20review"
+              href={contactMailto("Security review")}
             >
               Ask a security question
             </a>
@@ -178,13 +180,24 @@ export default function SecurityPage() {
             <li>
               <strong>No patient accounts.</strong> There is no login, no
               password, and no session to hijack — so there are no patient
-              credentials to breach in the first place.
+              credentials to breach in the first place. Clinic staff do have
+              named accounts, in a separate area on their own hostname; that
+              side is described below.
             </li>
             <li>
               <strong>Row-level security on every table.</strong> The public
               key can only read clinic listings and active tenant branding, and
               can only insert claims and follow-up opt-ins. It cannot read
               them back.
+            </li>
+            <li>
+              <strong>Staff tools are a separate database schema.</strong> The
+              internal area clinic staff sign into holds no patient data and
+              has no foreign key in either direction to the tables above, so a
+              query written on one side cannot reach the other. Access is by
+              invitation — signing in with Google proves identity and grants
+              nothing on its own — and every row is scoped to one organization
+              by row-level security rather than by application code.
             </li>
             <li>
               <strong>Privileged keys never reach the browser.</strong> The
@@ -270,11 +283,8 @@ export default function SecurityPage() {
             fill it in honestly, including the rows where the answer is
             &ldquo;not yet.&rdquo;
           </p>
-          <a
-            className="lp-btn-primary"
-            href="mailto:urgentcarechat@icloud.com?subject=Security%20review"
-          >
-            urgentcarechat@icloud.com
+          <a className="lp-btn-primary" href={contactMailto("Security review")}>
+            Send it to us
           </a>
         </section>
       </main>
@@ -282,7 +292,7 @@ export default function SecurityPage() {
       <footer className="lp-footer">
         <div className="lp-footer-inner">
           <span className="lp-footer-brand">
-            urgentcare.chat &mdash; a Medicin.io LLC product
+            {PRODUCT_NAME} &mdash; a {OPERATOR} product
           </span>
           <span className="lp-footer-links">
             <Link href="/">Home</Link>

@@ -1,8 +1,10 @@
 import Link from "next/link";
 import BrandIcon from "@/app/components/BrandIcon";
+import Wordmark from "@/app/components/Wordmark";
+import { PRODUCT_NAME } from "@/lib/site";
 
 export const metadata = {
-  title: "Privacy Policy — urgentcare.chat",
+  title: `Privacy Policy — ${PRODUCT_NAME}`,
 };
 
 export default function PrivacyPage() {
@@ -11,13 +13,14 @@ export default function PrivacyPage() {
       <header className="site-header">
         <div className="brand">
           <BrandIcon />
-          urgentcare<span className="tld">.chat</span>
+          <Wordmark />
         </div>
       </header>
 
       <main className="legal-main">
         <div className="legal-draft-banner">
-          <strong>Draft — not final.</strong> This page has not been reviewed
+          <strong>Draft — not final.</strong>{" "}
+          This page has not been reviewed
           by an attorney and doesn&apos;t yet address CCPA/GDPR-specific
           obligations in detail. Review before launch.
         </div>

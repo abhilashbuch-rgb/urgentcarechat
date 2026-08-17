@@ -5,9 +5,11 @@ import { getTodaysReads } from "@/lib/health-reads";
 import { fetchFluSeries, type FluSeries } from "@/lib/cdc-flu";
 import { fetchHealthNews, countBySource, type NewsItem } from "@/lib/medlineplus-news";
 import { type HealthTopic } from "@/lib/medlineplus";
+import Wordmark from "@/app/components/Wordmark";
+import { PRODUCT_NAME, OPERATOR } from "@/lib/site";
 
 export const metadata = {
-  title: "Health Monitor — urgentcare.chat",
+  title: `Health Monitor — ${PRODUCT_NAME}`,
   description:
     "Live regional flu activity from CDC FluView, plus health topics and new content from the National Library of Medicine.",
 };
@@ -43,7 +45,7 @@ export default async function MonitorPage() {
           <Link className="lp-brand" href="/" style={{ textDecoration: "none" }}>
             <BrandIcon />
             <span>
-              urgentcare<span className="lp-tld">.chat</span>
+              <Wordmark tldClass="lp-tld" />
             </span>
           </Link>
           <nav className="lp-nav-links">
@@ -95,8 +97,8 @@ export default async function MonitorPage() {
               Low is under 2%, moderate under 4%, high at or above 4%.
             </li>
             <li>
-              <strong>New York excludes New York City,</strong> which reports to
-              FluView as its own region. That&apos;s CDC&apos;s split, not ours.
+              <strong>New York excludes New York City,</strong>{" "}
+              which reports to FluView as its own region. That&apos;s CDC&apos;s split, not ours.
             </li>
             <li>
               <strong>Recent weeks get revised.</strong> FluView data is
@@ -104,8 +106,8 @@ export default async function MonitorPage() {
               point can move.
             </li>
             <li>
-              <strong>Topics and new links</strong> come from MedlinePlus, the
-              NLM&apos;s consumer health service. Nothing here is personalized
+              <strong>Topics and new links</strong>{" "}
+              come from MedlinePlus, the NLM&apos;s consumer health service. Nothing here is personalized
               or a diagnosis.
             </li>
           </ul>
@@ -115,7 +117,7 @@ export default async function MonitorPage() {
       <footer className="lp-footer">
         <div className="lp-footer-inner">
           <span className="lp-footer-brand">
-            urgentcare.chat &mdash; a Medicin.io LLC product
+            {PRODUCT_NAME} &mdash; a {OPERATOR} product
           </span>
           <span className="lp-footer-links">
             <Link href="/">Home</Link>

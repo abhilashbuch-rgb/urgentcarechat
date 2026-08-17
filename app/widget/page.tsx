@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import TriageApp from "@/app/components/TriageApp";
 import BrandIcon from "@/app/components/BrandIcon";
+import Wordmark from "@/app/components/Wordmark";
+import { ROOT_URL, PRODUCT_NAME } from "@/lib/site";
 
 const SNIPPET = `<iframe
-  src="https://urgentcare.chat/widget"
+  src="${ROOT_URL}/widget"
   style="width:100%;max-width:480px;height:640px;border:1px solid #e6e1d6;border-radius:8px;"
-  title="urgentcare.chat triage assistant"
+  title="${PRODUCT_NAME} triage assistant"
 ></iframe>`;
 
 function EmbedDocs() {
@@ -28,7 +30,7 @@ function EmbedDocs() {
       <header className="site-header">
         <div className="brand">
           <BrandIcon />
-          urgentcare<span className="tld">.chat</span>
+          <Wordmark />
         </div>
         <div className="tagline">Embed this widget</div>
       </header>
@@ -52,7 +54,7 @@ function EmbedDocs() {
         <iframe
           src="/widget"
           className="widget-preview-frame"
-          title="urgentcare.chat widget preview"
+          title={`${PRODUCT_NAME} widget preview`}
         />
       </main>
     </div>

@@ -6,14 +6,15 @@
 //
 // Classes are `cp-` prefixed and self-contained so this can never
 // collide with the live chat's styles in globals.css.
+import { PRODUCT_NAME, ROOT_DOMAIN } from "@/lib/site";
 export default function ChatPreview() {
   return (
-    <div className="cp-frame" role="img" aria-label="Preview of a urgentcare.chat triage conversation ending in a routed clinic recommendation">
+    <div className="cp-frame" role="img" aria-label={`Preview of a ${PRODUCT_NAME} triage conversation ending in a routed clinic recommendation`}>
       <div className="cp-chrome">
         <span className="cp-dot" />
         <span className="cp-dot" />
         <span className="cp-dot" />
-        <span className="cp-url">afc.urgentcare.chat</span>
+        <span className="cp-url">{`afc.${ROOT_DOMAIN}`}</span>
       </div>
 
       <div className="cp-disclaimer">

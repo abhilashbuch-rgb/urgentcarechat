@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getTenantBySlug } from "@/lib/tenants";
 import type { Metadata } from "next";
+import { PRODUCT_NAME } from "@/lib/site";
 
 // Validates the tenant slug for everything under /t/[tenant] — reached
 // either directly, or via proxy.ts rewriting a request to
@@ -15,7 +16,7 @@ export async function generateMetadata({
   const { tenant: slug } = await params;
   const tenant = await getTenantBySlug(slug);
   return {
-    title: tenant ? `${tenant.displayName} — powered by urgentcare.chat` : "Not found",
+    title: tenant ? `${tenant.displayName} — powered by ${PRODUCT_NAME}` : "Not found",
     robots: { index: false, follow: false },
   };
 }

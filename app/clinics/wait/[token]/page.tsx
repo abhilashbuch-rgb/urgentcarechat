@@ -3,9 +3,11 @@ import { notFound } from "next/navigation";
 import BrandIcon from "@/app/components/BrandIcon";
 import WaitTimeForm from "@/app/components/WaitTimeForm";
 import { getWaitByToken } from "@/lib/wait-time";
+import { contactMailto, PRODUCT_NAME } from "@/lib/site";
+import Wordmark from "@/app/components/Wordmark";
 
 export const metadata = {
-  title: "Update wait time — urgentcare.chat",
+  title: `Update wait time — ${PRODUCT_NAME}`,
   robots: { index: false, follow: false },
 };
 
@@ -26,7 +28,7 @@ export default async function ClinicWaitPage({
       <header className="site-header">
         <div className="brand">
           <BrandIcon />
-          urgentcare<span className="tld">.chat</span>
+          <Wordmark />
         </div>
       </header>
 
@@ -35,7 +37,7 @@ export default async function ClinicWaitPage({
         <h1 className="analytics-title">{wait.clinicName}</h1>
         <p className="reads-sub">
           Update this whenever it changes — patients coming from
-          urgentcare.chat see this number right on your listing. It
+          medicin.io see this number right on your listing. It
           automatically stops showing after 2 hours without an update, so
           there&apos;s no need to clear it at close of day.
         </p>
@@ -46,14 +48,14 @@ export default async function ClinicWaitPage({
           Have a live queue system already (Solv, Experity, ClockWise.MD,
           etc.)? It can push updates directly to this same link&apos;s API
           instead of a person clicking buttons —{" "}
-          <a href="mailto:urgentcarechat@icloud.com?subject=Wait-time%20feed%20integration">
+          <a href={contactMailto("Wait-time feed integration")}>
             ask us to wire it up
           </a>
           .
         </p>
 
         <p className="legal-links">
-          <Link href="/">Back to urgentcare.chat</Link>
+          <Link href="/">Back to medicin.io</Link>
         </p>
       </main>
     </div>

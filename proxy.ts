@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getTenantBySlug } from "@/lib/tenants";
+import { ROOT_DOMAIN, domainOf, isRootHost } from "@/lib/site";
 
 // ============================================================
 // Subdomain routing for branded tenant portals (e.g.
@@ -11,7 +12,9 @@ import { getTenantBySlug } from "@/lib/tenants";
 // header so downstream code can scope data without needing the URL.
 // ============================================================
 
-const ROOT_DOMAIN = "urgentcare.chat";
+// Imported rather than declared — see lib/site.ts. The proxy is where
+// the domain does the most work, so it is the last place that should
+// carry its own copy of the string.
 
 // Paths on the root domain that belong to the main site. A first path
 // segment in here is never treated as a tenant slug, so adding a tenant can
@@ -26,6 +29,7 @@ const RESERVED_ROOT_PATHS = new Set([
   "privacy",
   "reads",
   "security",
+  "staff",
   "terms",
   "widget",
   "embed",
@@ -125,16 +129,34 @@ function tenantGate(request: NextRequest): NextResponse | null {
   );
 }
 
-async function handleRootDomain(request: NextRequest) {
+// x-tenant-slug is set by this proxy and trusted by everything downstream
+// — /api/clinics scopes its search by it, and the staff area resolves
+// which organization you are in from it. So it has to be impossible to
+// send one: a request arriving with its own x-tenant-slug header must
+// have that header removed before any handler can read it.
+//
+// Without this, `curl -H 'x-tenant-slug: afc'` against the root domain
+// would have been enough to make the staff area believe the request
+// belonged to an org. The header is only trustworthy because it is
+// stripped here first and re-set only after a real lookup.
+function baseHeaders(request: NextRequest): Headers {
+  const headers = new Headers(request.headers);
+  headers.delete("x-tenant-slug");
+  return headers;
+}
+
+async function handleRootDomain(request: NextRequest, headers: Headers) {
   const { pathname } = request.nextUrl;
   const [, first, ...rest] = pathname.split("/");
 
+  const passThrough = () => NextResponse.next({ request: { headers } });
+
   if (!first || RESERVED_ROOT_PATHS.has(first) || !SLUG_PATTERN.test(first)) {
-    return NextResponse.next();
+    return passThrough();
   }
 
   const tenant = await getTenantBySlug(first);
-  if (!tenant) return NextResponse.next();
+  if (!tenant) return passThrough();
 
   // The subdomain is the canonical home for a tenant portal, so the path
   // URL redirects to it rather than serving a duplicate. Held back until
@@ -155,8 +177,7 @@ async function handleRootDomain(request: NextRequest) {
   const gated = tenantGate(request);
   if (gated) return gated;
 
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-tenant-slug", tenant.slug);
+  headers.set("x-tenant-slug", tenant.slug);
 
   const rewrittenUrl = new URL(
     `/t/${tenant.slug}${rest.length ? `/${rest.join("/")}` : ""}`,
@@ -164,20 +185,26 @@ async function handleRootDomain(request: NextRequest) {
   );
   rewrittenUrl.search = request.nextUrl.search;
 
-  return NextResponse.rewrite(rewrittenUrl, { request: { headers: requestHeaders } });
+  return NextResponse.rewrite(rewrittenUrl, { request: { headers } });
 }
 
 export async function proxy(request: NextRequest) {
   const hostname = (request.headers.get("host") || "").split(":")[0];
 
-  const isRootDomain = hostname === ROOT_DOMAIN || hostname === `www.${ROOT_DOMAIN}`;
+  // Recognised under the current domain AND the legacy one, so the
+  // white-label patient portals already live on urgentcare.chat keep
+  // working through the rename.
+  const parent = domainOf(hostname);
+  const isRootDomain = isRootHost(hostname);
   const subdomain =
-    !isRootDomain && hostname.endsWith(`.${ROOT_DOMAIN}`)
-      ? hostname.slice(0, -(`.${ROOT_DOMAIN}`.length))
+    parent && !isRootDomain && hostname.endsWith(`.${parent}`)
+      ? hostname.slice(0, -(`.${parent}`.length))
       : null;
 
+  const requestHeaders = baseHeaders(request);
+
   if (!subdomain) {
-    return handleRootDomain(request);
+    return handleRootDomain(request, requestHeaders);
   }
 
   const tenant = await getTenantBySlug(subdomain);
@@ -188,14 +215,34 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL(`https://${ROOT_DOMAIN}`, request.url));
   }
 
-  // Same gate as the path route — one implementation, both doors.
-  const gated = tenantGate(request);
-  if (gated) return gated;
-
-  const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-tenant-slug", tenant.slug);
 
   const { pathname } = request.nextUrl;
+
+  // THERE IS ONE STAFF DOOR, AND IT IS ON THE ROOT DOMAIN.
+  //
+  // Staff used to sign in at their own org's subdomain, which meant a
+  // Google OAuth redirect URI registered by hand for every customer. One
+  // address means one callback URL forever, which is the difference
+  // between onboarding a customer and provisioning one.
+  //
+  // Subdomains keep serving the white-label PATIENT portal, where the
+  // branding is the whole point. They just don't serve /staff.
+  if (
+    pathname === "/staff" ||
+    pathname.startsWith("/staff/") ||
+    pathname.startsWith("/api/staff/")
+  ) {
+    return NextResponse.redirect(
+      new URL(`${pathname}${request.nextUrl.search}`, `https://${ROOT_DOMAIN}`)
+    );
+  }
+
+  // Same gate as the path route — one implementation, both doors. Still
+  // ahead of the API passthrough, so the preview key covers the portal's
+  // own data endpoints and not just its HTML.
+  const gated = tenantGate(request);
+  if (gated) return gated;
 
   // API routes keep their real path — they read the tenant from the
   // header instead of the URL.
