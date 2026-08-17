@@ -41,8 +41,9 @@ export default function TrialForm() {
       <div className="tr-done">
         <h2>Your workspace is ready.</h2>
         <p>
-          Sign in with Google using <strong>{done}</strong> — that address is
-          the administrator. Any other account will be turned away.
+          Sign in with Google using <strong>{done}</strong>{" "}
+          &mdash; that address is the administrator. Any other account will be
+          turned away.
         </p>
         <a className="lp-btn-primary" href="/staff/signin">
           Sign in and set it up

@@ -1,8 +1,10 @@
 import Link from "next/link";
 import BrandIcon from "@/app/components/BrandIcon";
+import Wordmark from "@/app/components/Wordmark";
+import { PRODUCT_NAME, contactMailto } from "@/lib/site";
 
 export const metadata = {
-  title: "White-label — urgentcare.chat",
+  title: `White-label — ${PRODUCT_NAME}`,
 };
 
 export default function PartnersPage() {
@@ -11,7 +13,7 @@ export default function PartnersPage() {
       <header className="site-header">
         <div className="brand">
           <BrandIcon />
-          urgentcare<span className="tld">.chat</span>
+          <Wordmark />
         </div>
       </header>
 
@@ -24,7 +26,8 @@ export default function PartnersPage() {
         <section className="legal-section">
           <p>
             Run your own branded AI-guided symptom triage and clinic-finder
-            experience on the same platform powering urgentcare.chat &mdash;
+            experience on the same platform powering {PRODUCT_NAME}{" "}
+            &mdash;
             under your own name and domain.
           </p>
         </section>
@@ -32,8 +35,8 @@ export default function PartnersPage() {
         <section className="legal-section">
           <h2>Interested?</h2>
           <p>
-            <a href="mailto:urgentcarechat@icloud.com?subject=White-label%20inquiry">
-              urgentcarechat@icloud.com
+            <a href={contactMailto("White-label inquiry")}>
+              Email us about a white-label portal
             </a>
           </p>
         </section>

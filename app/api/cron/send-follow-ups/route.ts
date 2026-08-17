@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { sendSms } from "@/lib/twilio";
+import { PRODUCT_NAME } from "@/lib/site";
 
 // ============================================================
 // /api/cron/send-follow-ups — Called hourly by Vercel Cron (see
@@ -37,7 +38,7 @@ export async function GET(req: NextRequest) {
       try {
         await sendSms(
           request.phone,
-          `Hi, this is urgentcare.chat checking in — how did your visit to ${request.clinic_name} go? Reply STOP to opt out.`
+          `Hi, this is ${PRODUCT_NAME} checking in — how did your visit to ${request.clinic_name} go? Reply STOP to opt out.`
         );
         // Mark sent FIRST and on its own — this is the guard against
         // texting someone twice, so nothing else may be bundled into it.

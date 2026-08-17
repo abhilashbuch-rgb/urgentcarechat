@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import BrandIcon from "@/app/components/BrandIcon";
 import TrialForm from "@/app/components/TrialForm";
+import Wordmark from "@/app/components/Wordmark";
+import { PRODUCT_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Start a trial — medicin.io",
+  title: `Start a trial — ${PRODUCT_NAME}`,
   description:
     "Fourteen days, no credit card. Set up your clinic's compliance workspace in about a minute.",
   robots: { index: true, follow: true },
@@ -18,7 +20,7 @@ export default function StartTrial() {
           <Link className="lp-brand" href="/">
             <BrandIcon />
             <span>
-              medicin<span className="lp-tld">.io</span>
+              <Wordmark tldClass="lp-tld" />
             </span>
           </Link>
           <nav className="lp-nav-links">

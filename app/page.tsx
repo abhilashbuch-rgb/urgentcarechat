@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import BrandIcon from "@/app/components/BrandIcon";
+import { contactMailto, PRODUCT_NAME } from "@/lib/site";
+import Wordmark from "@/app/components/Wordmark";
 
 // The homepage sells one thing in three seconds: pass inspections without
 // a paper binder. Everything that was here before — feature paragraphs, a
@@ -29,7 +31,7 @@ const INCLUDED = [
 ];
 
 export const metadata: Metadata = {
-  title: "medicin.io — kill the paper binder",
+  title: `${PRODUCT_NAME} — kill the paper binder`,
   description:
     "Digital compliance logs for urgent care. Crash cart, fridge temperatures and narcotics counts done in seconds on staff phones, with an audit trail nobody can backdate.",
   alternates: { canonical: "/" },
@@ -42,9 +44,7 @@ export default function LandingPage() {
         <div className="lp-nav-inner">
           <div className="lp-brand">
             <BrandIcon />
-            <span>
-              medicin<span className="lp-tld">.io</span>
-            </span>
+            <Wordmark tldClass="lp-tld" />
           </div>
           <nav className="lp-nav-links">
             <a href="/staff/signin">Sign in</a>
@@ -101,7 +101,7 @@ export default function LandingPage() {
 
           <p className="mh-multi">
             Three or more clinics? $99 per clinic per month.{" "}
-            <a href="mailto:urgentcarechat@icloud.com?subject=Multi-unit%20pricing">
+            <a href={contactMailto("Multi-unit pricing")}>
               Talk to us
             </a>
             .

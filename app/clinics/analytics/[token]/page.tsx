@@ -2,9 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import BrandIcon from "@/app/components/BrandIcon";
 import { getClinicAnalytics, type ClickSummary } from "@/lib/clinic-analytics";
+import Wordmark from "@/app/components/Wordmark";
+import { PRODUCT_NAME } from "@/lib/site";
 
 export const metadata = {
-  title: "Referral analytics — medicin.io",
+  title: `Referral analytics — ${PRODUCT_NAME}`,
   robots: { index: false, follow: false },
 };
 
@@ -68,7 +70,7 @@ export default async function ClinicAnalyticsPage({
       <header className="site-header">
         <div className="brand">
           <BrandIcon />
-          medicin<span className="tld">.io</span>
+          <Wordmark />
         </div>
       </header>
 

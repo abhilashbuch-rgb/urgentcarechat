@@ -1,8 +1,10 @@
 import Link from "next/link";
 import BrandIcon from "@/app/components/BrandIcon";
+import Wordmark from "@/app/components/Wordmark";
+import { PRODUCT_NAME, OPERATOR } from "@/lib/site";
 
 export const metadata = {
-  title: "Terms of Service — urgentcare.chat",
+  title: `Terms of Service — ${PRODUCT_NAME}`,
 };
 
 export default function TermsPage() {
@@ -11,7 +13,7 @@ export default function TermsPage() {
       <header className="site-header">
         <div className="brand">
           <BrandIcon />
-          urgentcare<span className="tld">.chat</span>
+          <Wordmark />
         </div>
       </header>
 
@@ -29,7 +31,7 @@ export default function TermsPage() {
         <section className="legal-section">
           <h2>1. Who we are</h2>
           <p>
-            urgentcare.chat is a brand operated by Medicin.io LLC
+            {PRODUCT_NAME} is a brand operated by {OPERATOR}{" "}
             (&quot;Medicin.io,&quot; &quot;we,&quot; &quot;us&quot;). By using
             this site, you agree to these terms.
           </p>
@@ -38,17 +40,18 @@ export default function TermsPage() {
         <section className="legal-section">
           <h2>2. The service</h2>
           <p>
-            urgentcare.chat offers a free AI-assisted chat that helps you
+            {PRODUCT_NAME} offers a free AI-assisted chat that helps you
             describe symptoms and find a nearby urgent care clinic. See our{" "}
-            <Link href="/disclaimer">Platform Disclaimer</Link> for details
-            on what the service is and isn&apos;t.
+            <Link href="/disclaimer">Platform Disclaimer</Link>{" "}
+            for details on what the service is and isn&apos;t.
           </p>
         </section>
 
         <section className="legal-section">
           <h2>3. Prohibited use</h2>
           <p>
-            Don&apos;t use urgentcare.chat to seek medication for misuse,
+            Don&apos;t use {PRODUCT_NAME}{" "}
+            to seek medication for misuse,
             impersonate another person, or use the service for anything
             other than your own (or, when specified, your dependent&apos;s)
             care.

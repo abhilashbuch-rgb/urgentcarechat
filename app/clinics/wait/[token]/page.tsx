@@ -3,9 +3,11 @@ import { notFound } from "next/navigation";
 import BrandIcon from "@/app/components/BrandIcon";
 import WaitTimeForm from "@/app/components/WaitTimeForm";
 import { getWaitByToken } from "@/lib/wait-time";
+import { contactMailto, PRODUCT_NAME } from "@/lib/site";
+import Wordmark from "@/app/components/Wordmark";
 
 export const metadata = {
-  title: "Update wait time — medicin.io",
+  title: `Update wait time — ${PRODUCT_NAME}`,
   robots: { index: false, follow: false },
 };
 
@@ -26,7 +28,7 @@ export default async function ClinicWaitPage({
       <header className="site-header">
         <div className="brand">
           <BrandIcon />
-          medicin<span className="tld">.io</span>
+          <Wordmark />
         </div>
       </header>
 
@@ -46,7 +48,7 @@ export default async function ClinicWaitPage({
           Have a live queue system already (Solv, Experity, ClockWise.MD,
           etc.)? It can push updates directly to this same link&apos;s API
           instead of a person clicking buttons —{" "}
-          <a href="mailto:urgentcarechat@icloud.com?subject=Wait-time%20feed%20integration">
+          <a href={contactMailto("Wait-time feed integration")}>
             ask us to wire it up
           </a>
           .

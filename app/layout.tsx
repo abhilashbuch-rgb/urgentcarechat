@@ -42,21 +42,21 @@ const SITE_DESCRIPTION =
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "urgentcare.chat — compliance software for urgent care",
+  title: `${PRODUCT_NAME} — compliance software for urgent care`,
   description: SITE_DESCRIPTION,
   alternates: {
     canonical: "/",
   },
   openGraph: {
-    title: "urgentcare.chat — compliance software for urgent care",
+    title: `${PRODUCT_NAME} — compliance software for urgent care`,
     description: SITE_DESCRIPTION,
     url: SITE_URL,
-    siteName: "urgentcare.chat",
+    siteName: PRODUCT_NAME,
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "urgentcare.chat — compliance software for urgent care",
+    title: `${PRODUCT_NAME} — compliance software for urgent care`,
     description: SITE_DESCRIPTION,
   },
 };

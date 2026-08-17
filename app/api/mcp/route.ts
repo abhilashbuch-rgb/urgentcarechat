@@ -7,7 +7,7 @@ import { z } from "zod";
 // only best-effort per-IP rate limiting, and MCP clients typically call
 // through a shared IP, which would make usage far harder to rate-limit
 // or cost-cap than a normal per-visitor limit on the website itself.
-import { ROOT_URL as SITE_URL } from "@/lib/site";
+import { ROOT_URL as SITE_URL, PRODUCT_NAME } from "@/lib/site";
 
 const handler = createMcpHandler((server) => {
   server.registerTool(
@@ -15,7 +15,7 @@ const handler = createMcpHandler((server) => {
     {
       title: "Find Urgent Care Near Me",
       description:
-        "Finds real, nearby urgent care clinics in the US by zip code, with address, phone, hours, and rating. Sourced live from urgentcare.chat (a free AI triage + clinic finder) — not a diagnosis tool, not affiliated with any specific clinic. For life-threatening emergencies, call 911.",
+        `Finds real, nearby urgent care clinics in the US by zip code, with address, phone, hours, and rating. Sourced live from ${PRODUCT_NAME} (a free AI triage + clinic finder) — not a diagnosis tool, not affiliated with any specific clinic. For life-threatening emergencies, call 911.`,
       inputSchema: z.object({
         zip: z.string().describe("US zip code to search near, e.g. \"19103\"."),
         insurance: z

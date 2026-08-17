@@ -1,8 +1,10 @@
 import Link from "next/link";
 import BrandIcon from "@/app/components/BrandIcon";
+import Wordmark from "@/app/components/Wordmark";
+import { PRODUCT_NAME, OPERATOR } from "@/lib/site";
 
 export const metadata = {
-  title: "Platform Disclaimer — urgentcare.chat",
+  title: `Platform Disclaimer — ${PRODUCT_NAME}`,
 };
 
 export default function DisclaimerPage() {
@@ -11,7 +13,7 @@ export default function DisclaimerPage() {
       <header className="site-header">
         <div className="brand">
           <BrandIcon />
-          urgentcare<span className="tld">.chat</span>
+          <Wordmark />
         </div>
       </header>
 
@@ -27,9 +29,9 @@ export default function DisclaimerPage() {
         <p className="legal-updated">Last updated: [DATE]</p>
 
         <section className="legal-section">
-          <h2>What urgentcare.chat is</h2>
+          <h2>What {PRODUCT_NAME} is</h2>
           <p>
-            urgentcare.chat is a brand operated by Medicin.io LLC, a
+            {PRODUCT_NAME} is a brand operated by {OPERATOR}, a
             technology infrastructure company. Through this site,
             Medicin.io LLC provides an AI-assisted symptom-information and
             clinic-finder tool at no cost.
@@ -58,13 +60,14 @@ export default function DisclaimerPage() {
         <section className="legal-section">
           <h2>Emergencies</h2>
           <p>
-            urgentcare.chat is not a substitute for 911 or emergency
+            {PRODUCT_NAME} is not a substitute for 911 or emergency
             medical services. If you are experiencing a medical emergency,
             call 911 or go to the nearest emergency room now.
           </p>
           <p>
             If you are in crisis or having thoughts of suicide or self-harm,
-            call or text <strong>988</strong> (Suicide &amp; Crisis Lifeline)
+            call or text <strong>988</strong>{" "}
+            (Suicide &amp; Crisis Lifeline)
             or text HOME to <strong>741741</strong> (Crisis Text Line).
           </p>
         </section>

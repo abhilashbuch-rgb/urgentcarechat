@@ -32,6 +32,23 @@ export const PRODUCT_NAME = "medicin.io";
 export const OPERATOR = "Medicin.io LLC";
 
 /**
+ * The contact mailbox.
+ *
+ * Still the old address, because it is a real inbox someone reads and
+ * inventing hello@medicin.io here would print a contact address that
+ * bounces — worse than an address on the wrong brand. It is no longer
+ * SHOWN anywhere: every place that used to print it now uses link text,
+ * so the site never says the old name out loud. When a mailbox exists on
+ * the new domain, this line is the only edit.
+ */
+export const CONTACT_EMAIL = "urgentcarechat@icloud.com";
+
+/** A mailto with the subject pre-filled, so replies arrive sorted. */
+export function contactMailto(subject: string): string {
+  return `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}`;
+}
+
+/**
  * Domains this deployment still answers for, beyond the current one.
  *
  * urgentcare.chat is NOT retired. It is a genuinely good name for a

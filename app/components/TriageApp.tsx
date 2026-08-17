@@ -13,6 +13,7 @@ import { serviceLabel, insuranceLabel } from "@/lib/service-labels";
 // Quiet, optional footer link — never shown during 911/988 alerts.
 const TIP_JAR_URL = "https://ko-fi.com/urgentcarechat";
 import { ROOT_URL, PRODUCT_NAME } from "@/lib/site";
+import Wordmark from "@/app/components/Wordmark";
 
 // ============================================================
 // Types
@@ -617,7 +618,7 @@ export default function TriageApp({
             ) : (
               <>
                 <BrandIcon />
-                urgentcare<span className="tld">.chat</span>
+                <Wordmark />
               </>
             )}
           </div>
@@ -1004,7 +1005,7 @@ export default function TriageApp({
               rel="noopener noreferrer"
               className="embed-attribution"
             >
-              Powered by urgentcare.chat
+              Powered by {PRODUCT_NAME}
             </a>
           ) : tenant ? (
             <>

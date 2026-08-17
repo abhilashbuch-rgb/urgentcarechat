@@ -5,6 +5,7 @@ import { withOrg } from "@/lib/staff/db";
 import { getTenantBySlug } from "@/lib/tenants";
 import { generateSecret, otpauthUri, formatSecret } from "@/lib/staff/totp";
 import MfaForm from "@/app/components/staff/MfaForm";
+import { PRODUCT_NAME } from "@/lib/site";
 
 // Enrolment. The secret is minted server-side on this render and stored
 // unconfirmed; it only becomes the user's second factor once they have
@@ -23,7 +24,7 @@ export default async function MfaEnroll() {
 
   const { session, org } = pending.ctx;
   const tenant = await getTenantBySlug(org);
-  const issuer = tenant?.displayName ?? "urgentcare.chat";
+  const issuer = tenant?.displayName ?? PRODUCT_NAME;
 
   const secret = await withOrg(org, session.role, async (sql) => {
     const existing = await sql<{ totp_secret: string | null }[]>`
