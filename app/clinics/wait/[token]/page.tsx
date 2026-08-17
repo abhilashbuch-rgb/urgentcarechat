@@ -5,7 +5,7 @@ import WaitTimeForm from "@/app/components/WaitTimeForm";
 import { getWaitByToken } from "@/lib/wait-time";
 
 export const metadata = {
-  title: "Update wait time — urgentcare.chat",
+  title: "Update wait time — medicin.io",
   robots: { index: false, follow: false },
 };
 
@@ -26,7 +26,7 @@ export default async function ClinicWaitPage({
       <header className="site-header">
         <div className="brand">
           <BrandIcon />
-          urgentcare<span className="tld">.chat</span>
+          medicin<span className="tld">.io</span>
         </div>
       </header>
 
@@ -35,7 +35,7 @@ export default async function ClinicWaitPage({
         <h1 className="analytics-title">{wait.clinicName}</h1>
         <p className="reads-sub">
           Update this whenever it changes — patients coming from
-          urgentcare.chat see this number right on your listing. It
+          medicin.io see this number right on your listing. It
           automatically stops showing after 2 hours without an update, so
           there&apos;s no need to clear it at close of day.
         </p>
@@ -53,7 +53,7 @@ export default async function ClinicWaitPage({
         </p>
 
         <p className="legal-links">
-          <Link href="/">Back to urgentcare.chat</Link>
+          <Link href="/">Back to medicin.io</Link>
         </p>
       </main>
     </div>

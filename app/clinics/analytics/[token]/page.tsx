@@ -4,7 +4,7 @@ import BrandIcon from "@/app/components/BrandIcon";
 import { getClinicAnalytics, type ClickSummary } from "@/lib/clinic-analytics";
 
 export const metadata = {
-  title: "Referral analytics — urgentcare.chat",
+  title: "Referral analytics — medicin.io",
   robots: { index: false, follow: false },
 };
 
@@ -68,7 +68,7 @@ export default async function ClinicAnalyticsPage({
       <header className="site-header">
         <div className="brand">
           <BrandIcon />
-          urgentcare<span className="tld">.chat</span>
+          medicin<span className="tld">.io</span>
         </div>
       </header>
 
@@ -95,7 +95,7 @@ export default async function ClinicAnalyticsPage({
         {location.total === 0 && (
           <p className="reads-empty">
             No referrals logged yet for this location in the last 30 days —
-            check back after urgentcare.chat sends some traffic your way.
+            check back after medicin.io sends some traffic your way.
           </p>
         )}
 
@@ -104,7 +104,7 @@ export default async function ClinicAnalyticsPage({
             Update your current wait time
           </Link>
           {" · "}
-          <Link href="/">Back to urgentcare.chat</Link>
+          <Link href="/">Back to medicin.io</Link>
         </p>
       </main>
     </div>

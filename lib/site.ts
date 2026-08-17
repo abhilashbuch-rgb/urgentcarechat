@@ -1,29 +1,69 @@
 // Where this product lives, and what it is called.
 //
-// ONE DEFINITION, DELIBERATELY. The domain was hard-coded in six files —
-// the proxy, the root layout, robots, the sitemap, the MCP route, and two
-// components — which meant "what are we doing about the domain" was a
-// refactor rather than a decision. It is now an edit to this file.
+// ONE DEFINITION. Everything else imports from here, so moving domains is
+// an edit to this file plus DNS.
 //
-// The .chat TLD is an ADDRESS, not the product's name. That distinction is
-// the point of PRODUCT_NAME existing separately: staff signing compliance
-// records should see the thing they are using named, and a URL is not a
-// name. Today the two happen to match; the day they don't, only this file
-// changes.
+// WHY medicin.io AND NOT urgentcare.chat.
+// The compliance platform is not a chat, and by the time a buyer has read
+// the homepage, signed up, and put the app on a phone, the word "chat"
+// appears exactly once in the whole journey — in the URL — describing
+// nothing on any page. It was a good name while the product WAS the
+// patient chat. It stopped being one when the product became compliance
+// software.
+//
+// The deciding argument was retention, not branding: compliance records
+// are kept for years (OSHA training three, HIPAA documentation six). A
+// record printed today with a domain in its footer is a document a
+// surveyor may read in 2032, and the cost of moving only ever goes up as
+// bookmarks, OAuth clients, receipts and printed records accumulate
+// against the old name.
 
 /** Bare apex domain. Subdomain routing in proxy.ts keys off this. */
-export const ROOT_DOMAIN = "urgentcare.chat";
+export const ROOT_DOMAIN = "medicin.io";
 
 /** Canonical origin for links, metadata, and sitemaps. */
 export const ROOT_URL = `https://${ROOT_DOMAIN}`;
 
-/** The name shown to people. Separate from the domain on purpose. */
-export const PRODUCT_NAME = "urgentcare.chat";
+/** The name shown to people. Separate from the domain on purpose — give
+ *  the product a real name and only this line changes. */
+export const PRODUCT_NAME = "medicin.io";
 
 /** Who operates it — appears in footers and structured data. */
 export const OPERATOR = "Medicin.io LLC";
 
-/** A tenant's canonical address, e.g. afc.urgentcare.chat. */
+/**
+ * Domains this deployment still answers for, beyond the current one.
+ *
+ * urgentcare.chat is NOT retired. It is a genuinely good name for a
+ * patient symptom chat, which is what still lives on it: afc.urgentcare.chat
+ * is a working white-label patient portal that has been shown to people,
+ * and silently breaking it to rename the staff product would be trading
+ * someone else's live thing for our tidiness.
+ *
+ * Tenant subdomains resolve under any of these. The staff area redirects
+ * to ROOT_DOMAIN from all of them, so there is still exactly one staff
+ * door and one OAuth callback.
+ */
+export const LEGACY_DOMAINS = ["urgentcare.chat"] as const;
+
+/** True for the apex or www of any domain this deployment answers for. */
+export function isRootHost(hostname: string): boolean {
+  return [ROOT_DOMAIN, ...LEGACY_DOMAINS].some(
+    (d) => hostname === d || hostname === `www.${d}`
+  );
+}
+
+/** The registrable domain a hostname belongs to, or null if it is not
+ *  ours — so a tenant subdomain can be recognised under either name. */
+export function domainOf(hostname: string): string | null {
+  return (
+    [ROOT_DOMAIN, ...LEGACY_DOMAINS].find(
+      (d) => hostname === d || hostname.endsWith(`.${d}`)
+    ) ?? null
+  );
+}
+
+/** A tenant's canonical address. */
 export function tenantUrl(slug: string): string {
   return `https://${slug}.${ROOT_DOMAIN}`;
 }

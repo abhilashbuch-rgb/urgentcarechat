@@ -29,7 +29,7 @@ const INCLUDED = [
 ];
 
 export const metadata: Metadata = {
-  title: "urgentcare.chat — kill the paper binder",
+  title: "medicin.io — kill the paper binder",
   description:
     "Digital compliance logs for urgent care. Crash cart, fridge temperatures and narcotics counts done in seconds on staff phones, with an audit trail nobody can backdate.",
   alternates: { canonical: "/" },
@@ -43,7 +43,7 @@ export default function LandingPage() {
           <div className="lp-brand">
             <BrandIcon />
             <span>
-              urgentcare<span className="lp-tld">.chat</span>
+              medicin<span className="lp-tld">.io</span>
             </span>
           </div>
           <nav className="lp-nav-links">
@@ -122,7 +122,7 @@ export default function LandingPage() {
       <footer className="lp-footer">
         <div className="lp-footer-inner">
           <span className="lp-footer-brand">
-            urgentcare.chat &mdash; a Medicin.io LLC product
+            medicin.io &mdash; a Medicin.io LLC product
           </span>
           <span className="lp-footer-links">
             <Link href="/terms">Terms</Link>

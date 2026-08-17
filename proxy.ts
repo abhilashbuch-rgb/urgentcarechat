@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getTenantBySlug } from "@/lib/tenants";
-import { ROOT_DOMAIN } from "@/lib/site";
+import { ROOT_DOMAIN, domainOf, isRootHost } from "@/lib/site";
 
 // ============================================================
 // Subdomain routing for branded tenant portals (e.g.
@@ -191,10 +191,14 @@ async function handleRootDomain(request: NextRequest, headers: Headers) {
 export async function proxy(request: NextRequest) {
   const hostname = (request.headers.get("host") || "").split(":")[0];
 
-  const isRootDomain = hostname === ROOT_DOMAIN || hostname === `www.${ROOT_DOMAIN}`;
+  // Recognised under the current domain AND the legacy one, so the
+  // white-label patient portals already live on urgentcare.chat keep
+  // working through the rename.
+  const parent = domainOf(hostname);
+  const isRootDomain = isRootHost(hostname);
   const subdomain =
-    !isRootDomain && hostname.endsWith(`.${ROOT_DOMAIN}`)
-      ? hostname.slice(0, -(`.${ROOT_DOMAIN}`.length))
+    parent && !isRootDomain && hostname.endsWith(`.${parent}`)
+      ? hostname.slice(0, -(`.${parent}`.length))
       : null;
 
   const requestHeaders = baseHeaders(request);

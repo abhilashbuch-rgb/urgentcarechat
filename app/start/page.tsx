@@ -4,7 +4,7 @@ import BrandIcon from "@/app/components/BrandIcon";
 import TrialForm from "@/app/components/TrialForm";
 
 export const metadata: Metadata = {
-  title: "Start a trial — urgentcare.chat",
+  title: "Start a trial — medicin.io",
   description:
     "Fourteen days, no credit card. Set up your clinic's compliance workspace in about a minute.",
   robots: { index: true, follow: true },
@@ -18,7 +18,7 @@ export default function StartTrial() {
           <Link className="lp-brand" href="/">
             <BrandIcon />
             <span>
-              urgentcare<span className="lp-tld">.chat</span>
+              medicin<span className="lp-tld">.io</span>
             </span>
           </Link>
           <nav className="lp-nav-links">
