@@ -4379,3 +4379,130 @@ body {
   .mh-features { padding: 32px 0 48px; gap: 22px; }
   .tr-card { padding: 24px 20px; }
 }
+
+/* ---------- the obligations register ---------- */
+
+.st-back { margin-bottom: 14px; font-size: 13px; }
+.st-back a { color: var(--ink-soft); text-decoration: none; }
+.st-back a:hover { color: var(--accent); }
+
+/* Overdue is the one state on the dashboard that is already a finding
+   rather than a task, so it gets the warm border rather than the same
+   treatment as an unsigned document. */
+.st-callout-warn { background: #fdeaec; border-color: #eec2c8; }
+.st-callout-warn:hover { background: #fce2e5; }
+
+.st-ob-add { margin-bottom: 18px; }
+.st-ob-group { margin-bottom: 26px; }
+.st-ob-group .st-h2 { display: flex; align-items: center; gap: 8px; }
+.st-ob-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: #55606e;
+  background: #eef0f4;
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+.st-ob-blurb { font-size: 12.5px; color: var(--ink-soft); margin: 4px 0 10px; }
+.st-ob-unowned { color: var(--accent); font-weight: 600; }
+
+.st-ob-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 28px;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+.st-ob-fact { min-width: 0; }
+.st-ob-fact-label {
+  display: block;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-weight: 600;
+  color: #8b919b;
+  margin-bottom: 3px;
+}
+.st-ob-fact-value { display: block; font-size: 13.5px; }
+
+.st-ob-detail {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  margin-bottom: 20px;
+}
+
+.st-ob-done, .st-ob-history, .st-ob-complete, .st-ob-more {
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+.st-ob-done { background: #fcfdfc; border-color: #d7e8de; }
+.st-ob-evidence {
+  font-size: 14.5px;
+  line-height: 1.6;
+  margin: 8px 0 10px;
+  white-space: pre-wrap;
+}
+.st-ob-evidence-by { font-size: 12.5px; color: var(--ink-soft); }
+
+.st-ob-history-list { list-style: none; margin-top: 10px; }
+.st-ob-history-list li {
+  border-top: 1px solid var(--rule);
+  padding-top: 10px;
+  margin-top: 10px;
+  font-size: 13px;
+}
+.st-ob-history-list li:first-child { border-top: none; padding-top: 0; margin-top: 0; }
+.st-ob-history-when { font-size: 12px; color: var(--ink-soft); }
+.st-ob-history-reason { font-size: 12.5px; color: var(--accent); margin-top: 4px; }
+
+.st-ob-field { margin-bottom: 18px; }
+.st-ob-field:last-child { margin-bottom: 0; }
+.st-ob-label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.st-ob-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+/* Buttons that follow a control sit under it rather than beside it — a
+   date input and a button on one line is the first thing to overflow on
+   a 375px screen. */
+.st-ob-field .st-board-btn { margin-top: 8px; }
+
+.st-ob-disclose {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.st-ob-disclose:hover { color: var(--accent); }
+.st-ob-more-body { margin-top: 16px; }
+
+@media (max-width: 720px) {
+  .st-ob-facts { gap: 12px 20px; padding: 14px 16px; }
+  .st-ob-done, .st-ob-history, .st-ob-complete, .st-ob-more { padding: 16px; }
+}
+
+/* The staff nav gained a sixth tab with the obligations register, which
+   pushed it past a phone's width. It scrolls rather than overflowing the
+   page, but a tab you have to discover by swiping is a tab most people
+   never find. So on a narrow screen the inert "coming soon" items drop
+   out — they are already listed on the Today screen, and they were the
+   only two that don't go anywhere. */
+@media (max-width: 720px) {
+  .st-nav-soon { display: none; }
+  .st-nav-link { padding: 6px 8px; font-size: 13.5px; }
+}

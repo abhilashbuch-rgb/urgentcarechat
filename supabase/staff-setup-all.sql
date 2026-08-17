@@ -1900,3 +1900,496 @@ end $$;
 revoke all on function staff.provision_trial(text, text, text, int) from public;
 grant execute on function staff.provision_trial(text, text, text, int) to staff_app;
 grant execute on function staff.org_is_read_only(text) to staff_app;
+
+
+-- ========== staff-obligations.sql ==========
+
+-- ============================================================
+-- THE OBLIGATIONS REGISTER
+--
+-- Run AFTER supabase/staff-trial.sql. Idempotent; safe to re-run.
+--
+-- WHAT THIS IS FOR, AND WHY THE REST OF THE MODULE DIDN'T ALREADY COVER IT
+-- ----------------------------------------------------------------------
+-- The module has two shapes of record and neither one is a deadline:
+--
+--   staff.attestations  — this PERSON read this document, once.
+--   staff.form_responses — this TASK was done on this SHIFT, over and over.
+--
+-- Missing was the third: this ORGANIZATION owes this specific thing by
+-- this specific date, and someone has to be the one who owes it. A risk
+-- analysis due Sept 25, a certificate that expires, a drill nobody has
+-- run this year. Those live in an inbox or a manager's head, which is
+-- exactly where they are when a surveyor asks for them and nobody can
+-- find who was supposed to do it.
+--
+-- DERIVED STATUS, NOT STORED STATUS. Overdue is not a flag some job sets
+-- overnight; it is `due_on < current_date`, evaluated on read. Same
+-- reasoning as the trial clock in staff-trial.sql: a nightly job that
+-- marks things overdue is a job that can fail silently, and the failure
+-- looks exactly like "nothing is overdue".
+--
+-- NOT GATED BY READ-ONLY, deliberately. Logs stop when a subscription
+-- lapses; obligations do not. A register is a deadline calendar with
+-- evidence attached, and blocking it would mean a clinic misses a real
+-- regulatory deadline because of a failed card — the precise harm the
+-- read-only rule exists to avoid. What lapses is the daily workflow.
+-- ============================================================
+
+create table if not exists staff.obligations (
+  id uuid primary key default gen_random_uuid(),
+  org_slug text not null references staff.orgs(slug) on delete cascade,
+
+  -- Stable identifier, so a recurring obligation keeps its identity
+  -- across occurrences and the seed can be re-run without duplicating.
+  -- Defaulted rather than nullable: a null key would exempt custom
+  -- obligations from the uniqueness index below, which is where
+  -- double-entry gets caught.
+  key text not null default replace(gen_random_uuid()::text, '-', ''),
+
+  title text not null,
+  detail text,
+  category text,
+  -- The rule, where there is one. Printed next to the obligation so
+  -- nobody has to take the app's word for why it exists.
+  citation text,
+  -- Where this deadline came from: a regulation, a franchise bulletin, an
+  -- accreditation finding, a manager. A surveyor's first question about
+  -- an item on a list is who put it there.
+  source text,
+
+  due_on date not null,
+
+  -- Nullable on purpose. "Nobody owns this" is a real and important
+  -- state, and the register shows it loudly rather than quietly
+  -- defaulting the owner to whoever created the row.
+  owner_id uuid references staff.users(id) on delete set null,
+
+  -- null = one-off. Otherwise the next occurrence is created the moment
+  -- this one is completed.
+  repeat_months integer check (repeat_months is null or repeat_months between 1 and 60),
+
+  completed_at timestamptz,
+  completed_by uuid references staff.users(id),
+  evidence_note text,
+
+  -- Set only when reopening a completed obligation. The trigger below
+  -- requires it and files the completion it displaced into history.
+  reopen_reason text,
+
+  -- Displaced completions. An obligation marked done by mistake is
+  -- reopened, not erased.
+  history jsonb not null default '[]'::jsonb,
+
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  created_by uuid references staff.users(id)
+);
+
+-- Done without saying what was done is not evidence. Same shape as the
+-- corrective-action constraint on form_responses, and for the same
+-- reason: the button can enforce it, but only the constraint makes it
+-- true of every row regardless of how it got there.
+do $$ begin
+  alter table staff.obligations
+    add constraint staff_obligation_needs_evidence
+    check (
+      completed_at is null
+      or (evidence_note is not null and length(btrim(evidence_note)) >= 3)
+    );
+exception when duplicate_object then null;
+end $$;
+
+-- One occurrence of one obligation per due date. Catches the roll-forward
+-- firing twice and a person filing the same annual review from two tabs.
+create unique index if not exists staff_obligations_occurrence
+  on staff.obligations (org_slug, key, due_on);
+
+create index if not exists staff_obligations_open
+  on staff.obligations (org_slug, due_on)
+  where completed_at is null and active;
+
+create index if not exists staff_obligations_owner
+  on staff.obligations (org_slug, owner_id)
+  where completed_at is null and active;
+
+-- ============================================================
+-- COMPLETIONS ARE SET-ONCE
+--
+-- A completion is evidence. Editing one in place would let today's
+-- version of events overwrite the record of what was actually filed and
+-- when, which is the property that makes the register worth showing to
+-- anyone. Reopening is allowed — people mark the wrong row — but it costs
+-- a reason and the displaced completion stays visible.
+-- ============================================================
+
+create or replace function staff.obligations_completion_guard()
+returns trigger language plpgsql as $$
+begin
+  if old.completed_at is not null and new.completed_at is null then
+    if new.reopen_reason is null or length(btrim(new.reopen_reason)) < 3 then
+      raise exception 'reopen_reason required: reopening a completed obligation has to say why'
+        using errcode = 'check_violation';
+    end if;
+    new.history := old.history || jsonb_build_object(
+      'completed_at',  old.completed_at,
+      'completed_by',  old.completed_by,
+      'evidence_note', old.evidence_note,
+      'reopened_at',   now(),
+      'reason',        btrim(new.reopen_reason)
+    );
+    new.completed_by := null;
+    new.evidence_note := null;
+    return new;
+  end if;
+
+  if old.completed_at is not null
+     and new.completed_at is not null
+     and (new.completed_at <> old.completed_at
+          or new.evidence_note is distinct from old.evidence_note) then
+    raise exception 'a recorded completion cannot be edited; reopen it and complete it again'
+      using errcode = 'check_violation';
+  end if;
+
+  -- A fresh completion clears any reason left over from a previous
+  -- reopen, so the column always describes the current state.
+  if old.completed_at is null and new.completed_at is not null then
+    new.reopen_reason := null;
+  end if;
+
+  -- The due date of a completed obligation is history: it is the half of
+  -- the record that answers "was it done on time". Moving it afterwards
+  -- would quietly turn a late completion into a punctual one, and would
+  -- disagree with the next occurrence, which was already dated from the
+  -- original. Reopen it if the date was genuinely wrong.
+  if old.completed_at is not null and new.completed_at is not null
+     and new.due_on <> old.due_on then
+    raise exception 'the due date of a completed obligation cannot be moved; reopen it first'
+      using errcode = 'check_violation';
+  end if;
+
+  return new;
+end $$;
+
+drop trigger if exists staff_obligations_guard on staff.obligations;
+create trigger staff_obligations_guard
+  before update on staff.obligations
+  for each row execute function staff.obligations_completion_guard();
+
+-- ============================================================
+-- RECURRENCE
+--
+-- The next occurrence is dated from the DUE date, not the completion
+-- date. An annual review done three weeks late is still due the same week
+-- next year; dating it from completion would walk every recurring
+-- deadline later every cycle until an annual obligation quietly became a
+-- fourteen-month one.
+-- ============================================================
+
+create or replace function staff.obligations_roll_forward()
+returns trigger language plpgsql as $$
+declare next_due date;
+begin
+  if new.repeat_months is null or not new.active then return null; end if;
+
+  next_due := (new.due_on + make_interval(months => new.repeat_months))::date;
+
+  -- A badly overdue recurring item would otherwise create its next
+  -- occurrence already in the past. Walk forward to the first one that
+  -- hasn't happened yet.
+  while next_due < current_date loop
+    next_due := (next_due + make_interval(months => new.repeat_months))::date;
+  end loop;
+
+  insert into staff.obligations
+    (org_slug, key, title, detail, category, citation, source,
+     due_on, owner_id, repeat_months, created_by)
+  values
+    (new.org_slug, new.key, new.title, new.detail, new.category,
+     new.citation, new.source, next_due, new.owner_id, new.repeat_months,
+     new.completed_by)
+  on conflict (org_slug, key, due_on) do nothing;
+
+  return null;
+end $$;
+
+drop trigger if exists staff_obligations_roll on staff.obligations;
+create trigger staff_obligations_roll
+  after update on staff.obligations
+  for each row
+  when (old.completed_at is null and new.completed_at is not null)
+  execute function staff.obligations_roll_forward();
+
+-- ============================================================
+-- ROW-LEVEL SECURITY
+--
+-- Same shape as every other org-scoped table. See staff-schema.sql.
+-- ============================================================
+
+alter table staff.obligations enable row level security;
+alter table staff.obligations force row level security;
+
+drop policy if exists staff_org_isolation on staff.obligations;
+create policy staff_org_isolation on staff.obligations
+  for all
+  using (staff.is_super_admin() or org_slug = staff.current_org())
+  with check (staff.is_super_admin() or org_slug = staff.current_org());
+
+grant select, insert, update on staff.obligations to staff_app;
+-- An obligation that turns out not to apply is deactivated, not deleted,
+-- so the register keeps the fact that somebody decided it didn't apply.
+--
+-- The REVOKE is the line that makes that true, and it is not redundant
+-- with the GRANT above. staff-schema.sql sets ALTER DEFAULT PRIVILEGES
+-- granting delete on every future table in this schema, so this table
+-- arrived with DELETE already held and granting three verbs took none of
+-- it away. Tested: staff_app deleted a seeded obligation outright before
+-- this line existed.
+revoke delete on staff.obligations from staff_app;
+
+-- ============================================================
+-- THE REGISTER
+--
+-- security_invoker so it reads under the caller's org context rather than
+-- the view owner's — without it a view over an RLS-protected table
+-- returns every org's rows. See the same note in staff-onboarding.sql.
+-- ============================================================
+
+create or replace view staff.obligation_register
+with (security_invoker = true) as
+select
+  o.id,
+  o.org_slug,
+  o.key,
+  o.title,
+  o.detail,
+  o.category,
+  o.citation,
+  o.source,
+  o.due_on,
+  o.owner_id,
+  o.repeat_months,
+  o.completed_at,
+  o.completed_by,
+  o.evidence_note,
+  o.history,
+  o.created_at,
+  (o.due_on - current_date)                      as days_out,
+  jsonb_array_length(o.history) > 0              as was_reopened,
+  case
+    when o.completed_at is not null then 'done'
+    when o.due_on < current_date    then 'overdue'
+    when o.due_on <= current_date + 30 then 'due_soon'
+    else 'scheduled'
+  end                                            as status,
+  ow.legal_name                                  as owner_name,
+  ow.email                                       as owner_email,
+  ow.active                                      as owner_active,
+  cb.legal_name                                  as completed_by_name,
+  cb.email                                       as completed_by_email
+from staff.obligations o
+left join staff.users ow on ow.id = o.owner_id
+left join staff.users cb on cb.id = o.completed_by
+where o.active;
+
+grant select on staff.obligation_register to staff_app;
+
+-- One number for the dashboard, so the landing screen doesn't pull the
+-- whole register to count two things.
+create or replace view staff.obligation_summary
+with (security_invoker = true) as
+select
+  org_slug,
+  count(*) filter (where status = 'overdue')::int  as overdue,
+  count(*) filter (where status = 'due_soon')::int as due_soon,
+  count(*) filter (where status <> 'done' and owner_id is null)::int as unowned,
+  min(due_on) filter (where status <> 'done')      as next_due_on
+from staff.obligation_register
+group by org_slug;
+
+grant select on staff.obligation_summary to staff_app;
+
+
+-- ========== staff-obligations-seed.sql ==========
+
+-- ============================================================
+-- THE STARTING REGISTER
+--
+-- Run AFTER supabase/staff-obligations.sql. Idempotent.
+--
+-- An empty register is worse than no register: it reads as "nothing is
+-- owed" when what it means is "nobody has typed anything in yet". So a
+-- new clinic starts with the recurring obligations that apply to
+-- essentially every US urgent care, dated, and unowned — because unowned
+-- is the honest starting state and the register shows it in red.
+--
+-- ACCURACY NOTE, and please read it before trusting the dates.
+--
+-- Where a regulation states a frequency, the citation is exact and the
+-- interval is the regulation's own: the OSHA bloodborne pathogens plan
+-- really does say "at least annually", and the fire extinguisher check
+-- really is an annual maintenance check.
+--
+-- Where a regulation requires something but states NO frequency — most of
+-- the HIPAA items — the interval here is convention, not law, and the
+-- detail text says so. Annual is what auditors expect and what the
+-- Security Rule's "review periodically" is universally read to mean, but
+-- an obligation that claims a rule says something it doesn't is worse
+-- than no obligation at all, because the first person to check loses
+-- confidence in every other row.
+--
+-- Items with no citation are practice standards, marked as such.
+--
+-- The list is a starting point for an administrator to correct, not a
+-- compliance opinion. Intervals, applicability, and state-level additions
+-- differ by state, by NAICS code, by payer, and by accreditation body.
+-- ============================================================
+
+create or replace function staff.seed_obligations(p_slug text)
+returns integer
+language plpgsql as $$
+declare n integer;
+begin
+  with library (key, title, detail, category, citation, source,
+                repeat_months, fixed_month, fixed_day, offset_days) as (
+    values
+      ('hipaa-sra',
+       'HIPAA Security Risk Analysis',
+       'An accurate and thorough assessment of the risks to electronic PHI, documented. The rule requires the analysis and requires it to be reviewed and updated as conditions change; it does not name an interval. Annual is the convention and what an OCR investigator will expect to see dated.',
+       'HIPAA', '45 CFR 164.308(a)(1)(ii)(A)', 'HIPAA Security Rule', 12, null, null, 30),
+
+      ('hipaa-policy-review',
+       'HIPAA policies and procedures review',
+       'Review the documented security policies and procedures and update them where the practice has changed. The rule says "periodically"; annual is the convention.',
+       'HIPAA', '45 CFR 164.316(b)(2)(iii)', 'HIPAA Security Rule', 12, null, null, 45),
+
+      ('hipaa-training',
+       'Workforce HIPAA privacy and security training',
+       'Training for every member of the workforce, including new hires within a reasonable period. Neither rule names an interval for refresher training; annual is the convention. Individual acknowledgements are signed in this app under My record — this row is the organization-level evidence that the session happened.',
+       'HIPAA', '45 CFR 164.530(b)(1); 45 CFR 164.308(a)(5)', 'HIPAA Privacy and Security Rules', 12, null, null, 60),
+
+      ('hipaa-baa-review',
+       'Business Associate Agreement review',
+       'Confirm a current signed BAA exists for every vendor that touches PHI — EHR, billing, transcription, shredding, IT support, cloud backup. No stated interval; annual review is the convention, and the moment a vendor changes is the other time to do it.',
+       'HIPAA', '45 CFR 164.308(b)(1); 45 CFR 164.502(e)', 'HIPAA Privacy and Security Rules', 12, null, null, 75),
+
+      ('osha-ecp-review',
+       'Bloodborne pathogens Exposure Control Plan review',
+       'The plan must be reviewed and updated at least annually, and the review must document consideration of safer engineered sharps devices. This one is annual in the regulation itself, not by convention.',
+       'OSHA', '29 CFR 1910.1030(c)(1)(iv)', 'OSHA Bloodborne Pathogens Standard', 12, null, null, 21),
+
+      ('osha-bbp-training',
+       'Bloodborne pathogens training',
+       'Annual training for every employee with occupational exposure, within one year of their previous training. Annual in the regulation.',
+       'OSHA', '29 CFR 1910.1030(g)(2)(ii)', 'OSHA Bloodborne Pathogens Standard', 12, null, null, 35),
+
+      ('osha-hazcom',
+       'Hazard communication program and SDS review',
+       'Chemical inventory current, safety data sheets on hand and accessible during every shift, labels intact. No stated review interval; annual is the convention.',
+       'OSHA', '29 CFR 1910.1200', 'OSHA Hazard Communication Standard', 12, null, null, 90),
+
+      ('osha-300a',
+       'Post OSHA Form 300A summary',
+       'Post the annual injury and illness summary by February 1 and keep it up until April 30. APPLICABILITY VARIES: employers with ten or fewer employees and certain partially exempt industry codes are excused from routine recordkeeping, and whether an urgent care center is exempt depends on the NAICS code it operates under. Confirm which applies to this site before treating this as due.',
+       'OSHA', '29 CFR 1904.32', 'OSHA recordkeeping', 12, 2, 1, null),
+
+      ('fire-extinguisher',
+       'Fire extinguisher annual maintenance check',
+       'An annual maintenance check on every portable extinguisher, with the date recorded on the tag and the record kept for a year after the tag is replaced. Annual in the regulation.',
+       'Life safety', '29 CFR 1910.157(e)(3)', 'OSHA portable fire extinguishers', 12, null, null, 40),
+
+      ('eyewash-annual',
+       'Eyewash station annual performance evaluation',
+       'A full performance evaluation of every plumbed eyewash — flow, pattern, temperature, duration. The weekly activation is a separate log in this app. OSHA requires suitable facilities without naming a test interval; the annual evaluation comes from ANSI Z358.1, the consensus standard OSHA cites.',
+       'Life safety', '29 CFR 1910.151(c); ANSI Z358.1', 'OSHA medical services and first aid', 12, null, null, 50),
+
+      ('clia-renewal',
+       'CLIA certificate renewal',
+       'Certificates run two years. The renewal notice arrives roughly six months out and is easy to lose. Waived testing performed on an expired certificate is unbillable and, depending on the state, unlawful.',
+       'Laboratory', '42 CFR 493', 'CLIA', 24, null, null, 120),
+
+      ('crash-cart-expiry',
+       'Emergency medication and supply expiry review',
+       'Every dated item on the crash cart and in the emergency kit — epinephrine, naloxone, atropine, IV fluids, defibrillator pads and battery. Monthly, because the failure mode is discovering the expiry during the emergency.',
+       'Clinical', null, 'Practice standard', 1, null, null, 14),
+
+      ('license-review',
+       'Provider licence and credential expiry review',
+       'Walk the roster: state licences, DEA registrations where applicable, BLS and ACLS cards, malpractice coverage, payer credentialing. Quarterly, so a lapse surfaces with time to renew rather than on the day someone is scheduled.',
+       'Employment', null, 'Practice standard', 3, null, null, 28),
+
+      ('vaccine-storage-review',
+       'Vaccine storage and handling plan review',
+       'Review the storage and handling plan and the emergency plan for a unit failure: where stock goes, who is called, how transport temperature is documented. The daily fridge temperatures are a separate log in this app; this is the plan behind them.',
+       'Clinical', null, 'CDC Vaccine Storage and Handling Toolkit', 12, null, null, 65),
+
+      ('flu-readiness',
+       'Influenza season readiness',
+       'Before the season starts: doses ordered, storage capacity confirmed, standing orders signed and current, staff vaccination offered and documented, billing set up for the new season codes.',
+       'Clinical', null, 'Practice standard', 12, 9, 1, null),
+
+      ('emergency-drill',
+       'Emergency preparedness drill',
+       'Run and document one drill — evacuation, power failure, or a medical emergency in the waiting room — with who took part and what it exposed. Not a federal requirement for a freestanding urgent care that is not a CMS-certified provider type; it is what an accreditation surveyor asks for and what a state inspector expects.',
+       'Life safety', null, 'Practice standard', 12, null, null, 100)
+  )
+  insert into staff.obligations
+    (org_slug, key, title, detail, category, citation, source, due_on, repeat_months)
+  select
+    p_slug, l.key, l.title, l.detail, l.category, l.citation, l.source,
+    case
+      -- Calendar-fixed deadlines land on their date: the next one that
+      -- hasn't already passed.
+      when l.fixed_month is not null then
+        case
+          when make_date(
+                 extract(year from current_date)::int, l.fixed_month, l.fixed_day
+               ) >= current_date
+          then make_date(extract(year from current_date)::int, l.fixed_month, l.fixed_day)
+          else make_date(extract(year from current_date)::int + 1, l.fixed_month, l.fixed_day)
+        end
+      -- Everything else is staggered rather than all dated today. Sixteen
+      -- obligations due on the day you sign up is a register nobody
+      -- opens twice.
+      else current_date + l.offset_days
+    end,
+    l.repeat_months
+  from library l
+  -- Idempotent by key rather than by (key, due_on): re-running months
+  -- later would compute different stagger dates and quietly file a second
+  -- copy of everything.
+  where not exists (
+    select 1 from staff.obligations o
+     where o.org_slug = p_slug and o.key = l.key
+  );
+
+  get diagnostics n = row_count;
+  return n;
+end $$;
+
+grant execute on function staff.seed_obligations(text) to staff_app;
+
+-- Every path that creates an org gets a register: provision_org from a
+-- Stripe checkout, provision_trial from /start, and an insert typed by
+-- hand. Hanging this off the table rather than editing each function
+-- means a future fourth path cannot forget.
+create or replace function staff.obligations_seed_new_org()
+returns trigger language plpgsql as $$
+begin
+  perform staff.seed_obligations(new.slug);
+  return null;
+end $$;
+
+drop trigger if exists staff_orgs_seed_obligations on staff.orgs;
+create trigger staff_orgs_seed_obligations
+  after insert on staff.orgs
+  for each row execute function staff.obligations_seed_new_org();
+
+-- Backfill any org that already exists.
+do $$
+declare o record;
+begin
+  for o in select slug from staff.orgs loop
+    perform staff.seed_obligations(o.slug);
+  end loop;
+end $$;

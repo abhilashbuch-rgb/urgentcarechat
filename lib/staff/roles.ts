@@ -40,6 +40,7 @@ export const NAV: NavItem[] = [
   { href: "/staff", label: "Today", minRole: "staff" },
   { href: "/staff/me", label: "My record", minRole: "staff" },
   { href: "/staff/logs", label: "Logs", minRole: "staff" },
+  { href: "/staff/obligations", label: "Obligations", minRole: "staff" },
   {
     href: "/staff/review",
     label: "Review",

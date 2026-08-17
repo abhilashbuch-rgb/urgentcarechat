@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireStaff } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
 import { getProfile, outstandingFor } from "@/lib/staff/compliance";
+import { summary, type ObligationSummary } from "@/lib/staff/obligations";
 import { navFor, ROLE_LABELS } from "@/lib/staff/roles";
 
 // The staff landing screen.
@@ -19,6 +21,7 @@ interface Overview {
   teamCount: number;
   outstanding: number;
   needsOnboarding: boolean;
+  obligations: ObligationSummary;
 }
 
 export default async function StaffHome() {
@@ -43,6 +46,7 @@ export default async function StaffHome() {
         outstanding: outstanding.length,
         needsOnboarding:
           !profile?.esign_consented_at || !profile?.legal_name,
+        obligations: await summary(sql, org),
       };
     });
   } catch (err) {
@@ -95,6 +99,34 @@ export default async function StaffHome() {
           </span>
         </a>
       )}
+
+      {/* An overdue obligation is the one thing on this screen that is
+          already a finding rather than a task. It sits above the cards
+          for that reason, and it names the count rather than showing a
+          dot, because a dot is something you stop seeing. */}
+      {overview && overview.obligations.overdue > 0 && (
+        <Link className="st-callout st-callout-warn" href="/staff/obligations">
+          <span className="st-callout-title">
+            {overview.obligations.overdue === 1
+              ? "1 obligation is overdue"
+              : `${overview.obligations.overdue} obligations are overdue`}
+          </span>
+          <span className="st-callout-sub">Open the register &rarr;</span>
+        </Link>
+      )}
+
+      {overview &&
+        overview.obligations.overdue === 0 &&
+        overview.obligations.due_soon > 0 && (
+          <Link className="st-callout" href="/staff/obligations">
+            <span className="st-callout-title">
+              {overview.obligations.due_soon === 1
+                ? "1 obligation is due in the next 30 days"
+                : `${overview.obligations.due_soon} obligations are due in the next 30 days`}
+            </span>
+            <span className="st-callout-sub">Open the register &rarr;</span>
+          </Link>
+        )}
 
       <section className="st-cards">
         <article className="st-card">
