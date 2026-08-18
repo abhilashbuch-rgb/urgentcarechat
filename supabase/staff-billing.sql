@@ -66,7 +66,13 @@ alter table staff.users add column if not exists arrt_expires_on    date;
 
 -- What is expiring, and when, for everyone in an org. security_invoker so
 -- it reads under the caller's RLS — see the note in staff-onboarding.sql.
-create or replace view staff.credential_status
+-- Dropped first rather than CREATE OR REPLACE: replace can only APPEND
+-- columns to a view, so once a later migration extends this one, the
+-- combined setup file's second run fails here with "cannot drop
+-- columns from view" while its first run was clean. Drop-first makes
+-- every view definition rerunnable regardless of what extends it.
+drop view if exists staff.credential_status cascade;
+create view staff.credential_status
 with (security_invoker = true) as
 select
   u.id as user_id, u.org_slug, u.email, u.legal_name, u.role,

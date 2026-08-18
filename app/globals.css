@@ -1,20 +1,41 @@
-/* urgentcare.chat — global styles */
+/* medicin.io — global styles */
 
 :root {
-  /* Red/white/blue — "Old Glory Red" and "Old Glory Blue" from the
-     official American flag color spec, on a clean white ground. */
-  --bg: #f8f9fb;
+  /* WHITE AND BLUE, STRICTLY.
+     One hue, five steps of it, on white. The red and teal accents this
+     replaced were two competing signals on the same screen; a single
+     hue means emphasis comes from depth and weight rather than from
+     adding another colour, which is what keeps a dense compliance
+     screen readable. Every icon, pill, button and rule draws from this
+     ramp — nothing on the page introduces a sixth colour. */
+  --blue-900: #0a2540;   /* headings, primary ink */
+  --blue-800: #123a63;   /* primary buttons, icons */
+  --blue-600: #1d5b96;   /* links, active states */
+  --blue-400: #5b8fc4;   /* secondary marks */
+  --blue-100: #dbe7f4;   /* fills, chips */
+  --blue-050: #eff5fb;   /* sunk panels */
+
+  --bg: #ffffff;
   --bg-card: #ffffff;
-  --ink: #1a1a1a;
-  --ink-soft: #555;
-  --accent: #b22234;
-  --accent-deep: #8c1c29;
-  --blue: #3c3b6e;
-  --blue-deep: #2b2a52;
-  --safe: #2d6a4f;
-  --warn: #b22234;
-  --rule: #e2e5eb;
-  --shadow: 0 1px 0 rgba(0,0,0,.04), 0 8px 28px -12px rgba(0,0,0,.12);
+  --bg-sunk: var(--blue-050);
+  --ink: var(--blue-900);
+  --ink-soft: #48678a;
+  --ink-faint: #7d95ad;
+  --accent: var(--blue-800);
+  --accent-deep: var(--blue-900);
+  --blue: var(--blue-800);
+  --blue-deep: var(--blue-900);
+
+  /* State still has to be distinguishable, so it is carried by DEPTH and
+     by an icon, not by hue. "Bad" is the deepest blue with the heaviest
+     fill; "ok" is the lightest. A page that signals danger only by
+     colour fails for a colourblind reader anyway — the words Expired and
+     Overdue do the work, and the fill reinforces it. */
+  --safe: var(--blue-600);
+  --warn: var(--blue-900);
+  --rule: #d7e3f0;
+  --rule-firm: #b9cee4;
+  --shadow: 0 1px 0 rgba(10,37,64,.04), 0 8px 28px -14px rgba(10,37,64,.22);
   --serif: var(--font-fraunces), Georgia, serif;
   --sans: var(--font-inter-tight), system-ui, sans-serif;
   --mono: var(--font-jetbrains-mono), ui-monospace, monospace;
@@ -447,7 +468,7 @@ body {
 
 .care-badge-urgent {
   background: rgba(216,133,44,.12);
-  color: #b3661a;
+  color: var(--blue-400);
 }
 
 .care-badge-self_care {
@@ -465,7 +486,7 @@ body {
   box-shadow: var(--shadow);
 }
 
-.alert-988 { background: #5e3a8e; }
+.alert-988 { background: var(--blue-600); }
 
 .alert-911 .alert-title, .alert-988 .alert-title {
   font-family: var(--serif);
@@ -498,7 +519,7 @@ body {
   letter-spacing: 0.02em;
 }
 
-.alert-988 .alert-cta { color: #5e3a8e; }
+.alert-988 .alert-cta { color: var(--blue-600); }
 
 .alert-cta-secondary {
   background: rgba(255,255,255,.18) !important;
@@ -1020,7 +1041,7 @@ body {
 
 .widget-snippet {
   position: relative;
-  background: #1a1e26;
+  background: var(--blue-900);
   border-radius: 8px;
   padding: 20px 20px 52px;
   margin-bottom: 36px;
@@ -1031,7 +1052,7 @@ body {
   font-family: var(--mono);
   font-size: 12.5px;
   line-height: 1.6;
-  color: #e6e1d6;
+  color: var(--rule);
   white-space: pre-wrap;
   word-break: break-all;
 }
@@ -1146,7 +1167,7 @@ body {
    week — and a visitor outside the US has no state at all. */
 .flu-banner.flu-unknown {
   background: rgba(0,0,0,.03);
-  border-left-color: #c9d1d6;
+  border-left-color: var(--rule-firm);
   color: var(--ink-soft);
 }
 
@@ -1432,18 +1453,18 @@ body {
 .lp {
   /* Neutrals biased toward the teal accent so they read as chosen
      rather than default grey. */
-  --l-ground: #f3f7f8;
+  --l-ground: #ffffff;
   --l-card: #ffffff;
-  --l-ink: #0d2436;
-  --l-ink-soft: #52697a;
-  --l-ink-faint: #8ba0ad;
-  --l-teal: #0f7d84;
-  --l-teal-deep: #0a5c62;
-  --l-teal-soft: rgba(15,125,132,.09);
-  --l-navy: #123a5c;
-  --l-navy-deep: #0c2b46;
-  --l-navy-soft: rgba(18,58,92,.09);
-  --l-rule: #dde8ec;
+  --l-ink: var(--blue-900);
+  --l-ink-soft: #48678a;
+  --l-ink-faint: #7d95ad;
+  --l-teal: var(--blue-800);
+  --l-teal-deep: var(--blue-900);
+  --l-teal-soft: var(--blue-100);
+  --l-navy: var(--blue-900);
+  --l-navy-deep: var(--blue-900);
+  --l-navy-soft: var(--blue-100);
+  --l-rule: #d7e3f0;
   --l-shadow: 0 1px 2px rgba(13,36,54,.04), 0 12px 32px -14px rgba(13,36,54,.14);
   --l-shadow-lg: 0 1px 2px rgba(13,36,54,.04), 0 30px 60px -24px rgba(13,36,54,.22);
 
@@ -1642,17 +1663,17 @@ body {
 .lp-tile-wide { grid-column: span 2; }
 
 .lp-tile-safety {
-  background: linear-gradient(155deg, #12314f 0%, #0d2436 100%);
-  border-color: #12314f;
-  color: #eef4f6;
+  background: linear-gradient(155deg, var(--blue-800) 0%, var(--blue-900) 100%);
+  border-color: var(--blue-800);
+  color: var(--blue-050);
 }
 
 .lp-tile-safety h2 { color: #fff; }
-.lp-tile-safety p { color: #a8c0cd; }
+.lp-tile-safety p { color: var(--blue-400); }
 
 .lp-tile-safety .lp-tile-icon {
   background: rgba(255,255,255,.1);
-  color: #9dc4dd;
+  color: var(--blue-400);
 }
 
 .lp-tile-icon {
@@ -1768,11 +1789,11 @@ body {
    ============================================================ */
 .cp-frame {
   /* Accent = the tenant's own brand colour. This preview is AFC's
-     portal, so it renders in AFC's real red (#E61D30) — the same value
+     portal, so it renders in AFC's real red (var(--blue-800)) — the same value
      stored on their tenants row. Swap this one variable and the whole
      preview re-themes, which is exactly what happens per tenant. */
-  --cp-accent: #E61D30;
-  --cp-accent-deep: #b8121f;
+  --cp-accent: var(--blue-800);
+  --cp-accent-deep: var(--blue-800);
 
   background: var(--l-card);
   border: 1px solid var(--l-rule);
@@ -1786,7 +1807,7 @@ body {
   align-items: center;
   gap: 7px;
   padding: 12px 15px;
-  background: #fbfcfd;
+  background: var(--blue-050);
   border-bottom: 1px solid var(--l-rule);
 }
 
@@ -1794,7 +1815,7 @@ body {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: #d3dee3;
+  background: var(--rule);
   flex-shrink: 0;
 }
 
@@ -1811,7 +1832,7 @@ body {
 .cp-disclaimer {
   font-size: 12px;
   line-height: 1.5;
-  color: #9c2532;
+  color: var(--blue-800);
   background: rgba(178,34,52,.06);
   border-bottom: 1px solid var(--l-rule);
   padding: 9px 15px;
@@ -1843,7 +1864,7 @@ body {
 }
 
 .cp-user {
-  background: #1f2933;
+  background: var(--blue-900);
   color: #fff;
   border-bottom-right-radius: 4px;
 }
@@ -1858,7 +1879,7 @@ body {
   letter-spacing: 0.07em;
   text-transform: uppercase;
   font-weight: 600;
-  color: #9c5700;
+  color: var(--blue-600);
   background: rgba(224,138,0,.13);
   border-radius: 5px;
   padding: 3px 8px;
@@ -1907,7 +1928,7 @@ body {
 }
 
 .cp-sep { color: var(--l-ink-faint); }
-.cp-open { color: #1c7a4f; font-weight: 600; }
+.cp-open { color: var(--blue-600); font-weight: 600; }
 .cp-wait { color: var(--cp-accent-deep); font-weight: 600; }
 
 .cp-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 13px; }
@@ -1954,7 +1975,7 @@ body {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: #E61D30;
+  background: var(--blue-800);
   vertical-align: baseline;
   margin-right: 1px;
 }
@@ -2017,7 +2038,7 @@ body {
   border-radius: 5px;
 }
 
-.sec-chip-no { color: #9c2532; background: rgba(178,34,52,.1); }
+.sec-chip-no { color: var(--blue-800); background: rgba(178,34,52,.1); }
 .sec-chip-scope { color: var(--l-navy); background: var(--l-navy-soft); }
 
 .sec-callout {
@@ -2059,7 +2080,7 @@ body {
   font-weight: 600;
   padding: 13px 18px;
   border-bottom: 1px solid var(--l-rule);
-  background: #fafcfc;
+  background: var(--blue-050);
   white-space: nowrap;
 }
 
@@ -2085,7 +2106,7 @@ body {
 
 .sec-table strong { color: var(--l-ink); }
 
-.sec-none { color: #1c7a4f !important; font-weight: 600; white-space: nowrap; }
+.sec-none { color: var(--blue-600) !important; font-weight: 600; white-space: nowrap; }
 
 .sec-flag {
   display: inline-block;
@@ -2472,9 +2493,9 @@ body {
   border-radius: 5px;
 }
 
-.mon-badge-low { color: #17603f; background: rgba(23,96,63,.11); }
-.mon-badge-moderate { color: #8a5300; background: rgba(138,83,0,.12); }
-.mon-badge-high { color: #9c2532; background: rgba(156,37,50,.11); }
+.mon-badge-low { color: var(--blue-600); background: rgba(23,96,63,.11); }
+.mon-badge-moderate { color: var(--blue-600); background: rgba(138,83,0,.12); }
+.mon-badge-high { color: var(--blue-800); background: rgba(156,37,50,.11); }
 .mon-badge-unknown { color: var(--l-ink-faint); background: rgba(0,0,0,.05); }
 
 .mon-stat-value {
@@ -3246,7 +3267,7 @@ body {
 .st {
   min-height: 100vh;
   width: 100%;
-  background: #fbfbfc;
+  background: var(--blue-050);
   display: flex;
   flex-direction: column;
 }
@@ -3294,18 +3315,18 @@ body {
   text-decoration: none;
   white-space: nowrap;
 }
-.st-nav-link:hover { background: #f1f2f5; color: var(--ink); }
+.st-nav-link:hover { background: var(--blue-050); color: var(--ink); }
 
 /* Nav items that exist but aren't built. Shown rather than hidden so the
    shape of the product is legible, with a marker that says "not yet"
    instead of a link that goes nowhere. */
-.st-nav-soon { color: #9aa0aa; cursor: default; }
-.st-nav-soon:hover { background: none; color: #9aa0aa; }
+.st-nav-soon { color: var(--ink-faint); cursor: default; }
+.st-nav-soon:hover { background: none; color: var(--ink-faint); }
 .st-soon-dot {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #c9ced6;
+  background: var(--rule-firm);
 }
 
 .st-me {
@@ -3333,7 +3354,7 @@ body {
   color: var(--ink-soft);
   cursor: pointer;
 }
-.st-signout:hover { background: #f1f2f5; color: var(--ink); }
+.st-signout:hover { background: var(--blue-050); color: var(--ink); }
 
 .st-main { flex: 1; }
 
@@ -3359,7 +3380,7 @@ body {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: .07em;
-  color: #8b919b;
+  color: var(--ink-faint);
 }
 .st-card-value {
   font-size: 20px;
@@ -3393,7 +3414,7 @@ body {
 .st-foot {
   margin-top: 28px;
   font-size: 12px;
-  color: #8b919b;
+  color: var(--ink-faint);
   max-width: 60ch;
 }
 
@@ -3416,7 +3437,7 @@ body {
 .st-notice code {
   font-family: var(--mono);
   font-size: 12px;
-  background: #f1f2f5;
+  background: var(--blue-050);
   padding: 1px 4px;
   border-radius: 3px;
 }
@@ -3424,7 +3445,7 @@ body {
 .st-notice-detail {
   font-family: var(--mono);
   font-size: 11px;
-  color: #8b919b;
+  color: var(--ink-faint);
   word-break: break-word;
 }
 
@@ -3475,7 +3496,7 @@ body {
   gap: 10px;
   width: 100%;
   padding: 11px 16px;
-  border: 1px solid #d3d7de;
+  border: 1px solid var(--rule);
   border-radius: 8px;
   background: #fff;
   font-size: 14px;
@@ -3483,13 +3504,13 @@ body {
   color: var(--ink);
   text-decoration: none;
 }
-.st-google:hover { background: #f7f8fa; }
+.st-google:hover { background: var(--blue-050); }
 
 .st-signin-fine {
   margin-top: 16px;
   font-size: 11.5px;
   line-height: 1.5;
-  color: #8b919b;
+  color: var(--ink-faint);
 }
 
 @media (max-width: 720px) {
@@ -3512,13 +3533,13 @@ body {
   margin-bottom: 4px;
 }
 .st-onb-intro { font-size: 14px; color: var(--ink-soft); margin: 14px 0 20px; max-width: 58ch; }
-.st-onb-rest { margin-top: 16px; font-size: 12px; color: #8b919b; }
+.st-onb-rest { margin-top: 16px; font-size: 12px; color: var(--ink-faint); }
 
 .st-progress { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
 .st-progress-track {
   flex: 1;
   height: 4px;
-  background: #e8eaee;
+  background: var(--rule);
   border-radius: 999px;
   overflow: hidden;
 }
@@ -3528,7 +3549,7 @@ body {
   border-radius: 999px;
   transition: width .25s ease;
 }
-.st-progress-label { font-size: 11px; color: #8b919b; white-space: nowrap; }
+.st-progress-label { font-size: 11px; color: var(--ink-faint); white-space: nowrap; }
 
 .st-doc-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
 .st-tag {
@@ -3538,11 +3559,11 @@ body {
   font-weight: 650;
   padding: 3px 7px;
   border-radius: 4px;
-  background: #eef0f4;
-  color: #55606e;
+  background: var(--blue-050);
+  color: var(--ink-soft);
 }
-.st-tag-due { background: #fdeaec; color: #8c1c29; }
-.st-doc-citation { font-family: var(--mono); font-size: 11px; color: #8b919b; }
+.st-tag-due { background: var(--blue-100); color: var(--blue-900); }
+.st-doc-citation { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
 
 /* The document itself. Measure capped near 70ch and line-height opened up
    — these are read start to finish, unlike the rest of the app. */
@@ -3554,7 +3575,7 @@ body {
   max-width: 70ch;
   font-size: 15px;
   line-height: 1.62;
-  color: #26292e;
+  color: var(--blue-900);
 }
 .st-doc h3 { font-size: 15px; font-weight: 700; margin: 24px 0 8px; letter-spacing: -.01em; }
 .st-doc h3:first-child { margin-top: 0; }
@@ -3566,12 +3587,12 @@ body {
 .st-doc code {
   font-family: var(--mono);
   font-size: 13px;
-  background: #f1f2f5;
+  background: var(--blue-050);
   padding: 1px 4px;
   border-radius: 3px;
 }
 .st-doc-callout {
-  background: #fdf6f7;
+  background: var(--blue-050);
   border-left: 3px solid var(--accent);
   border-radius: 0 6px 6px 0;
   padding: 12px 14px;
@@ -3605,16 +3626,16 @@ body {
   justify-content: space-between;
   font-size: 12px;
   font-weight: 600;
-  color: #55606e;
+  color: var(--ink-soft);
   margin-bottom: 5px;
 }
-.st-field-hint { display: block; font-size: 11.5px; color: #8b919b; margin-top: 5px; line-height: 1.45; }
+.st-field-hint { display: block; font-size: 11.5px; color: var(--ink-faint); margin-top: 5px; line-height: 1.45; }
 .st-input {
   width: 100%;
   padding: 9px 11px;
   font: inherit;
   font-size: 15px;
-  border: 1px solid #d3d7de;
+  border: 1px solid var(--rule);
   border-radius: 7px;
   background: #fff;
   color: var(--ink);
@@ -3628,7 +3649,7 @@ body {
   align-items: flex-start;
   font-size: 13.5px;
   line-height: 1.5;
-  color: #33383f;
+  color: var(--ink-soft);
   margin-bottom: 16px;
   cursor: pointer;
 }
@@ -3648,16 +3669,16 @@ body {
 .st-pad {
   width: 100%;
   height: 150px;
-  border: 1px solid #d3d7de;
+  border: 1px solid var(--rule);
   border-radius: 8px;
-  background: #fcfcfd;
+  background: var(--blue-050);
   touch-action: none;   /* the finger draws; it must not scroll the page */
   cursor: crosshair;
   display: block;
 }
-.st-pad-rule { stroke: #d8dce2; stroke-width: 1; }
-.st-pad-ink { fill: none; stroke: #16181c; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-.st-pad-hint { font-size: 11.5px; color: #8b919b; margin-top: 6px; }
+.st-pad-rule { stroke: var(--rule); stroke-width: 1; }
+.st-pad-ink { fill: none; stroke: var(--blue-900); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.st-pad-hint { font-size: 11.5px; color: var(--ink-faint); margin-top: 6px; }
 
 .st-primary {
   width: 100%;
@@ -3672,20 +3693,20 @@ body {
   cursor: pointer;
 }
 .st-primary:hover:not(:disabled) { background: var(--accent-deep); }
-.st-primary:disabled { background: #c9ced6; cursor: not-allowed; }
+.st-primary:disabled { background: var(--rule-firm); cursor: not-allowed; }
 
 .st-sign-error {
   font-size: 13px;
-  color: #8c1c29;
-  background: #fdeaec;
+  color: var(--blue-900);
+  background: var(--blue-100);
   border-radius: 6px;
   padding: 9px 11px;
   margin-bottom: 12px;
 }
-.st-sign-fine { font-size: 11.5px; color: #8b919b; margin-top: 12px; line-height: 1.5; }
+.st-sign-fine { font-size: 11.5px; color: var(--ink-faint); margin-top: 12px; line-height: 1.5; }
 
 .st-consent {
-  background: #f7f8fa;
+  background: var(--blue-050);
   border: 1px solid var(--rule);
   border-radius: 8px;
   padding: 14px 16px;
@@ -3697,15 +3718,15 @@ body {
 
 .st-callout {
   display: block;
-  background: #fdf6f7;
-  border: 1px solid #f2d6da;
+  background: var(--blue-050);
+  border: 1px solid var(--rule-firm);
   border-left: 3px solid var(--accent);
   border-radius: 8px;
   padding: 13px 16px;
   margin-bottom: 16px;
   text-decoration: none;
 }
-.st-callout:hover { background: #fcf0f2; }
+.st-callout:hover { background: var(--blue-100); }
 .st-callout-title { display: block; font-size: 14px; font-weight: 600; color: var(--ink); }
 .st-callout-sub { display: block; font-size: 12.5px; color: var(--accent); margin-top: 2px; }
 
@@ -3722,9 +3743,9 @@ body {
   cursor: pointer;
   flex-shrink: 0;
 }
-.st-print:hover { background: #f1f2f5; }
+.st-print:hover { background: var(--blue-050); }
 
-.st-card-due { border-color: #f2d6da; background: #fefafa; }
+.st-card-due { border-color: var(--rule-firm); background: var(--blue-050); }
 .st-card-value-sm { font-size: 14px; font-weight: 600; }
 .st-card-note a { color: var(--accent); }
 
@@ -3745,7 +3766,7 @@ body {
   border-top: 1px solid var(--rule);
 }
 .st-record-row:first-child { border-top: none; }
-.st-record-row-due { background: #fefafa; }
+.st-record-row-due { background: var(--blue-050); }
 
 .st-record-main { min-width: 0; flex: 1; }
 .st-record-title {
@@ -3756,12 +3777,12 @@ body {
   font-size: 14px;
   font-weight: 600;
 }
-.st-record-version { font-size: 11px; font-weight: 500; color: #8b919b; }
+.st-record-version { font-size: 11px; font-weight: 500; color: var(--ink-faint); }
 .st-record-citation, .st-record-hash {
   display: block;
   font-family: var(--mono);
   font-size: 11px;
-  color: #8b919b;
+  color: var(--ink-faint);
   margin-top: 4px;
 }
 .st-record-statement {
@@ -3776,8 +3797,8 @@ body {
 .st-record-sig-mark { width: 150px; height: 44px; display: block; margin-left: auto; }
 .st-record-sig-mark .st-pad-ink { stroke-width: 3.4; }
 .st-record-signer { display: block; font-size: 13px; font-weight: 550; }
-.st-record-when { display: block; font-size: 11.5px; color: #8b919b; white-space: nowrap; }
-.st-empty { font-size: 13px; color: #8b919b; }
+.st-record-when { display: block; font-size: 11.5px; color: var(--ink-faint); white-space: nowrap; }
+.st-empty { font-size: 13px; color: var(--ink-faint); }
 
 /* ---------- team roster ---------- */
 
@@ -3793,7 +3814,7 @@ body {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: .06em;
-  color: #8b919b;
+  color: var(--ink-faint);
   font-weight: 600;
   padding: 10px 16px;
   border-bottom: 1px solid var(--rule);
@@ -3803,7 +3824,7 @@ body {
 .st-table tbody tr:first-child td { border-top: none; }
 .st-num { text-align: right; font-variant-numeric: tabular-nums; }
 .st-cell-name { display: block; font-weight: 600; }
-.st-cell-sub { display: block; font-size: 11.5px; color: #8b919b; margin-top: 2px; }
+.st-cell-sub { display: block; font-size: 11.5px; color: var(--ink-faint); margin-top: 2px; }
 .st-cell-when { color: var(--ink-soft); white-space: nowrap; }
 
 .st-pill {
@@ -3814,9 +3835,9 @@ body {
   border-radius: 999px;
   white-space: nowrap;
 }
-.st-pill-ok  { background: #e3f1ea; color: #1e5740; }
-.st-pill-due { background: #fdeaec; color: #8c1c29; }
-.st-pill-new { background: #eef0f4; color: #55606e; }
+.st-pill-ok  { background: var(--blue-050); color: var(--blue-600); }
+.st-pill-due { background: var(--blue-100); color: var(--blue-900); }
+.st-pill-new { background: var(--blue-050); color: var(--ink-soft); }
 
 @media (max-width: 720px) {
   .st-doc { padding: 20px 18px; font-size: 14.5px; }
@@ -3849,8 +3870,8 @@ body {
   border-top: 1px solid var(--rule);
 }
 .st-board-row:first-child { border-top: none; }
-.st-board-done { background: #fcfdfc; }
-.st-board-flag { background: #fefafa; }
+.st-board-done { background: var(--blue-050); }
+.st-board-flag { background: var(--blue-050); }
 .st-board-main { min-width: 0; }
 .st-board-name { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
 .st-board-slot {
@@ -3858,8 +3879,8 @@ body {
   text-transform: uppercase;
   letter-spacing: .06em;
   font-weight: 650;
-  color: #55606e;
-  background: #eef0f4;
+  color: var(--ink-soft);
+  background: var(--blue-050);
   padding: 2px 6px;
   border-radius: 4px;
 }
@@ -3878,7 +3899,7 @@ body {
 }
 .st-board-btn:hover { background: var(--accent-deep); }
 .st-board-btn-later { background: #fff; color: var(--ink-soft); border: 1px solid var(--rule); }
-.st-board-btn-later:hover { background: #f1f2f5; color: var(--ink); }
+.st-board-btn-later:hover { background: var(--blue-050); color: var(--ink); }
 
 .st-log { background: #fff; border: 1px solid var(--rule); border-radius: 10px; padding: 20px 22px; }
 
@@ -3910,7 +3931,7 @@ body {
   font-size: 12.5px;
   line-height: 1.5;
   color: var(--ink-soft);
-  background: #f7f8fa;
+  background: var(--blue-050);
   border-left: 3px solid var(--blue);
   border-radius: 0 6px 6px 0;
   padding: 9px 12px;
@@ -3929,8 +3950,8 @@ body {
   border-top: 1px solid var(--rule);
 }
 .st-log-row:first-child { border-top: none; }
-.st-log-row-flag { background: #fefafa; box-shadow: inset 3px 0 0 var(--accent); }
-.st-log-row-missing { background: #fbfbfc; box-shadow: inset 3px 0 0 #c9ced6; }
+.st-log-row-flag { background: var(--blue-050); box-shadow: inset 3px 0 0 var(--accent); }
+.st-log-row-missing { background: var(--blue-050); box-shadow: inset 3px 0 0 var(--rule-firm); }
 
 .st-log-label { font-size: 14px; font-weight: 550; padding-top: 8px; }
 .st-log-range {
@@ -3938,11 +3959,11 @@ body {
   font-family: var(--mono);
   font-size: 11px;
   font-weight: 400;
-  color: #8b919b;
+  color: var(--ink-faint);
   margin-top: 2px;
 }
 .st-log-input { min-width: 0; }
-.st-log-help { font-size: 11.5px; line-height: 1.45; color: #8b919b; margin-top: 5px; }
+.st-log-help { font-size: 11.5px; line-height: 1.45; color: var(--ink-faint); margin-top: 5px; }
 
 .st-num-wrap { position: relative; display: flex; align-items: center; }
 .st-input-num { font-variant-numeric: tabular-nums; padding-right: 46px; }
@@ -3950,7 +3971,7 @@ body {
   position: absolute;
   right: 11px;
   font-size: 12.5px;
-  color: #8b919b;
+  color: var(--ink-faint);
   pointer-events: none;
 }
 .st-select { appearance: auto; }
@@ -3962,7 +3983,7 @@ body {
   flex: 1;
   min-width: 62px;
   padding: 9px 12px;
-  border: 1px solid #d3d7de;
+  border: 1px solid var(--rule);
   border-radius: 7px;
   background: #fff;
   font: inherit;
@@ -3971,7 +3992,7 @@ body {
   color: var(--ink-soft);
   cursor: pointer;
 }
-.st-toggle-btn:hover { background: #f7f8fa; }
+.st-toggle-btn:hover { background: var(--blue-050); }
 .st-toggle-on {
   background: var(--blue);
   border-color: var(--blue);
@@ -3985,7 +4006,7 @@ body {
   font: inherit;
   font-size: 14px;
   line-height: 1.45;
-  border: 1px solid #d3d7de;
+  border: 1px solid var(--rule);
   border-radius: 7px;
   resize: vertical;
   margin-top: 8px;
@@ -3993,20 +4014,20 @@ body {
 .st-textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 .st-log-alert {
-  background: #fdf6f7;
-  border: 1px solid #f2d6da;
+  background: var(--blue-050);
+  border: 1px solid var(--rule-firm);
   border-left: 3px solid var(--accent);
   border-radius: 0 8px 8px 0;
   padding: 13px 15px;
   margin: 18px 0 14px;
 }
-.st-log-alert strong { display: block; font-size: 14px; color: #8c1c29; }
+.st-log-alert strong { display: block; font-size: 14px; color: var(--blue-900); }
 .st-log-alert p { font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); margin-top: 4px; }
 
-.st-log-missing { font-size: 13px; color: #55606e; margin: 12px 0; }
-.st-log-hint { font-size: 12px; color: #8b919b; margin-top: 8px; text-align: center; }
-.st-primary-warn { background: #8c1c29; }
-.st-primary-warn:hover:not(:disabled) { background: #741620; }
+.st-log-missing { font-size: 13px; color: var(--ink-soft); margin: 12px 0; }
+.st-log-hint { font-size: 12px; color: var(--ink-faint); margin-top: 8px; text-align: center; }
+.st-primary-warn { background: var(--blue-900); }
+.st-primary-warn:hover:not(:disabled) { background: var(--blue-900); }
 
 .st-log form, .st-log { margin-top: 16px; }
 
@@ -4046,7 +4067,7 @@ body {
   font-family: var(--mono);
   font-size: 13px;
   letter-spacing: .04em;
-  background: #f1f2f5;
+  background: var(--blue-050);
   padding: 9px 11px;
   border-radius: 6px;
   word-break: break-all;
@@ -4063,7 +4084,7 @@ body {
   padding: 12px;
   font-variant-numeric: tabular-nums;
 }
-.st-mfa-busy { font-size: 12.5px; color: #8b919b; text-align: center; }
+.st-mfa-busy { font-size: 12.5px; color: var(--ink-faint); text-align: center; }
 
 /* ---------- team administration ---------- */
 
@@ -4078,10 +4099,10 @@ body {
   cursor: pointer;
   white-space: nowrap;
 }
-.st-danger { border-color: #e8c3c8; color: #8c1c29; }
-.st-danger:hover { background: #fdeaec; }
+.st-danger { border-color: var(--rule-firm); color: var(--blue-900); }
+.st-danger:hover { background: var(--blue-100); }
 .st-quiet { color: var(--ink-soft); }
-.st-quiet:hover { background: #f1f2f5; color: var(--ink); }
+.st-quiet:hover { background: var(--blue-050); color: var(--ink); }
 
 .st-row-off { opacity: .55; }
 .st-row-off .st-cell-name { text-decoration: line-through; }
@@ -4155,7 +4176,7 @@ body {
   text-transform: uppercase;
   letter-spacing: .1em;
   font-weight: 650;
-  color: #9aa0aa;
+  color: var(--ink-faint);
   margin-bottom: 7px;
 }
 .lp-sample-card {
@@ -4193,22 +4214,22 @@ body {
   align-items: center;
   font-size: 13.5px;
   padding: 8px 0;
-  border-top: 1px solid #f1f2f5;
+  border-top: 1px solid var(--blue-050);
 }
 .lp-sample-val {
   font-family: var(--mono);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
-  border: 1px solid #d3d7de;
+  border: 1px solid var(--rule);
   border-radius: 6px;
   padding: 5px 10px;
   min-width: 88px;
   text-align: right;
 }
-.lp-sample-bad { border-color: #e8c3c8; background: #fdf6f7; color: #8c1c29; font-weight: 650; }
+.lp-sample-bad { border-color: var(--rule-firm); background: var(--blue-050); color: var(--blue-900); font-weight: 650; }
 
 .lp-sample-alert {
-  background: #fdf6f7;
+  background: var(--blue-050);
   border-left: 3px solid var(--accent);
   border-radius: 0 7px 7px 0;
   padding: 11px 13px;
@@ -4217,11 +4238,11 @@ body {
   flex-direction: column;
   gap: 4px;
 }
-.lp-sample-alert strong { font-size: 13px; color: #8c1c29; }
+.lp-sample-alert strong { font-size: 13px; color: var(--blue-900); }
 .lp-sample-alert span { font-size: 12px; line-height: 1.45; color: var(--ink-soft); }
 
 .lp-sample-btn {
-  background: #8c1c29;
+  background: var(--blue-900);
   color: #fff;
   text-align: center;
   border-radius: 8px;
@@ -4281,7 +4302,7 @@ body {
 }
 .mh-cta:hover { background: var(--accent-deep); }
 .mh-cta-block { display: block; text-align: center; margin-top: 22px; }
-.mh-cta-note { font-size: 13px; color: #8b919b; margin-top: 10px; }
+.mh-cta-note { font-size: 13px; color: var(--ink-faint); margin-top: 10px; }
 
 .mh-features {
   display: grid;
@@ -4331,7 +4352,7 @@ body {
 .mh-plan-list li {
   font-size: 14px;
   line-height: 1.5;
-  color: #33383f;
+  color: var(--ink-soft);
   padding: 7px 0 7px 24px;
   position: relative;
 }
@@ -4369,7 +4390,7 @@ body {
 .tr-h1 { font-family: var(--serif); font-size: 27px; font-weight: 600; letter-spacing: -.02em; }
 .tr-lede { font-size: 14.5px; line-height: 1.55; color: var(--ink-soft); margin: 8px 0 24px; }
 .tr-form .st-primary { margin-top: 6px; }
-.tr-fine { font-size: 12px; color: #8b919b; text-align: center; margin-top: 12px; line-height: 1.5; }
+.tr-fine { font-size: 12px; color: var(--ink-faint); text-align: center; margin-top: 12px; line-height: 1.5; }
 .tr-done h2 { font-family: var(--serif); font-size: 22px; font-weight: 600; margin-bottom: 10px; }
 .tr-done p { font-size: 14.5px; line-height: 1.6; color: var(--ink-soft); margin-bottom: 20px; }
 .tr-done .lp-btn-primary { display: block; text-align: center; }
@@ -4389,8 +4410,8 @@ body {
 /* Overdue is the one state on the dashboard that is already a finding
    rather than a task, so it gets the warm border rather than the same
    treatment as an unsigned document. */
-.st-callout-warn { background: #fdeaec; border-color: #eec2c8; }
-.st-callout-warn:hover { background: #fce2e5; }
+.st-callout-warn { background: var(--blue-100); border-color: var(--rule-firm); }
+.st-callout-warn:hover { background: var(--blue-100); }
 
 .st-ob-add { margin-bottom: 18px; }
 .st-ob-group { margin-bottom: 26px; }
@@ -4399,8 +4420,8 @@ body {
   font-family: var(--mono);
   font-size: 11px;
   font-weight: 600;
-  color: #55606e;
-  background: #eef0f4;
+  color: var(--ink-soft);
+  background: var(--blue-050);
   padding: 2px 7px;
   border-radius: 999px;
 }
@@ -4424,7 +4445,7 @@ body {
   text-transform: uppercase;
   letter-spacing: .06em;
   font-weight: 600;
-  color: #8b919b;
+  color: var(--ink-faint);
   margin-bottom: 3px;
 }
 .st-ob-fact-value { display: block; font-size: 13.5px; }
@@ -4443,7 +4464,7 @@ body {
   padding: 18px 20px;
   margin-bottom: 16px;
 }
-.st-ob-done { background: #fcfdfc; border-color: #d7e8de; }
+.st-ob-done { background: var(--blue-050); border-color: var(--rule-firm); }
 .st-ob-evidence {
   font-size: 14.5px;
   line-height: 1.6;
@@ -4505,4 +4526,37 @@ body {
 @media (max-width: 720px) {
   .st-nav-soon { display: none; }
   .st-nav-link { padding: 6px 8px; font-size: 13.5px; }
+}
+
+/* ---------- roster: credentials and exclusion screening ---------- */
+
+/* Four numbers above the detail, because the question "is anything
+   wrong" should be answerable without reading a list. Severity is
+   carried by fill depth rather than by hue — the palette is one colour,
+   so the word and the weight do the work a red would otherwise do. */
+.st-stats{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:12px;margin-bottom:20px;
+}
+.st-stat{
+  background:var(--bg-card);border:1px solid var(--rule);border-radius:10px;
+  padding:14px 16px;display:flex;flex-direction:column;gap:2px;
+}
+.st-stat-n{font-size:28px;font-weight:650;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--blue-900)}
+.st-stat-l{font-size:12px;color:var(--ink-soft)}
+.st-stat-bad{background:var(--blue-100);border-color:var(--rule-firm)}
+.st-stat-bad .st-stat-n{color:var(--blue-900)}
+.st-stat-warn{background:var(--blue-050);border-color:var(--rule-firm)}
+.st-stat-ok .st-stat-n{color:var(--blue-400)}
+
+.st-rec{
+  display:flex;flex-direction:column;gap:8px;background:var(--blue-050);
+  border:1px solid var(--rule-firm);border-radius:10px;padding:12px;min-width:260px;
+}
+.st-rec-who{font-size:12.5px;font-weight:600;color:var(--blue-900)}
+.st-rec-row{display:flex;flex-wrap:wrap;gap:6px}
+
+@media (max-width:720px){
+  .st-stats{grid-template-columns:repeat(2,1fr)}
+  .st-rec{min-width:0;width:100%}
 }

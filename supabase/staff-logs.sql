@@ -93,7 +93,7 @@ create index if not exists staff_responses_flagged
 -- so replacing the extended view with this original definition fails
 -- with "cannot drop columns from view" — which broke the combined
 -- setup file's second run while the first run was clean.
-drop view if exists staff.todays_logs;
+drop view if exists staff.todays_logs cascade;
 create view staff.todays_logs
 with (security_invoker = true) as
 select

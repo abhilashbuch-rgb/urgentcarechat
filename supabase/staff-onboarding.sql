@@ -195,7 +195,19 @@ grant select, insert on staff.attestations to staff_app;
 -- aged past the document's renewal window.
 -- ============================================================
 
-create or replace view staff.outstanding_docs
+-- Dropped first rather than CREATE OR REPLACE: replace can only APPEND
+-- columns to a view, so once a later migration extends this one, the
+-- combined setup file's second run fails here with "cannot drop
+-- columns from view" while its first run was clean. Drop-first makes
+-- every view definition rerunnable regardless of what extends it.
+--
+-- CASCADE is safe here and is not a shrug: views in this schema are
+-- defined in dependency order within the combined setup file, so a
+-- cascade only ever drops a view that is recreated further down the
+-- same file. compliance_status builds on outstanding_docs, which is
+-- why a bare drop failed.
+drop view if exists staff.outstanding_docs cascade;
+create view staff.outstanding_docs
 with (security_invoker = true) as
 select
   u.id                          as user_id,
@@ -235,7 +247,13 @@ grant select on staff.outstanding_docs to staff_app;
 
 -- Completion per person, for the admin roster: how many documents apply
 -- to them and how many they have live signatures for.
-create or replace view staff.compliance_status
+-- Dropped first rather than CREATE OR REPLACE: replace can only APPEND
+-- columns to a view, so once a later migration extends this one, the
+-- combined setup file's second run fails here with "cannot drop
+-- columns from view" while its first run was clean. Drop-first makes
+-- every view definition rerunnable regardless of what extends it.
+drop view if exists staff.compliance_status cascade;
+create view staff.compliance_status
 with (security_invoker = true) as
 select
   u.id            as user_id,

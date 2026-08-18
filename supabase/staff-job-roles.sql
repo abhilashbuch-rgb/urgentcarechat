@@ -135,7 +135,7 @@ grant execute on function staff.brief_matches(staff.job_role[], staff.job_role) 
 -- view column \"slot\" to \"job_roles\"". Nothing depends on this view,
 -- so dropping it is free — but the drop has to come first or the whole
 -- migration stops here.
-drop view if exists staff.todays_logs;
+drop view if exists staff.todays_logs cascade;
 create view staff.todays_logs
 with (security_invoker = true) as
 select

@@ -85,7 +85,13 @@ create trigger staff_users_revoke_on_deactivate
 -- rather than something cached: the entire value of a kill switch is that
 -- it takes effect on the next request, and a 60-second cache would mean a
 -- 60-second window in which a just-fired employee still has access.
-create or replace view staff.session_checks
+-- Dropped first rather than CREATE OR REPLACE: replace can only APPEND
+-- columns to a view, so once a later migration extends this one, the
+-- combined setup file's second run fails here with "cannot drop
+-- columns from view" while its first run was clean. Drop-first makes
+-- every view definition rerunnable regardless of what extends it.
+drop view if exists staff.session_checks cascade;
+create view staff.session_checks
 with (security_invoker = true) as
 select id, org_slug, role, active, session_epoch,
        (totp_confirmed_at is not null) as mfa_enrolled
