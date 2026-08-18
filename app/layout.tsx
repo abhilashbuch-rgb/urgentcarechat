@@ -16,21 +16,21 @@ import "./globals.css";
 // own CDN and committed. Each is the variable font, so the full weight
 // range is available from one file per family instead of one per weight.
 const interTight = localFont({
-  src: "../public/fonts/inter-tight.woff2",
+  src: "../public/fonts/source-sans.woff2",
   weight: "100 900",
   variable: "--font-inter-tight",
   display: "swap",
 });
 
 const jetbrainsMono = localFont({
-  src: "../public/fonts/jetbrains-mono.woff2",
+  src: "../public/fonts/plex-mono.woff2",
   weight: "100 800",
   variable: "--font-jetbrains-mono",
   display: "swap",
 });
 
 const fraunces = localFont({
-  src: "../public/fonts/fraunces.woff2",
+  src: "../public/fonts/source-serif.woff2",
   weight: "100 900",
   variable: "--font-fraunces",
   display: "swap",

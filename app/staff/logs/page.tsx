@@ -1,6 +1,7 @@
 import { requireStaff } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
 import { todaysBoard } from "@/lib/staff/logs";
+import { getProfile } from "@/lib/staff/compliance";
 import { billingState } from "@/lib/staff/billing";
 import { SLOT_LABELS, currentSlot } from "@/lib/staff/forms";
 import { formatSignedAt } from "@/lib/staff/labels";
@@ -22,10 +23,16 @@ export default async function LogsBoard({
   const { session, org } = await requireStaff();
   const { done } = await searchParams;
 
-  const { rows, billing } = await withSession(session, async (sql) => ({
-    rows: await todaysBoard(sql),
-    billing: await billingState(sql, org),
-  }));
+  const { rows, billing, profile } = await withSession(session, async (sql) => {
+    const me = await getProfile(sql, session.uid);
+    return {
+      profile: me,
+      // Scoped to this person's clinic job. A medical assistant does not
+      // see the front desk's drawer count and vice versa.
+      rows: await todaysBoard(sql, me?.job_role ?? null),
+      billing: await billingState(sql, org),
+    };
+  });
   const now = currentSlot();
 
   const outstanding = rows.filter((r) => !r.response_id).length;
@@ -71,6 +78,17 @@ export default async function LogsBoard({
           <span>
             Each one was filed with the corrective action taken. They stay on
             this board rather than being cleared.
+          </span>
+        </div>
+      )}
+
+      {!profile?.job_role && (
+        <div className="st-notice" role="status">
+          <strong>No job assigned yet</strong>
+          <span>
+            Logs are assigned by job &mdash; a medical assistant&rsquo;s shift is
+            not a front desk shift. Until an administrator sets yours on the
+            Team screen, you only see the tasks that apply to everyone.
           </span>
         </div>
       )}

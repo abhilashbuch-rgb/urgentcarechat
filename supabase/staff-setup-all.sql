@@ -2556,11 +2556,20 @@ revoke delete on staff.directives from staff_app;
 -- shows for all staff — so adding this column cannot make work vanish
 -- from a clinic that has not categorised anything yet.
 --
--- A person with no job_role set sees EVERYTHING, deliberately. The
--- failure mode of showing an unassigned person too much is that they
--- ignore some of it; the failure mode of showing them nothing is that
--- the fridge goes unchecked because the app told them their shift was
--- empty.
+-- SEPARATION IS STRICT. A medical assistant does not see the front
+-- desk's drawer reconciliation and the front desk does not see the
+-- narcotics count. Only a task with NO job_roles at all is shown to
+-- everybody, and that is reserved for things which genuinely are
+-- everybody's.
+--
+-- An earlier version also let a person with no job_role see everything,
+-- on the reasoning that showing an unassigned person too much was safer
+-- than showing them nothing. That was wrong twice over: it silently
+-- broke the separation the moment anyone was left unassigned, and it
+-- hid the real problem, which is that nobody had said what this person
+-- does. Unassigned now sees only the universal tasks, and the app tells
+-- them to get a job assigned — a visible gap an administrator can fix,
+-- rather than an invisible leak.
 -- ============================================================
 
 create or replace function staff.brief_matches(
@@ -2568,8 +2577,7 @@ create or replace function staff.brief_matches(
 ) returns boolean
 language sql immutable as $$
   select cardinality(p_task) = 0
-      or p_person is null
-      or p_person = any (p_task)
+      or (p_person is not null and p_person = any (p_task))
 $$;
 
 grant execute on function staff.brief_matches(staff.job_role[], staff.job_role) to staff_app;

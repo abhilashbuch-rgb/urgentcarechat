@@ -15,6 +15,18 @@
   --blue-100: #dbe7f4;   /* fills, chips */
   --blue-050: #eff5fb;   /* sunk panels */
 
+  /* Gold earns its place on the mark. Three steps because one gold
+     cannot both sit on navy and pass contrast on white: g300 is for the
+     logo, g700 for any gold text. */
+  --gold-300: #e5c158;
+  --gold-500: #c9a227;
+  --gold-700: #8a6a17;
+
+  /* Royal blue, for the mark only. Deeper and more saturated than the
+     interface navy on purpose — a logo has to hold its own on someone
+     else's slide, and --blue-800 goes flat there. */
+  --royal: #173a8a;
+
   --bg: #ffffff;
   --bg-card: #ffffff;
   --bg-sunk: var(--blue-050);
@@ -36,9 +48,13 @@
   --rule: #d7e3f0;
   --rule-firm: #b9cee4;
   --shadow: 0 1px 0 rgba(10,37,64,.04), 0 8px 28px -14px rgba(10,37,64,.22);
-  --serif: var(--font-fraunces), Georgia, serif;
-  --sans: var(--font-inter-tight), system-ui, sans-serif;
-  --mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+  /* Source Serif / Source Sans — the pair clinical and scientific
+     publishing already reads in, which is the point: a compliance record
+     should look like a medical document, not a startup. The CSS variable
+     names are kept so nothing downstream has to change. */
+  --serif: var(--font-fraunces), "Source Serif 4", Georgia, serif;
+  --sans: var(--font-inter-tight), "Source Sans 3", system-ui, sans-serif;
+  --mono: var(--font-jetbrains-mono), "IBM Plex Mono", ui-monospace, monospace;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -91,10 +107,7 @@ body {
   border-radius: 22%;
 }
 
-.brand .tld {
-  color: var(--accent);
-  font-style: italic;
-}
+.brand .tld { color: var(--gold-700); font-style: normal; font-weight: 600; }
 
 .tagline {
   font-family: var(--mono);
@@ -1517,7 +1530,7 @@ body {
   color: var(--l-ink);
 }
 
-.lp-tld { color: var(--l-teal); font-style: italic; }
+.lp-tld { color: var(--gold-700); font-style: normal; font-weight: 600; }
 
 .lp-nav-links {
   display: flex;
@@ -4560,3 +4573,7 @@ body {
   .st-stats{grid-template-columns:repeat(2,1fr)}
   .st-rec{min-width:0;width:100%}
 }
+
+/* The mark sits on whatever ground it lands on; nothing here should be
+   clipped by a flex parent. */
+.brand-icon{flex:0 0 auto;border-radius:50%}
