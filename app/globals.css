@@ -4576,4 +4576,31 @@ body {
 
 /* The mark sits on whatever ground it lands on; nothing here should be
    clipped by a flex parent. */
-.brand-icon{flex:0 0 auto;border-radius:50%}
+/* No border-radius: the mark is a square by design, and rounding it
+   here would quietly undo that everywhere it appears. */
+.brand-icon{flex:0 0 auto}
+
+/* ---------- the stacked wordmark ---------- */
+
+.wordmark{display:flex;flex-direction:column;line-height:1;min-width:0}
+.wordmark-1{
+  font-family:var(--serif);
+  font-weight:700;
+  font-size:19px;
+  letter-spacing:-.01em;
+  color:var(--blue-900);
+}
+/* Letterspaced gold caps: at this size it reads as a descriptor rather
+   than a second name, which is the job. The tracking is what does that —
+   without it the two lines read as a first and last name. */
+.wordmark-2{
+  font-family:var(--sans);
+  font-weight:600;
+  font-size:12.5px;
+  letter-spacing:.22em;
+  text-transform:uppercase;
+  color:var(--gold-700);
+  margin-top:4px;
+}
+.wordmark-lg .wordmark-1{font-size:27px}
+.wordmark-lg .wordmark-2{font-size:15px;letter-spacing:.26em;margin-top:5px}

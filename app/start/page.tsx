@@ -20,7 +20,7 @@ export default function StartTrial() {
           <Link className="lp-brand" href="/">
             <BrandIcon />
             <span>
-              <Wordmark tldClass="lp-tld" />
+              <Wordmark />
             </span>
           </Link>
           <nav className="lp-nav-links">

@@ -1,27 +1,26 @@
-import { PRODUCT_NAME } from "@/lib/site";
+import { PRODUCT_WORDS } from "@/lib/site";
 
-// The wordmark, split so the TLD can be styled differently from the name.
+// The wordmark: "medicin" over "binder", stacked.
 //
-// Derived from PRODUCT_NAME rather than written out, because it was
-// written out on eleven pages and a rename left three of them still
-// saying the old domain. One definition in lib/site.ts, one component
-// that renders it.
+// Two lines rather than one because the second word is the whole pitch —
+// this replaces a paper binder — and setting it inline turns it into a
+// surname nobody reads. Stacked, letterspaced and in gold, it reads as a
+// descriptor, which is what it is.
 //
-// `tldClass` exists only because the landing pages and the app pages
-// style the TLD with different classes; everything else about the mark is
-// the same.
+// Derived from PRODUCT_WORDS rather than typed here, so the mark and the
+// page titles cannot end up calling the product two different things.
+//
+// The whole lockup is one flex column inside one element: the header rows
+// that hold it are themselves flex with a gap, and a bare text node
+// beside a span becomes a second flex item, which is what put 8px of air
+// inside the previous wordmark.
 
-export default function Wordmark({ tldClass = "tld" }: { tldClass?: string }) {
-  const dot = PRODUCT_NAME.lastIndexOf(".");
-  if (dot < 1) return <span className="wordmark">{PRODUCT_NAME}</span>;
+export default function Wordmark({ size = "sm" }: { size?: "sm" | "lg" }) {
+  const [first, second] = PRODUCT_WORDS;
   return (
-    // Wrapped in one element rather than returned as a fragment. The
-    // headers that hold the mark are flex containers with a gap, and a
-    // bare text node beside a span is TWO flex items — which put 8px of
-    // air inside the wordmark and rendered it as "medicin .io".
-    <span className="wordmark">
-      {PRODUCT_NAME.slice(0, dot)}
-      <span className={tldClass}>{PRODUCT_NAME.slice(dot)}</span>
+    <span className={`wordmark wordmark-${size}`}>
+      <span className="wordmark-1">{first}</span>
+      <span className="wordmark-2">{second}</span>
     </span>
   );
 }

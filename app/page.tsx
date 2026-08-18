@@ -44,7 +44,7 @@ export default function LandingPage() {
         <div className="lp-nav-inner">
           <div className="lp-brand">
             <BrandIcon />
-            <Wordmark tldClass="lp-tld" />
+            <Wordmark />
           </div>
           <nav className="lp-nav-links">
             <a href="/staff/signin">Sign in</a>

@@ -45,7 +45,7 @@ export default async function MonitorPage() {
           <Link className="lp-brand" href="/" style={{ textDecoration: "none" }}>
             <BrandIcon />
             <span>
-              <Wordmark tldClass="lp-tld" />
+              <Wordmark />
             </span>
           </Link>
           <nav className="lp-nav-links">

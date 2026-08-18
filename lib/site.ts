@@ -24,9 +24,17 @@ export const ROOT_DOMAIN = "medicin.io";
 /** Canonical origin for links, metadata, and sitemaps. */
 export const ROOT_URL = `https://${ROOT_DOMAIN}`;
 
-/** The name shown to people. Separate from the domain on purpose — give
- *  the product a real name and only this line changes. */
-export const PRODUCT_NAME = "medicin.io";
+/** The name shown to people. Separate from the domain on purpose, and
+ *  now actually different from it: the product is Medicin Binder, which
+ *  lives at medicin.io. Both halves are load-bearing — "binder" is the
+ *  thing this replaces, and saying so in the name does more work than a
+ *  tagline does. */
+export const PRODUCT_NAME = "Medicin Binder";
+
+/** The two halves, for the stacked lockup. Split here rather than in the
+ *  component so the mark and the metadata can never disagree about what
+ *  the product is called. */
+export const PRODUCT_WORDS = ["medicin", "binder"] as const;
 
 /** Who operates it — appears in footers and structured data. */
 export const OPERATOR = "Medicin.io LLC";
