@@ -49,19 +49,40 @@ export function contactMailto(subject: string): string {
 }
 
 /**
- * Domains this deployment still answers for, beyond the current one.
+ * Domains this deployment answers for beyond the current one.
  *
- * urgentcare.chat is NOT retired. It is a genuinely good name for a
- * patient symptom chat, which is what still lives on it: afc.urgentcare.chat
- * is a working white-label patient portal that has been shown to people,
- * and silently breaking it to rename the staff product would be trading
- * someone else's live thing for our tidiness.
+ * EMPTY, DELIBERATELY. urgentcare.chat was kept resolving through the
+ * rename so the live AFC patient portal would not break mid-move. It is
+ * now retired at the owner's instruction: the product is medicin.io, and
+ * a second domain that silently still works is a second domain to keep
+ * certificates, redirects and OAuth callbacks straight on forever.
  *
- * Tenant subdomains resolve under any of these. The staff area redirects
- * to ROOT_DOMAIN from all of them, so there is still exactly one staff
- * door and one OAuth callback.
+ * CONSEQUENCE, stated plainly because it is not reversible by editing
+ * this file alone: afc.urgentcare.chat stops resolving to a portal. Any
+ * printed card, QR code or link pointing at it is dead. Point the old
+ * domain's DNS at a redirect, or accept the breakage.
  */
-export const LEGACY_DOMAINS = ["urgentcare.chat"] as const;
+export const LEGACY_DOMAINS: readonly string[] = [];
+
+/**
+ * Domains that used to serve this product and now only point at it.
+ *
+ * Different from LEGACY_DOMAINS: a legacy domain SERVES the app, a
+ * retired one REDIRECTS to it. Retiring without this list would leave
+ * urgentcare.chat rendering a second, unbranded copy of the site — the
+ * host is still pointed at the deployment, so "removing" it from the
+ * code just makes it an unrecognised host that falls through to the
+ * homepage. That is worse than either alternative: two domains serving
+ * identical content, neither canonical.
+ */
+export const RETIRED_DOMAINS = ["urgentcare.chat"] as const;
+
+/** True for a retired domain or any subdomain of one. */
+export function isRetiredHost(hostname: string): boolean {
+  return RETIRED_DOMAINS.some(
+    (d) => hostname === d || hostname.endsWith(`.${d}`)
+  );
+}
 
 /** True for the apex or www of any domain this deployment answers for. */
 export function isRootHost(hostname: string): boolean {

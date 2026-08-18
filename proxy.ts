@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getTenantBySlug } from "@/lib/tenants";
-import { ROOT_DOMAIN, domainOf, isRootHost } from "@/lib/site";
+import { ROOT_DOMAIN, domainOf, isRootHost, isRetiredHost } from "@/lib/site";
 
 // ============================================================
 // Subdomain routing for branded tenant portals (e.g.
@@ -191,9 +191,25 @@ async function handleRootDomain(request: NextRequest, headers: Headers) {
 export async function proxy(request: NextRequest) {
   const hostname = (request.headers.get("host") || "").split(":")[0];
 
-  // Recognised under the current domain AND the legacy one, so the
-  // white-label patient portals already live on urgentcare.chat keep
-  // working through the rename.
+  // A retired domain points at the product; it does not serve it. This
+  // has to run BEFORE tenant resolution, because afc.urgentcare.chat
+  // would otherwise still resolve a real tenant and serve their portal
+  // under the dead name.
+  //
+  // 308 rather than 307: the move is permanent, and 308 is the one that
+  // preserves the method AND tells caches and search engines to stop
+  // asking. The path is carried across so a deep link lands where it
+  // meant to rather than dumping everyone on the homepage.
+  if (isRetiredHost(hostname)) {
+    return NextResponse.redirect(
+      new URL(request.nextUrl.pathname + request.nextUrl.search, `https://${ROOT_DOMAIN}`),
+      308
+    );
+  }
+
+  // Recognised under the current domain. LEGACY_DOMAINS is empty now, so
+  // this only ever matches medicin.io — the shape is kept because the
+  // next rename should be one line again.
   const parent = domainOf(hostname);
   const isRootDomain = isRootHost(hostname);
   const subdomain =

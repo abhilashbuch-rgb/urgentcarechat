@@ -36,6 +36,15 @@ export interface NavItem {
 
 // One list, filtered by role. Hiding a link is a convenience, not a
 // control: every route behind these links re-checks the session itself.
+//
+// THERE IS NO INTERNAL CHAT HERE, AND THAT IS THE DECISION, NOT AN
+// OMISSION. A staff messaging module that records conversations is
+// all-party consent in Pennsylvania (18 Pa. C.S. § 5703) and needs an
+// employment attorney's sign-off on the consent flow before it can
+// exist at all. It was carried as an inert placeholder for a while,
+// which was worse than nothing: it advertised a feature the product
+// had decided not to ship. Removed. If it comes back it comes back
+// with the consent flow, not before.
 export const NAV: NavItem[] = [
   { href: "/staff", label: "Today", minRole: "staff" },
   { href: "/staff/me", label: "My record", minRole: "staff" },
@@ -49,16 +58,6 @@ export const NAV: NavItem[] = [
     note: "Approve or flag submitted logs.",
   },
   { href: "/staff/team", label: "Team", minRole: "org_admin" },
-  {
-    href: "/staff/messages",
-    label: "Messages",
-    minRole: "staff",
-    placeholder: true,
-    // Deliberately inert. Recording staff conversations is all-party
-    // consent in Pennsylvania (18 Pa. C.S. § 5703), so this ships only
-    // after an employment attorney has signed off on the consent flow.
-    note: "Not built yet — pending legal review of the consent flow.",
-  },
 ];
 
 export function navFor(role: StaffRole): NavItem[] {
