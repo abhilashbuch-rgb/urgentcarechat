@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolve } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
+import { enqueue } from "@/lib/staff/alerts";
 import { loadTemplate, ensureInstance } from "@/lib/staff/logs";
 import { coerce, evaluate, type Answers } from "@/lib/staff/forms";
 
@@ -44,6 +45,14 @@ export async function POST(req: NextRequest) {
 
   try {
     const result = await withSession(session, async (sql) => {
+      // The name that goes in the alert. An owner reading "out of range"
+      // on their phone needs to know who filed it without opening the
+      // app, and an email address is not the name they know people by.
+      const [who] = await sql<{ legal_name: string | null }[]>`
+        select legal_name from staff.users where id = ${session.uid}
+      `;
+      const profileName = who?.legal_name ?? null;
+
       const template = await loadTemplate(sql, slug);
       if (!template) return { error: "no_such_form" as const, status: 404 };
 
@@ -108,6 +117,33 @@ export async function POST(req: NextRequest) {
                 'form_response', ${inserted[0].id},
                 ${sql.json({ slug, slot, out_of_range: check.outOfRangeLabels })})
       `;
+
+      // The alert is enqueued INSIDE this transaction, so an excursion
+      // and the record of having raised it either both exist or neither
+      // does. Sending happens later, from the cron sweep — emailing here
+      // would make the mail provider's slow afternoon into this person's
+      // slow submit button, and a provider outage into either a 500 on
+      // an already-filed log or a silently lost excursion.
+      await enqueue(sql, {
+        org,
+        kind: flagged ? "excursion" : "log",
+        subject: flagged
+          ? `${org}: ${template.name} out of range`
+          : `${org}: ${template.name} logged`,
+        body: flagged
+          ? [
+              `${template.name} (${slot.toUpperCase()}) is out of range.`,
+              `Out of range: ${check.outOfRangeLabels.join(", ")}`,
+              `Filed by ${profileName ?? session.email} at ${new Date().toISOString()}`,
+              "",
+              `Corrective action recorded: ${corrective}`,
+            ].join("\n")
+          : `${template.name} (${slot.toUpperCase()}) logged by ${profileName ?? session.email}. Within range.`,
+        sourceKind: "form_response",
+        sourceId: inserted[0].id,
+        submittedBy: session.uid,
+        payload: { slug, slot, out_of_range: check.outOfRangeLabels },
+      });
 
       return { id: inserted[0].id, flagged, outOfRange: check.outOfRangeLabels };
     });

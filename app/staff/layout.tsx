@@ -5,6 +5,7 @@ import { navFor, ROLE_LABELS } from "@/lib/staff/roles";
 import { withSession } from "@/lib/staff/db";
 import { getProfile } from "@/lib/staff/compliance";
 import Avatar from "@/app/components/staff/Avatar";
+import ShiftChime from "@/app/components/staff/ShiftChime";
 import BrandIcon from "@/app/components/BrandIcon";
 
 // The staff shell. Lives at /staff on an org's own hostname
@@ -38,8 +39,13 @@ export default async function StaffLayout({
   // Nav is filtered by ROLE and by JOB. Most providers hold the plain
   // "staff" role, so a clinical link gated on role alone would be hidden
   // from the people it exists for.
-  const { me, theme } = await withSession(session, async (sql) => ({
+  const { me, theme, audio } = await withSession(session, async (sql) => ({
     me: await getProfile(sql, session.uid),
+    audio: (
+      await sql<{ audio_alerts_enabled: boolean }[]>`
+        select audio_alerts_enabled from staff.users where id = ${session.uid}
+      `
+    )[0]?.audio_alerts_enabled ?? true,
     theme: (
       await sql<{ brand_color: string; logo_url: string | null }[]>`
         select brand_color, logo_url from staff.org_theme where slug = ${org}
@@ -83,6 +89,7 @@ export default async function StaffLayout({
           </nav>
 
           <div className="st-me">
+            <ShiftChime audioEnabled={audio} />
             {/* The photo is fetched through a signed-link route rather
                 than being a public URL — the bucket also holds licences.
                 No photo renders initials on the same ring, so the empty

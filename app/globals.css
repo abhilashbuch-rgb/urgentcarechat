@@ -5208,3 +5208,33 @@ body {
 .wordmark-dot{color:var(--gold-500)}
 .wordmark-lg .wordmark-1{font-size:27px}
 .wordmark-lg .wordmark-2{font-size:15px;letter-spacing:.26em;margin-top:5px}
+
+/* ---------- the shift sound toggle ---------- */
+
+.st-chime {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  min-height: 32px;
+  border: 1px solid var(--rule-firm);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--ink-soft);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.st-chime:hover { border-color: var(--accent); }
+/* On is the recommended state, so it is the one that looks deliberate
+   rather than the one that looks alarming. */
+.st-chime-on { color: var(--accent); border-color: var(--blue-400); background: var(--blue-050); }
+.st-chime-hint { font-weight: 500; color: var(--ink-faint); }
+@media (max-width: 720px) {
+  /* The label goes, the bell stays. A phone header has no room for
+     three words, and the icon plus its title attribute still says
+     which state it is in. */
+  .st-chime-label, .st-chime-hint { display: none; }
+}
