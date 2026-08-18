@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { resolve } from "@/lib/staff/auth";
 import { getTenantBySlug } from "@/lib/tenants";
 import { navFor, ROLE_LABELS } from "@/lib/staff/roles";
+import { withSession } from "@/lib/staff/db";
+import { getProfile } from "@/lib/staff/compliance";
 import BrandIcon from "@/app/components/BrandIcon";
 
 // The staff shell. Lives at /staff on an org's own hostname
@@ -32,7 +34,11 @@ export default async function StaffLayout({
   const { session, org } = result.ctx;
   const tenant = await getTenantBySlug(org);
   const orgName = tenant?.displayName ?? org;
-  const nav = navFor(session.role);
+  // Nav is filtered by ROLE and by JOB. Most providers hold the plain
+  // "staff" role, so a clinical link gated on role alone would be hidden
+  // from the people it exists for.
+  const me = await withSession(session, (sql) => getProfile(sql, session.uid));
+  const nav = navFor(session.role, me?.job_role ?? null);
 
   return (
     <div className="st">

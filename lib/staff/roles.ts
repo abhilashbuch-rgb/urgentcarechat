@@ -57,6 +57,11 @@ export interface NavItem {
   /** Rendered but inert, with a "coming soon" marker. */
   placeholder?: boolean;
   note?: string;
+  /** Shown only to people who practise: a provider or centre admin by
+   *  JOB, or a clinical lead or above by ROLE. The two are different
+   *  axes and most providers hold the plain "staff" role, so gating this
+   *  on role alone would hide it from exactly the people it is for. */
+  clinicalOnly?: boolean;
 }
 
 // One list, filtered by role. Hiding a link is a convenience, not a
@@ -72,12 +77,29 @@ export interface NavItem {
 // with the consent flow, not before.
 export const NAV: NavItem[] = [
   { href: "/staff", label: "Today", minRole: "staff" },
-  { href: "/staff/me", label: "My record", minRole: "staff" },
   { href: "/staff/logs", label: "Logs", minRole: "staff" },
   { href: "/staff/rounds", label: "Rounds", minRole: "staff" },
   { href: "/staff/rules", label: "Rules", minRole: "staff" },
+  { href: "/staff/documents", label: "Documents", minRole: "staff" },
   { href: "/staff/obligations", label: "Obligations", minRole: "staff" },
+  // Clinical protocol search. Gated by JOB as well as role inside the
+  // page and the route — a provider or centre admin gets it, and so
+  // does a clinical lead, and nobody else. Listed for everyone at
+  // "staff" would be a link that always refuses; listed at
+  // clinical_lead alone would hide it from a provider whose account
+  // role is plain staff, which is most providers. So it is filtered by
+  // job below rather than by minRole.
+  {
+    href: "/staff/protocols",
+    label: "Protocols",
+    minRole: "staff",
+    clinicalOnly: true,
+  },
+  // The WHOLE roster: everybody's credentials and the exclusion
+  // screening. Leads and administrators. Everyone else has
+  // /staff/documents, which is their own shelf and nobody else's.
   { href: "/staff/roster", label: "Roster", minRole: "clinical_lead" },
+  { href: "/staff/me", label: "My record", minRole: "staff" },
   {
     href: "/staff/review",
     label: "Review",
@@ -88,6 +110,14 @@ export const NAV: NavItem[] = [
   { href: "/staff/team", label: "Team", minRole: "org_admin" },
 ];
 
-export function navFor(role: StaffRole): NavItem[] {
-  return NAV.filter((item) => atLeast(role, item.minRole));
+export function navFor(role: StaffRole, jobRole?: string | null): NavItem[] {
+  const clinical =
+    jobRole === "provider" ||
+    jobRole === "center_admin" ||
+    atLeast(role, "clinical_lead");
+
+  return NAV.filter(
+    (item) =>
+      atLeast(role, item.minRole) && (!item.clinicalOnly || clinical)
+  );
 }
