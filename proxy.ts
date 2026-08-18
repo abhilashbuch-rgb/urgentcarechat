@@ -207,6 +207,28 @@ export async function proxy(request: NextRequest) {
     );
   }
 
+  // A surveyor link's TOKEN IS ITS PATH, which makes the URL itself the
+  // credential. Two headers stop it travelling:
+  //
+  //   Referrer-Policy: no-referrer — without it, any click from this
+  //   page sends the full URL, token included, to the destination in a
+  //   Referer header. The page has no outbound links today; this is here
+  //   so that adding one later cannot quietly leak an inspector's key.
+  //
+  //   X-Robots-Tag — belt and braces with the route's own metadata. A
+  //   surveyor link in a search index is a clinic's compliance record in
+  //   a search index.
+  //
+  // Cache-Control because these are per-inspector documents and must not
+  // sit in a shared cache keyed only on the path.
+  if (request.nextUrl.pathname.startsWith("/surveyor/")) {
+    const res = NextResponse.next();
+    res.headers.set("Referrer-Policy", "no-referrer");
+    res.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+    res.headers.set("Cache-Control", "no-store, max-age=0");
+    return res;
+  }
+
   // Recognised under the current domain. LEGACY_DOMAINS is empty now, so
   // this only ever matches medicin.io — the shape is kept because the
   // next rename should be one line again.

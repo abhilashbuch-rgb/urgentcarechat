@@ -111,6 +111,7 @@ export const NAV: NavItem[] = [
     placeholder: true,
     note: "Approve or flag submitted logs.",
   },
+  { href: "/staff/surveyor", label: "Inspection", minRole: "org_admin" },
   { href: "/staff/team", label: "Team", minRole: "org_admin" },
 ];
 

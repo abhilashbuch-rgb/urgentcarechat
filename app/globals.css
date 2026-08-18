@@ -5238,3 +5238,141 @@ body {
      which state it is in. */
   .st-chime-label, .st-chime-hint { display: none; }
 }
+
+/* ---------- the inspector's view ----------
+   A separate, deliberately plain document. It is read on somebody else's
+   iPad, once, by a person who has never seen this product — so it looks
+   like a printed record rather than an application, and there is not a
+   single control on it. */
+
+.sv { min-height: 100%; background: var(--bg-sunk); color: var(--ink); }
+.sv-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 20px;
+  background: #fff;
+  border-bottom: 1px solid var(--rule);
+}
+.sv-brand { display: flex; align-items: center; gap: 10px; }
+.sv-badge {
+  font-size: 11px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--accent);
+  background: var(--blue-100);
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.sv-main { max-width: 940px; margin: 0 auto; padding: 28px 20px 64px; }
+.sv-h1 { font-family: var(--serif); font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+.sv-sub { font-size: 13.5px; color: var(--ink-soft); margin-top: 6px; }
+.sv-h2 { font-size: 15px; font-weight: 650; margin-bottom: 10px; }
+.sv-section { margin-top: 30px; }
+.sv-empty { font-size: 13px; color: var(--ink-faint); }
+
+.sv-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-top: 22px;
+}
+.sv-stat {
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sv-stat-value { font-family: var(--serif); font-size: 24px; font-weight: 700; }
+.sv-stat-label { font-size: 11.5px; color: var(--ink-soft); }
+
+/* Tables scroll inside their own box rather than pushing the page
+   sideways — this is read on a tablet held in one hand. */
+.sv-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  overflow: hidden;
+  font-size: 13.5px;
+}
+.sv-section { overflow-x: auto; }
+.sv-table th, .sv-table td {
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+.sv-table th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--ink-faint);
+  font-weight: 600;
+  background: var(--blue-050);
+}
+.sv-table tr:last-child td { border-bottom: none; }
+
+.sv-flag {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 10.5px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: #fff;
+  background: var(--blue-900);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.sv-state { font-size: 12px; font-weight: 600; text-transform: capitalize; }
+.sv-state-expired, .sv-state-critical, .sv-state-overdue { color: var(--blue-900); font-weight: 700; }
+.sv-state-expiring, .sv-state-due_soon { color: var(--blue-600); }
+.sv-state-current, .sv-state-scheduled { color: var(--ink-soft); font-weight: 500; }
+
+.sv-foot {
+  font-size: 12px;
+  color: var(--ink-faint);
+  margin-top: 34px;
+  padding-top: 16px;
+  border-top: 1px solid var(--rule);
+  line-height: 1.5;
+}
+
+.sv-gone { display: flex; align-items: center; justify-content: center; padding: 40px 20px; }
+.sv-gone-card {
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 30px 28px;
+  max-width: 460px;
+  box-shadow: var(--shadow);
+}
+.sv-gone-card .sv-h1 { font-size: 21px; margin-top: 20px; }
+
+/* The issued link, shown once. Monospace and breakable so a long token
+   wraps instead of overflowing on a phone. */
+.st-sv-link {
+  background: var(--blue-050);
+  border: 1px solid var(--rule-firm);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-top: 14px;
+}
+.st-sv-link code {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+.st-tag-active, .st-tag-unopened { background: var(--blue-100); color: var(--blue-900); }
+.st-tag-revoked { background: var(--blue-900); color: #fff; }
