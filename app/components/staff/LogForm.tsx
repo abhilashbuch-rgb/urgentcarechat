@@ -2,6 +2,17 @@
 
 import { useMemo, useRef, useState } from "react";
 import { evaluate, type Answers, type Field, type FormSchema } from "@/lib/staff/forms";
+import CameraProof, { type Proof } from "@/app/components/staff/CameraProof";
+
+// The three logs where a photograph is worth the extra seconds, because
+// the record is a number somebody typed and the evidence is a display
+// somebody photographed.
+const PHOTO_FORMS = new Set(["temp-fridge", "crash-cart", "poct-qc"]);
+const PHOTO_LABELS: Record<string, string> = {
+  "temp-fridge": "Photo of the min/max display (optional)",
+  "crash-cart": "Photo of the breakaway seal (optional)",
+  "poct-qc": "Photo of the control read window (optional)",
+};
 
 // One log, filled in from the keyboard.
 //
@@ -36,6 +47,10 @@ export default function LogForm({
 }) {
   const [answers, setAnswers] = useState<Answers>({});
   const [corrective, setCorrective] = useState("");
+  // The photograph is uploaded AFTER the log is filed, never with it —
+  // see app/api/staff/logs/photo/route.ts. A failed upload must not cost
+  // the reading.
+  const [proof, setProof] = useState<Proof | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showMissing, setShowMissing] = useState(false);
@@ -105,6 +120,24 @@ export default function LogForm({
       );
       return;
     }
+
+    // THE LOG IS FILED. Everything after this point is a bonus and none
+    // of it may undo the record or block the redirect: an upload that
+    // fails on a bad corridor signal must not make somebody think their
+    // reading was lost and file it a second time.
+    if (proof) {
+      const body = await res.json().catch(() => null);
+      if (body?.id) {
+        const fd = new FormData();
+        fd.set("response_id", body.id);
+        fd.set("file", new File([proof.blob], "proof.jpg", { type: proof.blob.type }));
+        fd.set("caption", `${slug} ${slot}`.trim());
+        await fetch("/api/staff/logs/photo", { method: "POST", body: fd }).catch(
+          () => null
+        );
+      }
+    }
+
     window.location.assign("/staff/logs?done=" + encodeURIComponent(slug));
   }
 
@@ -160,6 +193,17 @@ export default function LogForm({
             aria-label="Corrective action taken"
           />
         </div>
+      )}
+
+      {/* Photo proof. Optional on every form — a log must never be
+          blocked on a camera. Offered on the three where a surveyor's
+          next question is "show me". */}
+      {PHOTO_FORMS.has(slug) && (
+        <CameraProof
+          label={PHOTO_LABELS[slug] ?? "Photo proof (optional)"}
+          onChange={setProof}
+          disabled={submitting}
+        />
       )}
 
       {showMissing && check.missing.length > 0 && (

@@ -18,7 +18,12 @@ import { createClient } from "@supabase/supabase-js";
 // chase an expiry it knows about; it cannot chase one nobody entered
 // because they had no scanner.
 
-const BUCKET = "staff-credentials";
+const CREDENTIALS_BUCKET = "staff-credentials";
+/** Photo proof attached to shift logs. A separate bucket from
+ *  credentials because the two have different lifetimes and different
+ *  readers: a seal-tag photo is operational evidence a lead reviews,
+ *  a licence scan is personal to one member of staff. */
+const MEDIA_BUCKET = "compliance-media";
 
 export function isStorageConfigured(): boolean {
   return Boolean(
@@ -42,13 +47,21 @@ export function keyFor(org: string, userId: string, filename: string): string {
   return `${org}/${userId}/${Date.now()}-${safe}`;
 }
 
+export type Bucket = "credentials" | "media";
+
+function bucketName(b: Bucket): string {
+  return b === "media" ? MEDIA_BUCKET : CREDENTIALS_BUCKET;
+}
+
 export async function putFile(
   key: string,
   body: ArrayBuffer,
-  contentType: string
+  contentType: string,
+  which: Bucket = "credentials"
 ): Promise<void> {
+  const bucket = bucketName(which);
   const { error } = await client()
-    .storage.from(BUCKET)
+    .storage.from(bucket)
     .upload(key, body, { contentType, upsert: false });
   if (error) throw new Error(error.message);
 }
@@ -63,9 +76,14 @@ export async function putFile(
  * Ten minutes is long enough to open a PDF and short enough that a
  * leaked link is worthless by the time it travels.
  */
-export async function signedUrl(key: string, seconds = 600): Promise<string> {
+export async function signedUrl(
+  key: string,
+  seconds = 600,
+  which: Bucket = "credentials"
+): Promise<string> {
+  const bucket = bucketName(which);
   const { data, error } = await client()
-    .storage.from(BUCKET)
+    .storage.from(bucket)
     .createSignedUrl(key, seconds);
   if (error || !data) throw new Error(error?.message ?? "sign_failed");
   return data.signedUrl;

@@ -44,14 +44,32 @@ export default function ShiftChime({
   // does it, which is how people learn to switch the sound off.
   const announced = useRef<Set<string>>(new Set());
 
+  // THE FIRST GESTURE OF ANY KIND UNLOCKS AUDIO, whatever it is.
+  //
+  // Every browser starts an AudioContext suspended and only a genuine
+  // user gesture may resume it; one created on page load and resumed
+  // from a timer stays silent with no error at all. Binding to
+  // pointerdown alone misses the keyboard user who tabs to a link and
+  // presses Enter, and misses a touch that is handled as touchend
+  // without a pointer event on older iOS.
+  //
+  // So all three are bound, whichever fires first wins, and the rest are
+  // torn down together. capture:true means a handler that calls
+  // stopPropagation somewhere in the tree cannot silently prevent the
+  // unlock.
   useEffect(() => {
+    const events = ["pointerdown", "keydown", "touchend"] as const;
     const unlock = () => {
       chime.unlock();
       setReady(chime.ready);
-      window.removeEventListener("pointerdown", unlock);
+      for (const e of events) window.removeEventListener(e, unlock, true);
     };
-    window.addEventListener("pointerdown", unlock, { once: true });
-    return () => window.removeEventListener("pointerdown", unlock);
+    for (const e of events) {
+      window.addEventListener(e, unlock, { capture: true, once: true });
+    }
+    return () => {
+      for (const e of events) window.removeEventListener(e, unlock, true);
+    };
   }, []);
 
   const poll = useCallback(async () => {

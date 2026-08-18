@@ -50,11 +50,25 @@ export default async function RosterPage() {
 
   return (
     <div className="st-page">
-      <header className="st-page-head">
-        <h1 className="st-h1">Roster</h1>
-        <p className="st-page-sub">
-          Credentials and exclusion screening for everyone on the active roster.
-        </p>
+      <header className="st-page-head st-record-head">
+        <div>
+          <h1 className="st-h1">Roster</h1>
+          <p className="st-page-sub">
+            Credentials and exclusion screening for everyone on the active
+            roster.
+          </p>
+        </div>
+        {/* The binder download lives here rather than on its own page:
+            this is the screen somebody is already on when an inspector
+            asks for the record. A plain link, not a fetch — the browser
+            streams the PDF straight to disk and a 40-page render never
+            has to be held in a JavaScript buffer first. */}
+        <a
+          className="st-btn st-btn-primary"
+          href="/api/staff/accreditation?days=90"
+        >
+          Export 90-day binder
+        </a>
       </header>
 
       <section className="st-stats">
