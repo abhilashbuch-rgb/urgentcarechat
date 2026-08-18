@@ -46,7 +46,13 @@ export default function LogForm({
   // problem.
   const check = useMemo(() => evaluate(schema, answers), [schema, answers]);
   const flagged = check.outOfRange.length > 0;
-  const correctiveOk = !flagged || corrective.trim().length >= 3;
+  // Twenty characters, matching the CHECK constraint and the route.
+  // Three stopped an empty box and nothing else — "n/a" against a
+  // 52-degree fridge was accepted and filed. See
+  // supabase/staff-corrective-action.sql.
+  const MIN_CORRECTIVE = 20;
+  const correctiveLeft = MIN_CORRECTIVE - corrective.trim().length;
+  const correctiveOk = !flagged || correctiveLeft <= 0;
 
   function set(id: string, value: Answers[string]) {
     setAnswers((a) => ({ ...a, [id]: value }));
@@ -182,8 +188,11 @@ export default function LogForm({
 
       {flagged && !correctiveOk && (
         <p className="st-log-hint">
-          A corrective action is required before an out-of-range reading can be
-          filed.
+          {corrective.trim().length === 0
+            ? "Say what you did about it before this can be filed."
+            : `A few more words — ${correctiveLeft} more ${
+                correctiveLeft === 1 ? "character" : "characters"
+              }. What was actually done, so somebody reading this in three years knows.`}
         </p>
       )}
     </form>

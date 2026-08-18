@@ -16,6 +16,10 @@ import { coerce, evaluate, type Answers } from "@/lib/staff/forms";
 export const runtime = "nodejs";
 
 const MAX_CORRECTIVE = 2000;
+/** Enough room for what was actually done. Matches the CHECK in
+ *  supabase/staff-corrective-action.sql — the constraint is what makes
+ *  it true of every row however it arrived. */
+const MIN_CORRECTIVE = 20;
 
 export async function POST(req: NextRequest) {
   const auth = await resolve();
@@ -65,7 +69,16 @@ export async function POST(req: NextRequest) {
       // Mirrors the CHECK constraint on the table. Reaching the constraint
       // would also stop it, but a 400 with a reason is a better answer
       // than a 500 from a violated constraint.
-      if (flagged && corrective.length < 3) {
+      //
+      // TWENTY, not three. Three characters stopped an empty field and
+      // nothing else: a vaccine fridge at 52 degF with "n/a" in this
+      // box was accepted, flagged and filed. That is worse than a
+      // missing corrective action, because a missing one reads as an
+      // incomplete record and gets chased, while "n/a" reads as a
+      // complete one and gets filed — and is what a surveyor finds next
+      // to a 52-degree reading three years later. See
+      // supabase/staff-corrective-action.sql.
+      if (flagged && corrective.length < MIN_CORRECTIVE) {
         return { error: "corrective_action_required" as const, status: 400 };
       }
 
