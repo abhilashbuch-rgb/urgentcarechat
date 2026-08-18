@@ -12,6 +12,10 @@ import type { StaffSql } from "@/lib/staff/db";
 export interface RoundSummary {
   id: string;
   key: string;
+  /** 'round' is walked and signed; 'emergency' is read during an
+   *  incident, all steps at once, with no attestation. See the header of
+   *  supabase/staff-emergency.sql. */
+  kind: "round" | "emergency";
   title: string;
   purpose: string | null;
   cadence: string;
@@ -41,11 +45,12 @@ export async function roundsFor(
   jobRole: string | null
 ): Promise<RoundSummary[]> {
   return sql<RoundSummary[]>`
-    select id, key, title, purpose, cadence, step_count,
+    select id, key, kind, title, purpose, cadence, step_count,
            last_walked_at::text as last_walked_at,
            last_walked_by, last_exception_count
       from staff.round_board
-     where staff.brief_matches(job_roles, ${jobRole}::staff.job_role)
+     where kind = 'round'
+       and staff.brief_matches(job_roles, ${jobRole}::staff.job_role)
      order by sort_order, title
   `;
 }
@@ -60,7 +65,7 @@ export async function roundByKey(
   jobRole: string | null
 ): Promise<RoundDetail | null> {
   const [round] = await sql<RoundSummary[]>`
-    select id, key, title, purpose, cadence, step_count,
+    select id, key, kind, title, purpose, cadence, step_count,
            last_walked_at::text as last_walked_at,
            last_walked_by, last_exception_count
       from staff.round_board
@@ -139,4 +144,48 @@ export function elapsedLabel(startedAt: string, completedAt: string): string {
   if (secs < 60) return `${secs}s`;
   const mins = Math.round(secs / 60);
   return mins < 60 ? `${mins} min` : `${Math.floor(mins / 60)}h ${mins % 60}m`;
+}
+
+
+/** The emergency guides this person's job needs.
+ *
+ *  Returned WITH their steps, in one pass, because the page shows every
+ *  step of every guide at once. That is the opposite of the round runner
+ *  and it is the correct opposite: the runner hides the next step so a
+ *  walk cannot be faked from the counter, and here there is nothing to
+ *  fake and everything to lose — somebody needs to see that step 4 is
+ *  "call 911" before they have finished step 1. */
+export async function emergencyGuides(
+  sql: StaffSql,
+  jobRole: string | null
+): Promise<RoundDetail[]> {
+  const guides = await sql<RoundSummary[]>`
+    select id, key, kind, title, purpose, cadence, step_count,
+           last_walked_at::text as last_walked_at,
+           last_walked_by, last_exception_count
+      from staff.round_board
+     where kind = 'emergency'
+       and staff.brief_matches(job_roles, ${jobRole}::staff.job_role)
+     order by sort_order, title
+  `;
+  if (guides.length === 0) return [];
+
+  // One query for every step rather than one per guide: this page is
+  // opened during an incident and a dozen sequential round trips on
+  // clinic wifi is the difference between a guide and a spinner.
+  const ids = guides.map((g) => g.id);
+  const steps = await sql<(RoundStep & { round_id: string })[]>`
+    select round_id, step_no, instruction, detail
+      from staff.round_steps
+     where round_id = any(${ids}::uuid[])
+     order by round_id, step_no
+  `;
+
+  const byRound = new Map<string, RoundStep[]>();
+  for (const s of steps) {
+    const list = byRound.get(s.round_id) ?? [];
+    list.push({ step_no: s.step_no, instruction: s.instruction, detail: s.detail });
+    byRound.set(s.round_id, list);
+  }
+  return guides.map((g) => ({ ...g, steps: byRound.get(g.id) ?? [] }));
 }

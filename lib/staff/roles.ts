@@ -80,6 +80,10 @@ export const NAV: NavItem[] = [
   { href: "/staff/logs", label: "Logs", minRole: "staff" },
   { href: "/staff/rounds", label: "Rounds", minRole: "staff" },
   { href: "/staff/rules", label: "Rules", minRole: "staff" },
+  // Emergency guides. Everyone, every job — the front desk needs the
+  // lobby-recognition guide more than anybody, and gating life-safety
+  // reference material behind a role is the wrong kind of tidiness.
+  { href: "/staff/learning", label: "Emergencies", minRole: "staff" },
   { href: "/staff/documents", label: "Documents", minRole: "staff" },
   { href: "/staff/obligations", label: "Obligations", minRole: "staff" },
   // Clinical protocol search. Gated by JOB as well as role inside the
