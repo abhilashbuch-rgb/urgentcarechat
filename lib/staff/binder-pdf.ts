@@ -38,9 +38,13 @@ const RULE = rgb(0.84, 0.89, 0.94);
 const ROYAL = rgb(0.09, 0.23, 0.54);
 const WARN = rgb(0.04, 0.15, 0.25);
 // The three faces of the folded M, matching app/icon.svg.
-const GOLD_LIGHT = rgb(0.949, 0.831, 0.537);
+// The identity: one near-black ground and one electric accent, matching
+// app/globals.css --ground and --volt.
+const GROUND = rgb(0.043, 0.071, 0.125);
+const VOLT = rgb(0.133, 0.827, 0.933);
+// Kept for the wordmark's full stop on the cover, which stays warm
+// against the cool trace.
 const GOLD_MID = rgb(0.851, 0.671, 0.208);
-const GOLD_DARK = rgb(0.639, 0.486, 0.11);
 
 interface Ctx {
   doc: PDFDocument;
@@ -272,46 +276,58 @@ function paragraph(c: Ctx, s: string, size = 9): void {
 }
 
 /**
- * The brand mark, drawn as six polygons.
+ * The brand mark: the pulse trace whose two peaks are the M.
  *
- * Same geometry as app/icon.svg on a 48-unit grid, scaled to `size`.
- * Drawn rather than embedded as a PNG so the cover of a document a
- * surveyor may print at A3 stays sharp — and so the mark cannot drift
- * out of step with the SVG without somebody editing these coordinates.
+ * Same path as app/icon.svg on a 48-unit grid, drawn as a stroke rather
+ * than embedded as a PNG so the cover of a document a surveyor may
+ * print at A3 stays sharp — and so the mark cannot drift out of step
+ * with the favicon without somebody editing these coordinates.
  *
- * SVG's y axis runs down and PDF's runs up, so every y is flipped
- * through the tile height.
+ * drawSvgPath takes SVG coordinates (y running down) from the given
+ * origin, so the path below is the SVG's own string unchanged.
  */
 function drawMark(c: Ctx, x: number, yTop: number, size: number): void {
   const u = size / 48;
-  const px = (n: number) => x + n * u;
-  const py = (n: number) => yTop - n * u;
-  const poly = (pts: [number, number][], color: ReturnType<typeof rgb>) => {
-    const [first, ...rest] = pts;
-    c.page.drawSvgPath(
-      `M ${first[0]} ${first[1]} ` +
-        rest.map((p) => `L ${p[0]} ${p[1]}`).join(" ") +
-        " Z",
-      { x: px(0), y: py(0), color, scale: u }
-    );
-  };
 
   c.page.drawRectangle({
-    x: px(0),
-    y: py(48),
+    x,
+    y: yTop - size,
     width: size,
     height: size,
-    color: ROYAL,
+    color: GROUND,
   });
 
-  // drawSvgPath uses SVG coordinates (y down) from the given origin, so
-  // the points below are the SVG's own numbers unchanged.
-  poly([[9, 35], [9, 13], [18.5, 13], [18.5, 35]], GOLD_MID);
-  poly([[18.5, 13], [24, 26], [18.5, 26]], GOLD_LIGHT);
-  poly([[18.5, 26], [24, 26], [24, 35], [18.5, 35]], GOLD_DARK);
-  poly([[29.5, 13], [24, 26], [29.5, 26]], GOLD_DARK);
-  poly([[24, 26], [29.5, 26], [29.5, 35], [24, 35]], GOLD_LIGHT);
-  poly([[29.5, 13], [39, 13], [39, 35], [29.5, 35]], GOLD_MID);
+  c.page.drawSvgPath("M6 27 H12 L18 13 L24 31 L30 13 L36 27 H42", {
+    x,
+    y: yTop,
+    scale: u,
+    borderColor: VOLT,
+    borderWidth: 4.4 * u,
+    borderLineCap: 1, // round
+  });
+}
+
+/**
+ * The trace, run long across the foot of the cover.
+ *
+ * The same shape as the mark and the same shape the homepage stands on,
+ * so the binder reads as part of the product rather than as a report it
+ * happens to emit.
+ */
+function drawTraceRule(c: Ctx, y: number): void {
+  const w = A4.w - M * 2;
+  const scale = w / 240;
+  c.page.drawSvgPath(
+    "M0 14 H26 L38 4 L50 21 L62 4 L74 14 H132 L144 4 L156 21 L168 4 L180 14 H240",
+    {
+      x: M,
+      y: y + 24 * scale,
+      scale,
+      borderColor: VOLT,
+      borderWidth: 1.1,
+      borderLineCap: 1,
+    }
+  );
 }
 
 /* ---------------------------------------------------------------- */
@@ -332,7 +348,7 @@ async function coverPage(c: Ctx, b: Binder): Promise<void> {
     y: c.y + 5,
     size: 20,
     font: c.bold,
-    color: GOLD_MID,
+    color: VOLT,
   });
   c.y -= 48;
 
@@ -372,6 +388,8 @@ async function coverPage(c: Ctx, b: Binder): Promise<void> {
   } catch {
     // A QR failure must not cost the whole binder.
   }
+
+  drawTraceRule(c, M + 26);
 
   newPage(c);
 }

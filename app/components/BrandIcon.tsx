@@ -1,32 +1,44 @@
-// The mark: a folded gold M on a royal blue square. Straight edges only.
+// The mark: a pulse trace whose two peaks are the M.
 //
-// NO CURVES ANYWHERE — not in the letter, not in the tile, not in the
-// joins. Every edge here is a polygon side, so there is no linejoin to
-// round by accident.
+// ONE SHAPE, THREE READINGS. It is the letter the product is named
+// after; it is a cardiac trace; and it is the temperature curve this
+// system actually draws — the same line that runs across page three of
+// every accreditation binder it exports. A mark that means the thing the
+// product does beats a mark that merely looks like the industry.
 //
-// WHY PLANES AND NOT A STROKE. The previous mark was a single chevron
-// stroke: correct, minimal, and read as a real-estate logo, because a
-// flat angular M with uniform weight is what estate agencies use. This
-// one is the same letter folded out of one ribbon — six faces cut from
-// three tones of the same gold, lit as if the fold caught the light.
-// Escher's trick, not his impossible geometry: the shape is perfectly
-// buildable, but the alternating faces make a flat square read as
-// something with depth. The two inner faces swap light and dark across
-// the centre line, which is what stops it reading as a simple bevel.
+// WHAT IT DELIBERATELY IS NOT. Not a cross — every medical vendor owns
+// one and none of them own it. Not a caduceus, which is Hermes and the
+// wrong symbol regardless of how many US clinics use it. And not an eye:
+// the adoption risk for compliance software is staff believing it exists
+// to watch them, and an eye on the sign-in screen confirms that fear
+// before anybody has read a word.
 //
-// GEOMETRY, so it can be re-derived rather than nudged. Left stem
-// x 9→18.5, right stem x 29.5→39, both full height 13→35. The valley
-// bottoms at y 26 — deep enough that the middle reads as a vee rather
-// than a notch at 16px, which is where a favicon actually lives, and
-// shallow enough that the stems stay heavier than the fold.
+// THE FLAT LEADS MATTER. Without the level segments either side it is a
+// zigzag; with them it reads as a strip cut from a longer recording,
+// which is what a compliance record is. The centre valley is deep and
+// slightly asymmetric for the same reason — a symmetrical W-shape reads
+// as decoration, an off-centre downstroke reads as a beat.
 //
-// The medical cross was tried in five positions and every one of them
-// fought the letter or turned to mush by 20px. The wordmark beside it
-// already says "medicin"; a mark does not have to say "medical" twice.
+// Stroke weight scales with the tile: at 16px a 3.6-unit stroke
+// disappears into the ground, so it steps up as the mark gets smaller.
+// That is deliberate and is why this is a component rather than an
+// inlined SVG.
 
-const GOLD_LIGHT = "var(--gold-100, #f2d489)";
-const GOLD_MID = "var(--gold-400, #d9ab35)";
-const GOLD_DARK = "var(--gold-600, #a37c1c)";
+const TRACE = "M6 27 H12 L18 13 L24 31 L30 13 L36 27 H42";
+
+function strokeFor(size: number): number {
+  if (size >= 64) return 3.4;
+  if (size >= 40) return 4;
+  if (size >= 24) return 4.6;
+  if (size >= 20) return 5.2;
+  return 6;
+}
+
+function radiusFor(size: number): number {
+  // Proportional, but never so tight it reads as a circle at small
+  // sizes nor so loose it reads as a square at large ones.
+  return size >= 40 ? 11 : size >= 24 ? 7 : 5;
+}
 
 export default function BrandIcon({ size = 26 }: { size?: number }) {
   return (
@@ -36,21 +48,27 @@ export default function BrandIcon({ size = 26 }: { size?: number }) {
       height={size}
       viewBox="0 0 48 48"
       role="img"
-      aria-label="medicin.io"
+      aria-label="medicin."
     >
-      <rect width="48" height="48" fill="var(--royal, #173a8a)" />
-      <g stroke="none">
-        {/* left stem */}
-        <polygon points="9,35 9,13 18.5,13 18.5,35" fill={GOLD_MID} />
-        {/* inner left: lit face above the fold, shadowed below */}
-        <polygon points="18.5,13 24,26 18.5,26" fill={GOLD_LIGHT} />
-        <polygon points="18.5,26 24,26 24,35 18.5,35" fill={GOLD_DARK} />
-        {/* inner right: the same two faces, swapped — this is the fold */}
-        <polygon points="29.5,13 24,26 29.5,26" fill={GOLD_DARK} />
-        <polygon points="24,26 29.5,26 29.5,35 24,35" fill={GOLD_LIGHT} />
-        {/* right stem */}
-        <polygon points="29.5,13 39,13 39,35 29.5,35" fill={GOLD_MID} />
-      </g>
+      <rect
+        width="48"
+        height="48"
+        rx={radiusFor(size)}
+        fill="var(--ground, #0b1220)"
+      />
+      <path
+        d={TRACE}
+        fill="none"
+        stroke="var(--volt, #22d3ee)"
+        strokeWidth={strokeFor(size)}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
+
+/** The bare trace, for places that draw it at length — a section rule, a
+ *  loading state, the top of a dark panel. Exported so the shape lives
+ *  in one file. */
+export const PULSE_PATH = TRACE;

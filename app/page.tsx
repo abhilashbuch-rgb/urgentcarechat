@@ -37,6 +37,35 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
+/** The trace, run the full width as a rule.
+ *
+ *  The same path as the mark, stretched — so the logo is not a badge
+ *  sitting in a corner but a shape the page is built out of. This is the
+ *  cheapest way to make an identity feel deliberate rather than applied.
+ */
+function PulseRule() {
+  return (
+    <svg
+      className="mh-rule"
+      viewBox="0 0 240 24"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      {/* Two beats and a long lead-out, so it reads as a strip cut from
+          something continuous rather than a repeating pattern. */}
+      <path
+        d="M0 14 H26 L38 4 L50 21 L62 4 L74 14 H132 L144 4 L156 21 L168 4 L180 14 H240"
+        fill="none"
+        stroke="var(--volt)"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  );
+}
+
 export default function LandingPage() {
   return (
     <div className="lp lp-min">
@@ -53,20 +82,27 @@ export default function LandingPage() {
       </header>
 
       <main className="lp-main">
-        <section className="mh-hero">
+        {/* THE ONE DARK SECTION. A page that is entirely mid-tone has
+            nothing to anchor it, which is what made this feel flat — not
+            the logo. One near-black block with the trace running across
+            it does more than any amount of gradient. */}
+        <section className="mh-hero mh-dark">
+          <PulseRule />
           <h1 className="mh-h1">
             Kill the paper binder.
             <br />
-            Pass every inspection.
+            <span className="mh-h1-accent">Pass every inspection.</span>
           </h1>
           <p className="mh-lede">
             Crash cart checks, fridge curves and narcotics counts, done in
             seconds on your staff&rsquo;s phones — and impossible to backdate.
           </p>
-          <Link className="mh-cta" href="/start">
-            Start the 14-day trial
-          </Link>
-          <p className="mh-cta-note">No credit card required</p>
+          <div className="mh-cta-row">
+            <Link className="mh-cta" href="/start">
+              Start the 14-day trial
+            </Link>
+            <span className="mh-cta-note">No credit card required</span>
+          </div>
         </section>
 
         <section className="mh-features">

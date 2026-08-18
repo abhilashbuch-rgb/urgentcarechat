@@ -1,10 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="medicin.io">
-  <title>medicin.io</title>
-  <rect width="48" height="48" fill="#173a8a"/>
-  <polygon points="9,35 9,13 18.5,13 18.5,35" fill="#d9ab35"/>
-  <polygon points="18.5,13 24,26 18.5,26" fill="#f2d489"/>
-  <polygon points="18.5,26 24,26 24,35 18.5,35" fill="#a37c1c"/>
-  <polygon points="29.5,13 24,26 29.5,26" fill="#a37c1c"/>
-  <polygon points="24,26 29.5,26 29.5,35 24,35" fill="#f2d489"/>
-  <polygon points="29.5,13 39,13 39,35 29.5,35" fill="#d9ab35"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="medicin.">
+  <title>medicin.</title>
+  <rect width="48" height="48" rx="10" fill="#0b1220"/>
+  <path d="M6 27 H12 L18 13 L24 31 L30 13 L36 27 H42" fill="none" stroke="#22d3ee"
+        stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

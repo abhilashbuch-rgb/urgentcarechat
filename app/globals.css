@@ -15,12 +15,33 @@
   --blue-100: #dbe7f4;   /* fills, chips */
   --blue-050: #eff5fb;   /* sunk panels */
 
-  /* Gold earns its place on the mark. One gold cannot both sit on navy
-     and pass contrast on white, so this is a ramp, not a colour: g700
-     is the only step legible as text on white, g300/g500 are for the
-     mark, and g100/g400/g600 are the three faces of the folded M — a
-     lit face, a mid face and a shadowed one, close enough together to
-     read as one gold catching light rather than three golds. */
+  /* ---- the ground and the accent ----
+     The whole identity is two colours used without apology: a near-black
+     that anchors, and one electric cyan that appears rarely enough to
+     mean something. The previous palette was six blues at similar
+     saturation, which is why every surface read as the same weight and
+     nothing on the page ever shouted.
+
+     ONE ACCENT, TWO VALUES, AND THE REASON IS CONTRAST. #22d3ee on
+     near-black is brilliant; the same cyan on white is roughly 1.8:1 and
+     illegible. So --volt is for dark grounds and marks, and --volt-ink
+     is the darkened step for anything that is text on white. Reaching
+     for --volt on a white background is the mistake this pair exists to
+     prevent.
+
+     NAMED --volt AND NOT --accent, because --accent is already this
+     app's interactive blue and is referenced by every button, link and
+     focus ring. Redefining it here would have silently repainted the
+     entire interface as a side effect of changing a logo. */
+  --ground: #0b1220;      /* near-black; sections, the mark's tile */
+  --ground-soft: #131c2e; /* a raised surface on the ground */
+  --volt: #22d3ee;        /* THE accent. On dark grounds only. */
+  --volt-ink: #0e7490;    /* the same hue, legible as text on white */
+  --volt-wash: #ecfeff;   /* the faintest tint, for fills on white */
+
+  /* Kept because printed and exported artefacts still reference it, and
+     because a gold full stop remains the wordmark's accent in the PDF
+     binder's cover lockup. */
   --gold-100: #f2d489;
   --gold-300: #e5c158;
   --gold-400: #d9ab35;
@@ -28,9 +49,6 @@
   --gold-600: #a37c1c;
   --gold-700: #8a6a17;
 
-  /* Royal blue, for the mark only. Deeper and more saturated than the
-     interface navy on purpose — a logo has to hold its own on someone
-     else's slide, and --blue-800 goes flat there. */
   --royal: #173a8a;
 
   --bg: #ffffff;
@@ -4888,48 +4906,114 @@ body {
 .lp-min .lp-main > section { min-width: 0; max-width: 100%; padding-left: 0; padding-right: 0; }
 .lp-min .mh-h1 { overflow-wrap: break-word; }
 
-.mh-hero { text-align: center; padding: 96px 0 72px; }
+/* ---------- the hero, on the ground ----------
+   THE TYPE SCALE IS THE POINT. It used to run 60px down to 19px — a
+   1.5x step that reads as cautious. It now runs to 88px against a 17px
+   lede, and that gap is most of what "confident" means visually. Nothing
+   else about the layout changed.
+
+   Left-aligned, not centred. Centred hero text is the default every
+   template ships with; a hard left edge with the rule above it gives the
+   block something to sit against. */
+
+.mh-hero {
+  position: relative;
+  /* Bottom padding carries the trace, so it is deliberate space rather
+     than the 100px of dead air the first version left under the CTA. */
+  padding: 78px 34px 104px;
+  border-radius: 20px;
+  margin-top: 26px;
+  overflow: hidden;
+}
+.mh-dark { background: var(--ground); color: #fff; }
+
+/* THE TRACE RUNS ALONG THE FLOOR, not above the headline.
+   Placed at the top it was clipped by the panel edge and read as a
+   scribble; along the bottom it becomes the line the whole block stands
+   on, which is both better-looking and closer to what it means — a
+   continuous recording underneath everything.
+   Taller and brighter than the first attempt, because at 26px and .5
+   opacity it was invisible at arm's length. */
+.mh-rule {
+  position: absolute;
+  left: 0;
+  bottom: 26px;
+  width: 100%;
+  height: 54px;
+  opacity: .85;
+}
+
 .mh-h1 {
   font-family: var(--serif);
-  font-size: clamp(34px, 6.2vw, 60px);
+  font-size: clamp(38px, 8vw, 88px);
   font-weight: 600;
-  line-height: 1.08;
-  letter-spacing: -.025em;
+  line-height: 1.02;
+  letter-spacing: -.035em;
+  max-width: 15ch;
 }
+/* The accent appears exactly twice on this page: this line, and the
+   trace. Used more often it stops meaning anything. */
+.mh-h1-accent { color: var(--volt); }
+
 .mh-lede {
-  font-size: clamp(16px, 2.2vw, 19px);
-  line-height: 1.6;
-  color: var(--ink-soft);
-  max-width: 46ch;
-  margin: 20px auto 32px;
+  font-size: clamp(15px, 1.8vw, 17px);
+  line-height: 1.65;
+  color: rgba(255, 255, 255, .72);
+  max-width: 48ch;
+  margin: 26px 0 34px;
 }
+
+.mh-cta-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .mh-cta {
   display: inline-block;
-  background: var(--accent);
-  color: #fff;
+  background: var(--volt);
+  /* Dark text on the bright accent, not white. #22d3ee is a light
+     colour; white on it is about 1.8:1 and fails badly. */
+  color: var(--ground);
   font-size: 16px;
-  font-weight: 600;
-  padding: 14px 30px;
+  font-weight: 700;
+  padding: 15px 30px;
   border-radius: 10px;
   text-decoration: none;
+  letter-spacing: -.01em;
 }
-.mh-cta:hover { background: var(--accent-deep); }
-.mh-cta-block { display: block; text-align: center; margin-top: 22px; }
-.mh-cta-note { font-size: 13px; color: var(--ink-faint); margin-top: 10px; }
+.mh-cta:hover { background: #67e8f9; }
+.mh-cta-block {
+  display: block;
+  text-align: center;
+  margin-top: 22px;
+  background: var(--accent);
+  color: #fff;
+}
+.mh-cta-block:hover { background: var(--accent-deep); }
+.mh-cta-note { font-size: 13px; color: rgba(255, 255, 255, .5); }
+
+@media (max-width: 620px) {
+  .mh-hero { padding: 54px 22px 78px; border-radius: 16px; margin-top: 14px; }
+  .mh-rule { height: 40px; bottom: 20px; }
+}
 
 .mh-features {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 28px;
-  padding: 40px 0 72px;
-  border-top: 1px solid var(--rule);
+  gap: 32px;
+  padding: 56px 0 72px;
 }
-.mh-feature h2 { font-size: 16px; font-weight: 650; letter-spacing: -.01em; margin-bottom: 6px; }
-.mh-feature p { font-size: 14px; line-height: 1.55; color: var(--ink-soft); }
+/* Numbered by the accent rather than boxed. A card for every idea is
+   what made the old page read as a template; a short rule in the one
+   accent colour does the same job with none of the furniture. */
+.mh-feature { border-top: 2px solid var(--volt-ink); padding-top: 16px; }
+.mh-feature h2 {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  margin-bottom: 8px;
+}
+.mh-feature p { font-size: 14.5px; line-height: 1.6; color: var(--ink-soft); }
 
 .mh-h2 {
   font-family: var(--serif);
-  font-size: 26px;
+  font-size: clamp(24px, 3.4vw, 38px);
   font-weight: 600;
   letter-spacing: -.02em;
   text-align: center;
@@ -5187,25 +5271,34 @@ body {
   font-family:var(--serif);
   font-weight:700;
   font-size:19px;
-  letter-spacing:-.01em;
-  color:var(--blue-900);
+  /* Tighter than before. The old -.01em left the word looking spaced
+     out beside a mark this compact. */
+  letter-spacing:-.03em;
+  color:var(--ground);
 }
 /* Letterspaced gold caps: at this size it reads as a descriptor rather
    than a second name, which is the job. The tracking is what does that —
    without it the two lines read as a first and last name. */
 .wordmark-2{
   font-family:var(--sans);
-  font-weight:600;
-  font-size:12.5px;
-  letter-spacing:.22em;
+  font-weight:700;
+  font-size:10px;
+  letter-spacing:.24em;
   text-transform:uppercase;
-  color:var(--gold-700);
-  margin-top:4px;
+  /* Recessive, not gold. The second line is a descriptor and should
+     read as one; competing with the first line for attention is what
+     made the old lockup feel like two brands stacked. */
+  color:var(--ink-faint);
+  margin-top:5px;
 }
 /* The full stop, in gold. Not letterspaced away from the word: it has
    to sit tight against the "n" to read as "medicin." rather than as a
    stray dot, so it inherits the line's tracking and nothing else. */
-.wordmark-dot{color:var(--gold-500)}
+/* The full stop, in the accent. Was gold, which belonged to the folded
+   M; the identity is now one electric hue and the dot is where it lands
+   in the wordmark. --volt-ink rather than --volt because this sits on
+   white, where the bright cyan is illegible. */
+.wordmark-dot{color:var(--volt-ink)}
 .wordmark-lg .wordmark-1{font-size:27px}
 .wordmark-lg .wordmark-2{font-size:15px;letter-spacing:.26em;margin-top:5px}
 
@@ -5411,3 +5504,12 @@ body {
 .st-proof-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .st-proof-actions .st-btn { font-size: 13px; padding: 7px 12px; min-height: 36px; }
 .st-proof-size { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin-right: auto; }
+
+/* On a dark ground the mark's tile would disappear into the page, so the
+   tile lightens by one step instead of vanishing. Set on the container,
+   not the icon, so any lockup inside a dark panel gets it. */
+.mh-dark .brand-icon rect,
+.sv-top .brand-icon rect { fill: var(--ground-soft); }
+.mh-dark .wordmark-1 { color: #fff; }
+.mh-dark .wordmark-dot { color: var(--volt); }
+.mh-dark .wordmark-2 { color: rgba(255,255,255,.45); }

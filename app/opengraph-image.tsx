@@ -19,25 +19,34 @@ import { PRODUCT_WORDS } from "@/lib/site";
 // six values as globals.css and app/icon.svg — if the palette moves,
 // all three move together or the card lies about the brand.
 
-export const alt = "medicin. binder — compliance software for urgent care";
+export const alt = "medicin. — compliance software for urgent care";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-const INK = "#0a2540";
-const INK_SOFT = "#48678a";
-const GOLD_TEXT = "#8a6a17";
-const GOLD_DOT = "#c9a227";
-const GROUND = "#ffffff";
-const RULE = "#dbe7f4";
+// THE CARD IS DARK. It is the one image that appears beside a link in
+// Slack, iMessage and a search result — surrounded, always, by whatever
+// UI is hosting it. A white card dissolves into a white feed; a
+// near-black one with a single electric line does not.
+const GROUND = "#0b1220";
+const INK = "#ffffff";
+const INK_SOFT = "rgba(255,255,255,0.68)";
+const VOLT = "#22d3ee";
+const RULE = "rgba(255,255,255,0.14)";
 
 const MARK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
-<rect width="48" height="48" fill="#173a8a"/>
-<polygon points="9,35 9,13 18.5,13 18.5,35" fill="#d9ab35"/>
-<polygon points="18.5,13 24,26 18.5,26" fill="#f2d489"/>
-<polygon points="18.5,26 24,26 24,35 18.5,35" fill="#a37c1c"/>
-<polygon points="29.5,13 24,26 29.5,26" fill="#a37c1c"/>
-<polygon points="24,26 29.5,26 29.5,35 24,35" fill="#f2d489"/>
-<polygon points="29.5,13 39,13 39,35 29.5,35" fill="#d9ab35"/></svg>`;
+<rect width="48" height="48" rx="10" fill="#131c2e"/>
+<path d="M6 27 H12 L18 13 L24 31 L30 13 L36 27 H42" fill="none" stroke="#22d3ee"
+ stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+// The trace, run long across the foot of the card — the same shape as
+// the mark and the same shape the homepage stands on.
+const TRACE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 24" preserveAspectRatio="none">
+<path d="M0 14 H26 L38 4 L50 21 L62 4 L74 14 H132 L144 4 L156 21 L168 4 L180 14 H240"
+ fill="none" stroke="#22d3ee" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+const TRACE_SRC = `data:image/svg+xml;base64,${Buffer.from(TRACE).toString(
+  "base64"
+)}`;
 
 const MARK_SRC = `data:image/svg+xml;base64,${Buffer.from(MARK).toString(
   "base64"
@@ -58,6 +67,7 @@ export default function OpenGraphImage() {
           padding: "0 96px",
           background: GROUND,
           color: INK,
+          position: "relative",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
@@ -65,7 +75,7 @@ export default function OpenGraphImage() {
           <div style={{ display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", fontSize: 76, fontWeight: 700 }}>
               <span>{first}</span>
-              <span style={{ color: GOLD_DOT }}>.</span>
+              <span style={{ color: VOLT }}>.</span>
             </div>
             <div
               style={{
@@ -73,7 +83,7 @@ export default function OpenGraphImage() {
                 fontSize: 34,
                 fontWeight: 600,
                 letterSpacing: 9,
-                color: GOLD_TEXT,
+                color: INK_SOFT,
                 marginTop: 10,
               }}
             >
@@ -86,7 +96,7 @@ export default function OpenGraphImage() {
           style={{
             display: "flex",
             width: 120,
-            height: 3,
+            height: 2,
             background: RULE,
             margin: "52px 0 44px",
           }}
@@ -105,6 +115,15 @@ export default function OpenGraphImage() {
         >
           Daily logs that can&rsquo;t be backdated. Signatures that hold up.
         </div>
+
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={TRACE_SRC}
+          width={1200}
+          height={70}
+          alt=""
+          style={{ position: "absolute", left: 0, bottom: 0, opacity: 0.85 }}
+        />
       </div>
     ),
     size
