@@ -13,7 +13,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-PARTS=(staff-schema staff-onboarding staff-onboarding-seed staff-logs staff-logs-seed staff-security staff-single-domain staff-billing staff-trial staff-obligations staff-obligations-seed staff-job-roles staff-job-roles-seed staff-credentials staff-credentials-seed)
+PARTS=(staff-schema staff-onboarding staff-onboarding-seed staff-logs staff-logs-seed staff-security staff-single-domain staff-billing staff-trial staff-obligations staff-obligations-seed staff-job-roles staff-job-roles-seed staff-credentials staff-credentials-seed staff-scope staff-scope-seed staff-rounds staff-rounds-seed)
 OUT=supabase/staff-setup-all.sql
 
 {

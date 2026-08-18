@@ -276,7 +276,7 @@ async function fetchPlaceDetails(placeId: string, apiKey: string) {
   }
 }
 
-// Tenant-scoped search (e.g. afc.urgentcare.chat): reads only that
+// Tenant-scoped search (e.g. afc.medicin.io): reads only that
 // tenant's own clinics rows — never Google's broad "urgent care near
 // X" search — since Google has no concept of "only AFC's locations".
 // Every meaningful word of the brand's display name must appear in a
@@ -582,9 +582,9 @@ export async function GET(req: NextRequest) {
   const lng = searchParams.get("lng");
 
   // Two ways a request can be tenant-scoped:
-  //   header — set by proxy.ts for a branded subdomain (afc.urgentcare.chat)
+  //   header — set by proxy.ts for a branded subdomain (afc.medicin.io)
   //   query  — sent by the portal itself, which is also served at
-  //            urgentcare.chat/<slug>, where /api/* is a reserved root path
+  //            medicin.io/<slug>, where /api/* is a reserved root path
   //            that proxy.ts passes through without tagging
   // Without the second, the path-based portal searched unscoped and showed
   // competitors inside a tenant's own branded page.

@@ -12,6 +12,31 @@ export const ROLE_LABELS: Record<StaffRole, string> = {
   staff: "Staff",
 };
 
+// The CLINIC JOB vocabulary, mirrored from the `staff.job_role` enum in
+// supabase/staff-job-roles.sql. Separate from StaffRole above and not a
+// rank: a job says what someone does on the floor, a role says what they
+// may administer. A center admin is not "above" an x-ray tech; they are
+// answering different questions.
+export const JOB_LABELS: Record<string, string> = {
+  front_desk: "Front desk",
+  medical_assistant: "Medical assistant",
+  xray_tech: "X-ray tech",
+  provider: "Provider",
+  center_admin: "Center admin",
+};
+
+/** The same jobs as they appear inside a sentence. A separate map rather
+ *  than a rule applied to JOB_LABELS, because there is no rule: "as a
+ *  medical assistant" works and "as a front desk" does not, and picking
+ *  the article with a regex still leaves that one wrong. */
+export const JOB_PHRASES: Record<string, string> = {
+  front_desk: "on the front desk",
+  medical_assistant: "as a medical assistant",
+  xray_tech: "as an x-ray tech",
+  provider: "as a provider",
+  center_admin: "as the center admin",
+};
+
 /** Highest first. Used only for comparisons like "at least a clinical
  *  lead" — never as a substitute for a permission check on data. */
 const RANK: Record<StaffRole, number> = {
@@ -49,6 +74,8 @@ export const NAV: NavItem[] = [
   { href: "/staff", label: "Today", minRole: "staff" },
   { href: "/staff/me", label: "My record", minRole: "staff" },
   { href: "/staff/logs", label: "Logs", minRole: "staff" },
+  { href: "/staff/rounds", label: "Rounds", minRole: "staff" },
+  { href: "/staff/rules", label: "Rules", minRole: "staff" },
   { href: "/staff/obligations", label: "Obligations", minRole: "staff" },
   { href: "/staff/roster", label: "Roster", minRole: "clinical_lead" },
   {

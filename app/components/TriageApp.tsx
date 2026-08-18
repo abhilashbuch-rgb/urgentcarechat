@@ -271,7 +271,7 @@ export default function TriageApp({
   //
   // On a branded SUBDOMAIN, proxy.ts tags every request — pages and API
   // alike — with x-tenant-slug, so this would work without help. But the
-  // same portal is also served at urgentcare.chat/<slug>, and there
+  // same portal is also served at medicin.io/<slug>, and there
   // /api/clinics is a reserved root path that proxy.ts deliberately passes
   // through untouched. The browser's fetch therefore arrived with no
   // tenant at all, and AFC's branded portal listed their competitors.

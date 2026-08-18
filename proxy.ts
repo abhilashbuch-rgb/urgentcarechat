@@ -4,8 +4,8 @@ import { ROOT_DOMAIN, domainOf, isRootHost, isRetiredHost } from "@/lib/site";
 
 // ============================================================
 // Subdomain routing for branded tenant portals (e.g.
-// afc.urgentcare.chat). Root urgentcare.chat and any host that isn't a
-// recognized *.urgentcare.chat subdomain pass through untouched — most
+// afc.medicin.io). Root medicin.io and any host that isn't a
+// recognized *.medicin.io subdomain pass through untouched — most
 // requests (root traffic, local dev, Vercel preview URLs) take this path.
 // A recognized subdomain gets its page requests rewritten to /t/[tenant]
 // and every request (pages and API alike) tagged with an x-tenant-slug
@@ -41,7 +41,7 @@ const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{1,31}$/;
 
 // Tenants whose subdomain is confirmed working — comma-separated slugs in
 // TENANT_CANONICAL_SUBDOMAIN_SLUGS, e.g. "afc". Only these redirect from
-// urgentcare.chat/<slug> to <slug>.urgentcare.chat.
+// medicin.io/<slug> to <slug>.medicin.io.
 //
 // Per-tenant rather than a single on/off switch, because a subdomain only
 // works after someone adds it in Vercel. The wildcard domain cannot issue
@@ -72,8 +72,8 @@ const ROOT_ONLY_PATHS = new Set([
   "widget",
 ]);
 
-// Path-based tenant portals on the root domain: urgentcare.chat/afc serves
-// the same page as afc.urgentcare.chat.
+// Path-based tenant portals on the root domain: medicin.io/afc serves
+// the same page as afc.medicin.io.
 //
 // This is not just a fallback for tenants whose DNS isn't set up yet — it
 // means a tenant portal is shareable the moment the row exists, with no
@@ -88,7 +88,7 @@ const ROOT_ONLY_PATHS = new Set([
 // set, so going fully live means unsetting one env var.
 //
 // Deliberately applied on BOTH routes a portal is reachable through — the
-// subdomain and urgentcare.chat/<slug>. Gating only the subdomain would
+// subdomain and medicin.io/<slug>. Gating only the subdomain would
 // have left the path URL wide open, which is exactly the kind of hole that
 // makes a "private preview" not private.
 //
@@ -160,7 +160,7 @@ async function handleRootDomain(request: NextRequest, headers: Headers) {
 
   // The subdomain is the canonical home for a tenant portal, so the path
   // URL redirects to it rather than serving a duplicate. Held back until
-  // afc.urgentcare.chat had a valid certificate — redirecting here while
+  // afc.medicin.io had a valid certificate — redirecting here while
   // HTTPS was failing would have pointed every visitor at a TLS error.
   //
   // The path route still exists and still matters: it is what works on day
@@ -192,7 +192,7 @@ export async function proxy(request: NextRequest) {
   const hostname = (request.headers.get("host") || "").split(":")[0];
 
   // A retired domain points at the product; it does not serve it. This
-  // has to run BEFORE tenant resolution, because afc.urgentcare.chat
+  // has to run BEFORE tenant resolution, because afc.medicin.io
   // would otherwise still resolve a real tenant and serve their portal
   // under the dead name.
   //
@@ -293,7 +293,7 @@ export async function proxy(request: NextRequest) {
   // make this "/t/afc/". Next normalizes that with a 308 to "/t/afc" — and
   // because the redirect is visible to the browser, the next request comes
   // back through here and gets prefixed AGAIN into /t/afc/t/afc. That is
-  // why afc.urgentcare.chat served a 404 the moment DNS started resolving.
+  // why afc.medicin.io served a 404 the moment DNS started resolving.
   const suffix = pathname === "/" ? "" : pathname;
   const rewrittenUrl = new URL(`/t/${tenant.slug}${suffix}`, request.url);
   rewrittenUrl.search = request.nextUrl.search;

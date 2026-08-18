@@ -15,11 +15,17 @@
   --blue-100: #dbe7f4;   /* fills, chips */
   --blue-050: #eff5fb;   /* sunk panels */
 
-  /* Gold earns its place on the mark. Three steps because one gold
-     cannot both sit on navy and pass contrast on white: g300 is for the
-     logo, g700 for any gold text. */
+  /* Gold earns its place on the mark. One gold cannot both sit on navy
+     and pass contrast on white, so this is a ramp, not a colour: g700
+     is the only step legible as text on white, g300/g500 are for the
+     mark, and g100/g400/g600 are the three faces of the folded M — a
+     lit face, a mid face and a shadowed one, close enough together to
+     read as one gold catching light rather than three golds. */
+  --gold-100: #f2d489;
   --gold-300: #e5c158;
+  --gold-400: #d9ab35;
   --gold-500: #c9a227;
+  --gold-600: #a37c1c;
   --gold-700: #8a6a17;
 
   /* Royal blue, for the mark only. Deeper and more saturated than the
@@ -102,9 +108,11 @@ body {
   gap: 8px;
 }
 
+/* No border-radius. The mark is a square with straight edges by design;
+   the 22% rounding here was left over from the circular disc it replaced
+   and was quietly rounding it in every header on the site. */
 .brand-icon {
   flex-shrink: 0;
-  border-radius: 22%;
 }
 
 .brand .tld { color: var(--gold-700); font-style: normal; font-weight: 600; }
@@ -1457,7 +1465,7 @@ body {
 }
 
 /* ============================================================
-   LANDING PAGE (root urgentcare.chat) — B2B pitch page.
+   LANDING PAGE (root medicin.io) — B2B pitch page.
    Fully `lp-`/`cp-` scoped with its own palette: a calmer clinical
    blue/teal rather than the patient-facing red/white/blue, because
    this page is selling to operators, not triaging anyone. Nothing
@@ -2948,7 +2956,7 @@ body {
 .lp-tile-link a:hover { text-decoration: underline; }
 
 /* ============================================================
-   TENANT PORTAL (/t/[tenant], served as brand.urgentcare.chat)
+   TENANT PORTAL (/t/[tenant], served as brand.medicin.io)
    Deliberately thin: the tenant page reuses the root's .lp-* system and
    re-points its accent variables at the tenant's own color, so these
    rules only cover what a branded portal has that the root doesn't —
@@ -3303,7 +3311,17 @@ body {
   gap: 24px;
 }
 
-.st-brand { display: flex; align-items: baseline; gap: 8px; flex-shrink: 0; }
+/* align-items: center, not baseline — the mark is a square with no
+   baseline of its own, and baseline alignment drops it below the
+   text it sits beside. */
+.st-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  color: inherit;
+  text-decoration: none;
+}
 .st-brand-name { font-weight: 650; font-size: 15px; letter-spacing: -.01em; }
 .st-brand-tag {
   font-size: 10px;
@@ -3482,12 +3500,27 @@ body {
   box-shadow: var(--shadow);
 }
 
+/* Still in use by the two MFA screens, which put the ORG's name here.
+   That is the right job for micro-type: those screens are reached from
+   inside a sign-in already in progress, and they need to say which
+   clinic the code is for, not re-introduce the product. */
 .st-signin-eyebrow {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: .08em;
   color: var(--accent);
   font-weight: 600;
+}
+
+/* The lockup on the sign-in card, where the eyebrow used to be. Setting
+   the product name as 11px uppercase micro-type was legible but made the
+   only pre-login screen look like a section header rather than a front
+   door. */
+.st-signin-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 22px;
 }
 .st-signin-title {
   font-size: 21px;
@@ -3812,6 +3845,313 @@ body {
 .st-record-signer { display: block; font-size: 13px; font-weight: 550; }
 .st-record-when { display: block; font-size: 11.5px; color: var(--ink-faint); white-space: nowrap; }
 .st-empty { font-size: 13px; color: var(--ink-faint); }
+
+/* ---------- standing rules & scope of practice ---------- */
+
+.st-section { margin-top: 28px; }
+
+/* Two columns side by side, because scope is read as a comparison. They
+   stack on narrow screens rather than shrinking — a half-width column of
+   this text on a phone is unreadable, and the right-hand column is the
+   one that matters most. */
+.st-scope {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+@media (max-width: 760px) { .st-scope { grid-template-columns: 1fr; } }
+
+.st-scope-col {
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+/* The distinction is carried by border weight and fill, not by hue —
+   green/red would fail for a colourblind reader, and the headings
+   already say which column is which. */
+.st-scope-yes { border-left: 3px solid var(--safe); }
+.st-scope-no  { border-left: 3px solid var(--warn); background: var(--blue-050); }
+
+.st-scope-col .st-h2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.st-scope-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-faint);
+}
+
+.st-scope-list { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+.st-scope-item { display: flex; flex-direction: column; gap: 5px; }
+.st-scope-text { font-size: 13.5px; line-height: 1.45; font-weight: 550; }
+
+/* The sanctioned alternative. Indented under the prohibition it belongs
+   to and set in the body weight, because it is meant to be read and in
+   some cases said out loud, not skimmed. */
+.st-scope-instead {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  border-left: 2px solid var(--rule-firm);
+  padding-left: 10px;
+}
+.st-scope-cite { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+
+.st-rule-list { display: flex; flex-direction: column; gap: 10px; }
+.st-rule {
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.st-rule-critical { border-left: 3px solid var(--warn); }
+.st-rule-title {
+  font-size: 14px;
+  font-weight: 650;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.st-rule-tag {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--accent);
+  background: var(--blue-100);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.st-rule-body { font-size: 13.5px; line-height: 1.5; margin-top: 6px; }
+.st-rule-why {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  margin-top: 8px;
+  border-left: 2px solid var(--rule);
+  padding-left: 10px;
+}
+.st-rule-cite { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin-top: 8px; }
+
+/* ---------- rounds ---------- */
+
+.st-round-list { display: flex; flex-direction: column; gap: 10px; }
+
+.st-round {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 14px 16px;
+  color: inherit;
+  text-decoration: none;
+}
+.st-round:hover { border-color: var(--rule-firm); box-shadow: var(--shadow); }
+.st-round-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.st-round-title { font-size: 14.5px; font-weight: 650; }
+.st-round-purpose { font-size: 13px; color: var(--ink-soft); line-height: 1.45; }
+.st-round-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  text-align: right;
+  flex-shrink: 0;
+}
+@media (max-width: 620px) {
+  .st-round-meta { align-items: flex-start; text-align: left; }
+}
+.st-round-steps { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+.st-round-last { font-size: 12px; color: var(--ink-soft); }
+.st-round-flag {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--warn);
+  background: var(--blue-100);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.st-round-crumb { font-size: 12px; color: var(--ink-soft); margin-bottom: 6px; }
+.st-round-crumb a { color: var(--accent); }
+
+/* ---------- the runner: one step, big, and nothing else ----------
+   Deliberately oversized type and a lot of empty space. This is read at
+   arm's length while walking, often one-handed, sometimes in a restroom
+   doorway — the constraint is legibility at a glance, not density. The
+   card holds exactly one instruction because the moment two fit on
+   screen, people start reading ahead and stop walking. */
+
+.st-run {
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 26px 24px 22px;
+  box-shadow: var(--shadow);
+  margin-top: 18px;
+}
+
+.st-run-progress {
+  height: 3px;
+  background: var(--blue-100);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 18px;
+}
+.st-run-progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width .18s ease-out;
+}
+
+.st-run-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 10px;
+}
+
+.st-run-instruction {
+  font-family: var(--serif);
+  font-size: 25px;
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -.01em;
+}
+@media (max-width: 620px) { .st-run-instruction { font-size: 22px; } }
+
+.st-run-detail {
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  margin-top: 12px;
+}
+
+/* The attestation. Set at body size but boxed, so it reads as a thing
+   being signed rather than as more instructions. */
+.st-run-attest {
+  font-size: 15px;
+  line-height: 1.55;
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: var(--blue-050);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+}
+
+.st-run-flagged {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--warn);
+  margin-top: 14px;
+}
+
+.st-run-reported { margin-top: 16px; font-size: 13px; }
+.st-run-reported-head {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--ink-faint);
+  margin-bottom: 8px;
+}
+.st-run-reported ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.st-run-reported li {
+  line-height: 1.5;
+  border-left: 2px solid var(--rule-firm);
+  padding-left: 10px;
+}
+.st-run-reported-step {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+.st-run-note { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+.st-label { font-size: 13px; font-weight: 600; }
+
+.st-run-error {
+  font-size: 13px;
+  color: var(--blue-900);
+  background: var(--blue-100);
+  border-radius: 6px;
+  padding: 9px 11px;
+  margin-top: 14px;
+}
+
+/* Actions sit in a row and wrap rather than shrink, so the primary
+   button never ends up too narrow to hit with a thumb. */
+.st-run-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.st-btn {
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 11px 20px;
+  min-height: 44px;
+  border-radius: 8px;
+  border: 1px solid var(--rule-firm);
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.st-btn:hover:not(:disabled) { border-color: var(--accent); }
+.st-btn:disabled { color: var(--ink-faint); border-color: var(--rule); cursor: not-allowed; }
+
+/* Primary is last in the row and is the only filled control, so the
+   forward action is unmistakable without reading the labels. */
+.st-btn-primary {
+  margin-left: auto;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.st-btn-primary:hover:not(:disabled) { background: var(--accent-deep); border-color: var(--accent-deep); }
+.st-btn-primary:disabled { background: var(--rule-firm); border-color: var(--rule-firm); color: #fff; }
+
+.st-btn-quiet { border-color: transparent; color: var(--ink-soft); }
+.st-btn-quiet:hover:not(:disabled) { border-color: var(--rule-firm); color: var(--ink); }
+
+@media (max-width: 480px) {
+  /* Stacked, full width, primary on top — one thumb, no mis-taps. */
+  .st-run-actions { flex-direction: column-reverse; }
+  .st-btn { width: 100%; }
+  .st-btn-primary { margin-left: 0; }
+}
+
+.st-run-done { border-left: 3px solid var(--safe); }
+.st-run-finished {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--safe);
+  margin-bottom: 10px;
+}
 
 /* ---------- team roster ---------- */
 
@@ -4602,5 +4942,9 @@ body {
   color:var(--gold-700);
   margin-top:4px;
 }
+/* The full stop, in gold. Not letterspaced away from the word: it has
+   to sit tight against the "n" to read as "medicin." rather than as a
+   stray dot, so it inherits the line's tracking and nothing else. */
+.wordmark-dot{color:var(--gold-500)}
 .wordmark-lg .wordmark-1{font-size:27px}
 .wordmark-lg .wordmark-2{font-size:15px;letter-spacing:.26em;margin-top:5px}

@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { resolve } from "@/lib/staff/auth";
 import { isConfigured } from "@/lib/staff/google";
-import { PRODUCT_NAME } from "@/lib/site";
+import BrandIcon from "@/app/components/BrandIcon";
+import Wordmark from "@/app/components/Wordmark";
 
 // Sign-in, and every way sign-in can fail.
 //
@@ -86,7 +87,14 @@ export default async function StaffSignIn({
   return (
     <div className="st-signin">
       <div className="st-signin-card">
-        <p className="st-signin-eyebrow">{PRODUCT_NAME}</p>
+        {/* The lockup, not the name set as an eyebrow. This is the one
+            screen a new hire sees before they are inside anything, so
+            it is the screen that has to look like the product rather
+            than describe it. */}
+        <div className="st-signin-brand">
+          <BrandIcon size={34} />
+          <Wordmark />
+        </div>
         <h1 className="st-signin-title">Staff sign-in</h1>
         <p className="st-signin-sub">
           For clinic staff only. Patients don&rsquo;t need an account &mdash; the

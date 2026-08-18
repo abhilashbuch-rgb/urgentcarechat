@@ -1,4 +1,4 @@
-// Looks up a branded-subdomain tenant (e.g. "afc" for afc.urgentcare.chat)
+// Looks up a branded-subdomain tenant (e.g. "afc" for afc.medicin.io)
 // by slug. Used by proxy.ts on every request (to decide whether to
 // rewrite/redirect) and by app/t/[tenant]/layout.tsx (to theme the page),
 // so this stays a plain read against the public "active tenants" RLS

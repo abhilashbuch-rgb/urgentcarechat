@@ -1,5 +1,5 @@
 -- ============================================================
--- urgentcare.chat — Complete Database Setup
+-- medicin.io — Complete Database Setup
 -- Run this ONCE in Supabase SQL Editor:
 --   Dashboard > SQL Editor > New query > Paste all > Run
 -- ============================================================
@@ -66,7 +66,7 @@ alter table clinics add column if not exists wait_updated_at timestamptz;
 alter table clinics add column if not exists wait_source text;
 alter table clinics add column if not exists wait_token uuid not null default gen_random_uuid() unique;
 
--- TENANTS — branded white-label subdomains (e.g. afc.urgentcare.chat).
+-- TENANTS — branded white-label subdomains (e.g. afc.medicin.io).
 -- Deliberately separate from the `brand` column above: `brand` groups
 -- real-world chains for the network-boost ranking feature ("AFC Urgent
 -- Care" as a name), while `tenant_slug` below is ours — which of OUR
@@ -353,7 +353,7 @@ on conflict (google_place_id) do update set
   updated_at = now();
 
 -- ============================================================
--- 5. TENANTS — first branded subdomain: afc.urgentcare.chat
+-- 5. TENANTS — first branded subdomain: afc.medicin.io
 -- primary_color is AFC's real brand red, sampled directly from their
 -- logo artwork (public/tenants/afc-logo.png — their real mark, supplied
 -- by the user for this exact purpose, not something we generated).

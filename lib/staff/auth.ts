@@ -8,7 +8,7 @@ import { withOrg } from "@/lib/staff/db";
 //
 // WHERE THE ORG COMES FROM, AND WHY IT CHANGED.
 //
-// This used to read the org from the hostname — <org>.urgentcare.chat —
+// This used to read the org from the hostname — <org>.medicin.io —
 // which had the nice property that a stale cookie could not choose which
 // clinic you were looking at. It also cost one Google OAuth redirect URI
 // and one hand-added Vercel domain per customer, which makes self-serve

@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 // `new URL("/staff", req.url)` looks like the obvious way to build a
 // redirect target, and it is wrong here: inside a route handler `req.url`
 // carries the server's own origin, not the Host the browser asked for.
-// Under `next start` behind a Host header of afc.urgentcare.chat it
+// Under `next start` behind a Host header of afc.medicin.io it
 // produced `http://localhost:4405/staff/signin` — a Location header
 // pointing at the visitor's own machine.
 //

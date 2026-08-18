@@ -35,7 +35,7 @@
 --
 -- ORG REGISTRY — read before changing.
 -- The public schema already has a `tenants` table (slug, display_name,
--- active) which is what resolves afc.urgentcare.chat to a brand today.
+-- active) which is what resolves afc.medicin.io to a brand today.
 -- staff.orgs deliberately does NOT foreign-key to it, but DOES use the
 -- same slug as its primary key. So there is one shared vocabulary for
 -- "which org is this" and no cross-schema dependency: a staff org exists
@@ -327,7 +327,7 @@ on conflict (slug) do nothing;
 --        GOOGLE_OAUTH_CLIENT_ID
 --        GOOGLE_OAUTH_CLIENT_SECRET
 --   3. In the Google Cloud console, add
---        https://afc.urgentcare.chat/api/staff/auth/callback
+--        https://afc.medicin.io/api/staff/auth/callback
 --      as an authorized redirect URI (one per staff hostname).
 --   4. Add the first invite —
 --
@@ -1606,7 +1606,7 @@ grant select on staff.session_checks to staff_app;
 -- manually-added Vercel domain PER CUSTOMER, which makes self-serve
 -- signup impossible.
 --
--- Now everyone signs in at urgentcare.chat/staff and the org comes from
+-- Now everyone signs in at medicin.io/staff and the org comes from
 -- the person's own row, re-read on every request. Tenant subdomains stay
 -- for white-label PATIENT portals, where branding is the point.
 --
@@ -3196,5 +3196,750 @@ declare o record;
 begin
   for o in select slug from staff.orgs loop
     perform staff.seed_screening_obligations(o.slug);
+  end loop;
+end $$;
+
+
+-- ========== staff-scope.sql ==========
+
+-- ============================================================
+-- SCOPE OF PRACTICE
+--
+-- Run AFTER supabase/staff-job-roles.sql (it needs staff.job_role).
+-- Idempotent; safe to re-run.
+--
+-- WHAT THIS IS, AND WHY IT IS NOT A DIRECTIVE
+-- -------------------------------------------
+-- staff.directives holds standing rules: prose, one rule per row, read
+-- and remembered. This holds something narrower and, for the people at
+-- the window, more useful — the two lists that answer "is this mine?"
+--
+--   authorized  — this job may do this, without asking
+--   prohibited  — this job may NEVER do this, however busy it is
+--
+-- Two lists rather than one rule per row because scope is read as a
+-- comparison. Somebody covering the desk on their third shift is not
+-- looking up a rule; they are looking at a column and checking whether
+-- the thing in front of them is in it. Split across two dozen directives
+-- that answer is not visible, which in practice means it is not read.
+--
+-- WHY `instead` IS A COLUMN AND NOT A NICETY
+-- A prohibited item with no sanctioned alternative is a rule that gets
+-- broken under pressure, because the person still has a patient in front
+-- of them wanting an answer. "Never give clinical advice" is not
+-- actionable at 11am with a queue; "say: let me get a clinical staff
+-- member to answer that, and get one" is. Every prohibited row carries
+-- the sentence to use instead, and the seed enforces it.
+--
+-- SEPARATION. Scope belongs to exactly one job — job_role is a single
+-- value here, not the array used on tasks. A task can be shared; a scope
+-- boundary cannot be, because the whole point of the row is that it
+-- draws a line between one job and another.
+-- ============================================================
+
+create table if not exists staff.scope_items (
+  id uuid primary key default gen_random_uuid(),
+  org_slug text not null references staff.orgs(slug) on delete cascade,
+
+  -- Stable identifier so the seed can be re-run, and so a clinic that
+  -- edits the wording of an item keeps the item.
+  key text not null,
+
+  job_role staff.job_role not null,
+  kind text not null check (kind in ('authorized', 'prohibited')),
+
+  item text not null,
+
+  -- The sanctioned alternative. Required on prohibited rows by the
+  -- constraint below; meaningless on authorized ones.
+  instead text,
+
+  -- Where the boundary comes from, when it comes from somewhere. Most of
+  -- these are state scope-of-practice law or clinic policy rather than a
+  -- federal citation, and a row that cites nothing is honest about being
+  -- clinic policy.
+  citation text,
+
+  sort_order integer not null default 100,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists staff_scope_items_key
+  on staff.scope_items (org_slug, key);
+
+create index if not exists staff_scope_items_role
+  on staff.scope_items (org_slug, job_role, kind, sort_order)
+  where active;
+
+-- A prohibition with no alternative is a rule that loses to a queue.
+-- Enforced here and not only in the seed, because the clinic can add its
+-- own rows and the failure mode is identical when they do.
+do $$ begin
+  alter table staff.scope_items
+    add constraint staff_scope_prohibited_needs_alternative
+    check (
+      kind <> 'prohibited'
+      or (instead is not null and length(btrim(instead)) >= 3)
+    );
+exception when duplicate_object then null;
+end $$;
+
+-- An authorized row has nothing to redirect to; a stray `instead` there
+-- would render as advice on how to avoid doing your own job.
+do $$ begin
+  alter table staff.scope_items
+    add constraint staff_scope_authorized_has_no_alternative
+    check (kind <> 'authorized' or instead is null);
+exception when duplicate_object then null;
+end $$;
+
+alter table staff.scope_items enable row level security;
+alter table staff.scope_items force row level security;
+
+drop policy if exists staff_org_isolation on staff.scope_items;
+create policy staff_org_isolation on staff.scope_items
+  for all
+  using (staff.is_super_admin() or org_slug = staff.current_org())
+  with check (staff.is_super_admin() or org_slug = staff.current_org());
+
+grant select, insert, update on staff.scope_items to staff_app;
+-- Deactivated, never deleted: which boundaries a clinic decided did not
+-- apply to it is exactly the question asked after something goes wrong.
+-- staff-schema.sql's ALTER DEFAULT PRIVILEGES grants delete on every
+-- future table in this schema, so this table arrived holding it and the
+-- GRANT above took none of it away.
+revoke delete on staff.scope_items from staff_app;
+
+-- ============================================================
+-- THE TWO COLUMNS
+--
+-- security_invoker so it reads under the caller's org context rather
+-- than the view owner's — without it a view over an RLS-protected table
+-- returns every org's rows. Same note as staff-onboarding.sql.
+--
+-- Dropped first rather than CREATE OR REPLACE: replace can only APPEND
+-- columns to a view, so a later migration that inserts a column here
+-- would make this file's SECOND run fail while its first was clean.
+-- ============================================================
+
+drop view if exists staff.scope_of_practice cascade;
+create view staff.scope_of_practice
+with (security_invoker = true) as
+select
+  s.id,
+  s.org_slug,
+  s.key,
+  s.job_role,
+  s.kind,
+  s.item,
+  s.instead,
+  s.citation,
+  s.sort_order
+from staff.scope_items s
+where s.active;
+
+grant select on staff.scope_of_practice to staff_app;
+
+
+-- ========== staff-scope-seed.sql ==========
+
+-- ============================================================
+-- SCOPE OF PRACTICE — seed
+--
+-- Run AFTER supabase/staff-scope.sql. Idempotent; safe to re-run.
+--
+-- PROVENANCE, because it matters more here than anywhere else in this
+-- module. A scope boundary that is wrong in the permissive direction
+-- tells somebody unlicensed that a clinical act is theirs to perform.
+--
+--   front_desk       — supplied by the operator, verbatim. These are
+--                      this clinic's own authorized and prohibited
+--                      duties, not a generic list.
+--   medical_assistant,
+--   xray_tech,
+--   provider         — DRAFTED from the boundaries that are common to
+--                      essentially every US state's rules for these
+--                      roles: an unlicensed assistant may not assess,
+--                      diagnose, interpret, or advise; an operator may
+--                      not decide what to image; a provider may not
+--                      delegate a judgement that requires their licence.
+--                      They are deliberately the uncontroversial core.
+--
+-- WHAT IS NOT HERE. Anything that varies by state — whether an MA may
+-- administer an immunisation, inject, or perform venipuncture, whether a
+-- limited-scope operator may fluoroscope — is absent on purpose. Those
+-- are real questions with different answers in different states, and a
+-- confident wrong answer in this table would be worse than a gap the
+-- clinic notices and fills. Add them per clinic, with the citation.
+-- ============================================================
+
+create or replace function staff.seed_scope(p_slug text)
+returns integer language plpgsql as $$
+declare n integer;
+begin
+  insert into staff.scope_items
+    (org_slug, key, job_role, kind, item, instead, citation, sort_order)
+  select p_slug, d.key, d.job_role, d.kind, d.item, d.instead, d.citation, d.sort_order
+  from (values
+
+    -- ---------- FRONT DESK: authorized ----------
+    ('fd-a-payments', 'front_desk'::staff.job_role, 'authorized',
+     'Collecting copays, deductibles, and self-pay fees',
+     null::text, null::text, 10),
+
+    ('fd-a-eligibility', 'front_desk'::staff.job_role, 'authorized',
+     'Verifying insurance RTE and employer authorization protocols',
+     null, null, 20),
+
+    ('fd-a-queue', 'front_desk'::staff.job_role, 'authorized',
+     'Managing queue wait times and check-in workflows',
+     null, null, 30),
+
+    ('fd-a-ledger', 'front_desk'::staff.job_role, 'authorized',
+     'Resolving billing ledger disputes at the desk or window',
+     null, null, 40),
+
+    -- ---------- FRONT DESK: strictly prohibited ----------
+    --
+    -- Each of these is a thing a patient will ask the desk for directly,
+    -- politely, and often — which is why each carries the sentence to
+    -- use instead. "No" alone loses to a full lobby.
+    ('fd-p-triage', 'front_desk'::staff.job_role, 'prohibited',
+     'Medical triage, clinical assessment, or symptom diagnosis',
+     'Say: "Let me get a clinical staff member to look at that for you," and go get one. If the patient looks like they are deteriorating, say so out loud immediately — escalating is never the wrong call.',
+     null, 50),
+
+    ('fd-p-treatment', 'front_desk'::staff.job_role, 'prohibited',
+     'Advising patients on medical treatment plans or test necessity',
+     'Say: "I can''t advise on that, but I''ll have the provider or an MA answer it before you leave." Write the question down so it is actually asked.',
+     null, 60),
+
+    ('fd-p-clinical-tasks', 'front_desk'::staff.job_role, 'prohibited',
+     'Handling POCT lab testing, specimen collection, or vitals',
+     'Hand the task to clinical staff, even when the lobby is full and it would be faster to do it yourself. If nobody is free, tell the patient there is a wait — do not start it.',
+     null, 70),
+
+    ('fd-p-findings', 'front_desk'::staff.job_role, 'prohibited',
+     'Discussing clinical findings or provider notes',
+     'Say: "Those results need to come from a clinician — let me arrange that." Do not read a result off a screen, confirm one, or say whether it looked normal.',
+     null, 80),
+
+    -- ---------- MEDICAL ASSISTANT ----------
+    ('ma-a-vitals', 'medical_assistant'::staff.job_role, 'authorized',
+     'Vitals, point-of-care testing, and specimen collection under the provider''s order',
+     null, null, 110),
+
+    ('ma-a-rooming', 'medical_assistant'::staff.job_role, 'authorized',
+     'Rooming, recording the patient''s own account of why they came, and preparing the room',
+     null, null, 120),
+
+    ('ma-a-stock', 'medical_assistant'::staff.job_role, 'authorized',
+     'Vaccine and medication stock handling: temperature logs, beyond-use dating, quarantine of out-of-range stock',
+     null, null, 130),
+
+    ('ma-a-relay', 'medical_assistant'::staff.job_role, 'authorized',
+     'Relaying instructions the provider has already given, in the provider''s words',
+     null, null, 140),
+
+    ('ma-p-triage', 'medical_assistant'::staff.job_role, 'prohibited',
+     'Deciding how urgent a patient is, or telling a patient they do not need to be seen',
+     'Record what the patient says and escalate to a provider or the clinical lead. Recording "chest pain since 6am" is yours; deciding what it means is not.',
+     null, 150),
+
+    ('ma-p-interpret', 'medical_assistant'::staff.job_role, 'prohibited',
+     'Interpreting a result, an image, or a reading for a patient',
+     'Say: "The provider will go over those with you." Report the number to the provider — never a conclusion about it.',
+     null, 160),
+
+    ('ma-p-phone-advice', 'medical_assistant'::staff.job_role, 'prohibited',
+     'Giving clinical advice by phone, including whether to come in',
+     'Take the message and route it to a clinician the same day. If it sounds like an emergency, tell the caller to hang up and call 911.',
+     null, 170),
+
+    ('ma-p-unordered', 'medical_assistant'::staff.job_role, 'prohibited',
+     'Performing or reporting anything not ordered by a provider',
+     'Ask for the order. An order given verbally is fine and is documented as verbal — an assumed order is not an order.',
+     null, 180),
+
+    -- ---------- X-RAY TECH ----------
+    ('xr-a-perform', 'xray_tech'::staff.job_role, 'authorized',
+     'Performing the ordered radiographic exam and positioning the patient',
+     null, null, 210),
+
+    ('xr-a-technique', 'xray_tech'::staff.job_role, 'authorized',
+     'Selecting technique and shielding to keep dose as low as reasonably achievable',
+     null, null, 220),
+
+    ('xr-a-equipment', 'xray_tech'::staff.job_role, 'authorized',
+     'Equipment and lead-apron checks, and taking defective shielding out of service',
+     null, null, 230),
+
+    ('xr-a-repeats', 'xray_tech'::staff.job_role, 'authorized',
+     'Recording repeat exposures and the reason for each',
+     null, null, 240),
+
+    ('xr-p-interpret', 'xray_tech'::staff.job_role, 'prohibited',
+     'Reading the image for the patient, or saying whether anything is broken',
+     'Say: "The provider reads these — they''ll come talk to you." Nothing about the image, including a reassuring nothing.',
+     null, 250),
+
+    ('xr-p-unordered-view', 'xray_tech'::staff.job_role, 'prohibited',
+     'Adding, substituting, or skipping a view without the ordering provider',
+     'Call the provider and get the order changed. A clinically sensible extra view is still an unordered exposure until they say so.',
+     null, 260),
+
+    ('xr-p-pregnancy', 'xray_tech'::staff.job_role, 'prohibited',
+     'Proceeding when pregnancy is possible and unconfirmed, on your own judgement',
+     'Stop and get the provider. The decision to image anyway is a clinical one and it is documented as such.',
+     null, 270),
+
+    -- ---------- PROVIDER ----------
+    ('pr-a-diagnose', 'provider'::staff.job_role, 'authorized',
+     'Assessment, diagnosis, orders, prescribing, and the disposition decision',
+     null, null, 310),
+
+    ('pr-a-delegate', 'provider'::staff.job_role, 'authorized',
+     'Delegating tasks within each staff member''s own scope, by order',
+     null, null, 320),
+
+    ('pr-a-overread', 'provider'::staff.job_role, 'authorized',
+     'Preliminary reads, and closing the loop when the over-read differs',
+     null, null, 330),
+
+    ('pr-p-delegate-judgement', 'provider'::staff.job_role, 'prohibited',
+     'Delegating a judgement that requires your licence — triage decisions, result interpretation, disposition',
+     'Delegate the task, keep the judgement. "Get a repeat BP" is a task; "tell them if it is fine" is not.',
+     null, 340),
+
+    ('pr-p-retro-cosign', 'provider'::staff.job_role, 'prohibited',
+     'Signing for anything you did not personally witness — controlled-substance waste above all',
+     'Witness it in real time or do not sign it. A co-signature added afterwards attests to something the signer did not see, which is the specific thing a diversion investigation looks for.',
+     null, 350),
+
+    ('pr-p-chart-edit', 'provider'::staff.job_role, 'prohibited',
+     'Changing a note after the fact without it being visible as an addendum',
+     'Add an addendum with its own timestamp. A silently edited note discredits the whole chart, including the parts that were right.',
+     null, 360)
+
+  ) as d(key, job_role, kind, item, instead, citation, sort_order)
+  where not exists (
+    select 1 from staff.scope_items x
+     where x.org_slug = p_slug and x.key = d.key
+  );
+
+  get diagnostics n = row_count;
+  return n;
+end $$;
+
+grant execute on function staff.seed_scope(text) to staff_app;
+
+-- New orgs get the scope on creation, the same way they get directives.
+create or replace function staff.scope_seed_new_org()
+returns trigger language plpgsql as $$
+begin
+  perform staff.seed_scope(new.slug);
+  return null;
+end $$;
+
+drop trigger if exists staff_orgs_seed_scope on staff.orgs;
+create trigger staff_orgs_seed_scope
+  after insert on staff.orgs
+  for each row execute function staff.scope_seed_new_org();
+
+-- And every org that already exists.
+do $$
+declare o record;
+begin
+  for o in select slug from staff.orgs loop
+    perform staff.seed_scope(o.slug);
+  end loop;
+end $$;
+
+
+-- ========== staff-rounds.sql ==========
+
+-- ============================================================
+-- ROUNDS — guided runbooks, walked one step at a time
+--
+-- Run AFTER supabase/staff-job-roles.sql. Idempotent; safe to re-run.
+--
+-- WHY THIS IS NOT A FORM, AND NOT A CHECKLIST
+-- -------------------------------------------
+-- staff.form_templates already holds per-shift tasks with fields and
+-- thresholds — the fridge reading, the crash cart seal. Those are
+-- measurements, and a measurement needs a box to write the number in.
+--
+-- A round is the other thing: a physical walk with a fixed order.
+-- Restrooms, hydration station, lobby seating, mask station, kiosk. The
+-- record that matters is that ONE PERSON walked ALL of it at a stated
+-- time, not that fourteen boxes each acquired a tick.
+--
+-- AND A CHECKLIST OF BOXES IS WORSE THAN NOTHING HERE. Fourteen
+-- checkboxes on one screen get ticked top to bottom at the counter
+-- without anybody leaving the desk — the form is satisfiable without the
+-- walk, which makes the record a lie that looks like evidence. Presented
+-- one step at a time, with the next step hidden until the current one is
+-- passed, the fastest way through is to actually walk it.
+--
+-- SO: there is NO per-step stored outcome. A run has a start, an end, a
+-- person, and one attestation covering the whole round — the same shape
+-- as the paper round sheet it replaces, where you initial the bottom and
+-- not each line.
+--
+-- WHAT SAVES IT FROM BEING A RUBBER STAMP is staff.round_runs.exceptions:
+-- any step can have a problem reported against it as you pass through,
+-- and that note is the part a manager reads. A round with no exceptions
+-- ever recorded is not a clean lobby, it is a round nobody is really
+-- walking, and the exception count is what makes that visible.
+-- ============================================================
+
+create table if not exists staff.rounds (
+  id uuid primary key default gen_random_uuid(),
+  org_slug text not null references staff.orgs(slug) on delete cascade,
+  key text not null,
+
+  -- Which job walks this. Same array shape as form_templates so the
+  -- brief filters both with staff.brief_matches().
+  job_roles staff.job_role[] not null default '{}',
+
+  title text not null,
+  -- One line, imperative, shown under the title on the list.
+  purpose text,
+
+  -- When it is walked. Free text rather than an enum because clinics
+  -- genuinely differ: "every hour", "at open", "at close", "when it
+  -- happens". The app groups by this string and does not compute from it.
+  cadence text not null default 'as needed',
+
+  sort_order integer not null default 100,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists staff_rounds_key
+  on staff.rounds (org_slug, key);
+
+create table if not exists staff.round_steps (
+  id uuid primary key default gen_random_uuid(),
+  round_id uuid not null references staff.rounds(id) on delete cascade,
+  step_no integer not null,
+
+  -- The instruction. Imperative, one action, no preamble — this is read
+  -- standing up with something in the other hand.
+  instruction text not null,
+  -- The detail that stops it being ambiguous, when there is one.
+  detail text,
+
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists staff_round_steps_order
+  on staff.round_steps (round_id, step_no);
+
+-- ============================================================
+-- A COMPLETED PASS
+--
+-- started_at is set when the person opens step 1, completed_at when they
+-- attest at the end. The gap between them is the only honest signal the
+-- system has about whether the walk happened: a fourteen-step lobby
+-- round attested four seconds after it started did not.
+-- ============================================================
+
+create table if not exists staff.round_runs (
+  id uuid primary key default gen_random_uuid(),
+  org_slug text not null references staff.orgs(slug) on delete cascade,
+  round_id uuid not null references staff.rounds(id) on delete cascade,
+
+  walked_by uuid not null references staff.users(id),
+  started_at timestamptz not null,
+  completed_at timestamptz not null default now(),
+
+  -- Problems found on the way round: [{step_no, note}]. Empty is a valid
+  -- and common answer; it is the ALL-empty history that means something.
+  exceptions jsonb not null default '[]'::jsonb,
+
+  created_at timestamptz not null default now()
+);
+
+create index if not exists staff_round_runs_recent
+  on staff.round_runs (org_slug, round_id, completed_at desc);
+
+-- A run that finishes before it starts is a clock problem or a forged
+-- record, and either way it should not be storable.
+do $$ begin
+  alter table staff.round_runs
+    add constraint staff_round_run_ordered
+    check (completed_at >= started_at);
+exception when duplicate_object then null;
+end $$;
+
+-- Exceptions have to be a list of objects, not whatever the caller sent.
+do $$ begin
+  alter table staff.round_runs
+    add constraint staff_round_run_exceptions_shape
+    check (jsonb_typeof(exceptions) = 'array');
+exception when duplicate_object then null;
+end $$;
+
+-- ============================================================
+-- ROW-LEVEL SECURITY
+-- Same shape as every other org-scoped table. See staff-schema.sql.
+-- round_steps has no org column of its own; it is reached only through
+-- its round, so it is protected by a policy that joins back to one.
+-- ============================================================
+
+alter table staff.rounds enable row level security;
+alter table staff.rounds force row level security;
+drop policy if exists staff_org_isolation on staff.rounds;
+create policy staff_org_isolation on staff.rounds
+  for all
+  using (staff.is_super_admin() or org_slug = staff.current_org())
+  with check (staff.is_super_admin() or org_slug = staff.current_org());
+
+alter table staff.round_steps enable row level security;
+alter table staff.round_steps force row level security;
+drop policy if exists staff_org_isolation on staff.round_steps;
+create policy staff_org_isolation on staff.round_steps
+  for all
+  using (exists (
+    select 1 from staff.rounds r
+     where r.id = round_steps.round_id
+       and (staff.is_super_admin() or r.org_slug = staff.current_org())
+  ))
+  with check (exists (
+    select 1 from staff.rounds r
+     where r.id = round_steps.round_id
+       and (staff.is_super_admin() or r.org_slug = staff.current_org())
+  ));
+
+alter table staff.round_runs enable row level security;
+alter table staff.round_runs force row level security;
+drop policy if exists staff_org_isolation on staff.round_runs;
+create policy staff_org_isolation on staff.round_runs
+  for all
+  using (staff.is_super_admin() or org_slug = staff.current_org())
+  with check (staff.is_super_admin() or org_slug = staff.current_org());
+
+grant select, insert, update on staff.rounds to staff_app;
+grant select, insert, update on staff.round_steps to staff_app;
+-- Runs are INSERT-ONLY. A completed round is a signed record of where
+-- somebody was and when; letting it be edited afterwards would make the
+-- timestamp — the only thing that makes the record worth keeping —
+-- rewritable. No update grant, and no delete.
+grant select, insert on staff.round_runs to staff_app;
+revoke delete on staff.rounds from staff_app;
+revoke delete on staff.round_steps from staff_app;
+revoke update, delete on staff.round_runs from staff_app;
+
+-- ============================================================
+-- THE LIST, WITH ITS LAST PASS
+--
+-- security_invoker so it reads under the caller's org context rather
+-- than the view owner's. Dropped first rather than CREATE OR REPLACE:
+-- replace can only APPEND columns to a view, so a later migration that
+-- inserts a column would break this file's second run.
+-- ============================================================
+
+drop view if exists staff.round_board cascade;
+create view staff.round_board
+with (security_invoker = true) as
+select
+  r.id,
+  r.org_slug,
+  r.key,
+  r.job_roles,
+  r.title,
+  r.purpose,
+  r.cadence,
+  r.sort_order,
+  (select count(*) from staff.round_steps s where s.round_id = r.id)::int
+    as step_count,
+  last_run.completed_at as last_walked_at,
+  last_run.walker       as last_walked_by,
+  jsonb_array_length(coalesce(last_run.exceptions, '[]'::jsonb))::int
+    as last_exception_count
+from staff.rounds r
+left join lateral (
+  select ru.completed_at, ru.exceptions, u.legal_name as walker
+    from staff.round_runs ru
+    left join staff.users u on u.id = ru.walked_by
+   where ru.round_id = r.id
+   order by ru.completed_at desc
+   limit 1
+) last_run on true
+where r.active;
+
+grant select on staff.round_board to staff_app;
+
+
+-- ========== staff-rounds-seed.sql ==========
+
+-- ============================================================
+-- ROUNDS — seed
+--
+-- Run AFTER supabase/staff-rounds.sql. Idempotent; safe to re-run.
+--
+-- FIVE FRONT-DESK ROUNDS, grouped by when they are walked rather than by
+-- subject: hourly, at open, at close, and the two that are triggered by
+-- something happening. That is the grouping the person uses. A round
+-- filed under "infection control" is a round nobody opens at 2pm.
+--
+-- HOUSE STYLE FOR A STEP. One action, imperative, no preamble, no
+-- explanation of why unless the why changes what you do. "Wipe the
+-- signature pad" — not "Ensure that signature pads are being sanitized
+-- between patient uses." Read standing up, with something in the other
+-- hand. The detail line exists only where the instruction alone is
+-- ambiguous, and it is a fragment, not a paragraph.
+--
+-- ORDER IS THE WALK, NOT THE TOPIC. Steps run front door inward and back
+-- out, so following them in order is a single loop rather than four trips
+-- past the same chair.
+-- ============================================================
+
+create or replace function staff.seed_rounds(p_slug text)
+returns integer language plpgsql as $$
+declare
+  n integer := 0;
+  r record;
+  rid uuid;
+begin
+  -- ---------- the rounds ----------
+  insert into staff.rounds (org_slug, key, job_roles, title, purpose, cadence, sort_order)
+  select p_slug, d.key, array['front_desk']::staff.job_role[],
+         d.title, d.purpose, d.cadence, d.sort_order
+  from (values
+    ('fd-hourly-lobby',
+     'Hourly lobby round',
+     'Restrooms, seating, kiosks, stock. One loop, front door and back.',
+     'every hour', 10),
+    ('fd-open',
+     'Opening the front of house',
+     'Doors, alarms, screens, drawer. Before the first patient.',
+     'at open', 20),
+    ('fd-close',
+     'Closing the front of house',
+     'Drawer, terminals, doors, mail. After the last patient.',
+     'at close', 30),
+    ('fd-spill',
+     'Spill in the lobby',
+     'Isolate first. Body fluids are never yours to clean.',
+     'when it happens', 40),
+    ('fd-deteriorating',
+     'Patient in the lobby looks worse',
+     'Do not assess. Get clinical staff now.',
+     'when it happens', 50)
+  ) as d(key, title, purpose, cadence, sort_order)
+  where not exists (
+    select 1 from staff.rounds x where x.org_slug = p_slug and x.key = d.key
+  );
+  get diagnostics n = row_count;
+
+  -- ---------- the steps ----------
+  --
+  -- Inserted per round and only when that round has none, so re-running
+  -- neither duplicates steps nor overwrites a clinic's edits.
+  for r in select id, key from staff.rounds where org_slug = p_slug loop
+    rid := r.id;
+    if exists (select 1 from staff.round_steps s where s.round_id = rid) then
+      continue;
+    end if;
+
+    if r.key = 'fd-hourly-lobby' then
+      insert into staff.round_steps (round_id, step_no, instruction, detail) values
+        (rid, 1,  'Look at the waiting room before you touch anything.',
+                  'Anyone pale, sweating, breathing hard, or slumped — stop this round and get clinical staff.'),
+        (rid, 2,  'Restock the door station.', 'Masks, hand sanitiser, tissues.'),
+        (rid, 3,  'Wipe the check-in counter, both kiosks, and the signature pad.',
+                  'EPA-registered wipes. Let the surface stay wet the full contact time on the canister.'),
+        (rid, 4,  'Reset the pen bins.', 'Used bin emptied and wiped, sanitised bin refilled. Never one bin.'),
+        (rid, 5,  'Restock the counter.', 'Intake forms, HIPAA notices, visitor badges, receipt paper.'),
+        (rid, 6,  'Wipe chair arms and the door handles between the lobby and the desk.', null),
+        (rid, 7,  'Clear the lobby.', 'Tissues, masks, cups, magazines off the floor and seats.'),
+        (rid, 8,  'Empty any lobby bin that is more than three-quarters full.',
+                  'Do not wait for it to overflow — it is a full bin patients photograph.'),
+        (rid, 9,  'Check both public restrooms.',
+                  'Soap, paper towels, toilet paper, bin. Wet floor or worse: stop and report it on this step.'),
+        (rid, 10, 'Check the water station.', 'Cups stocked, counter dry, no leak under the dispenser.'),
+        (rid, 11, 'Check temperature, lighting, and the screens.',
+                  'Every bulb working. Screens on approved content — never news, never a personal account.'),
+        (rid, 12, 'Walk the entryway outside.', 'Litter, ice, standing water, anything somebody trips on.');
+
+    elsif r.key = 'fd-open' then
+      insert into staff.round_steps (round_id, step_no, instruction, detail) values
+        (rid, 1, 'Disarm the alarm.', null),
+        (rid, 2, 'Walk the exterior entry before you unlock.',
+                 'Ice, water, litter, damage, anything left overnight at the door.'),
+        (rid, 3, 'Unlock the exterior doors.', null),
+        (rid, 4, 'Power on both intake kiosks and the waiting-room screens.',
+                 'Confirm the screens land on approved content, not a desktop.'),
+        (rid, 5, 'Count the opening cash drawer and record the float.', null),
+        (rid, 6, 'Confirm the card terminal connects.', 'Run a test connection, not a test charge.'),
+        (rid, 7, 'Stock the counter and the door station for the morning.',
+                 'Forms, notices, badges, receipt paper, masks, sanitiser.'),
+        (rid, 8, 'Walk the hourly lobby round once before the doors see a patient.', null);
+
+    elsif r.key = 'fd-close' then
+      insert into staff.round_steps (round_id, step_no, instruction, detail) values
+        (rid, 1, 'Confirm the last patient has left the lobby and the restrooms.',
+                 'Look. Do not assume.'),
+        (rid, 2, 'Balance the drawer and reconcile the day''s ledger.',
+                 'A variance is reported tonight, not carried to tomorrow.'),
+        (rid, 3, 'Settle and secure the card terminal.', null),
+        (rid, 4, 'Secure the drawer per clinic policy.', null),
+        (rid, 5, 'Secure incoming mail and packages out of the lobby.',
+                 'Nothing with a patient name on it left on the counter overnight.'),
+        (rid, 6, 'Power down kiosks and screens.', null),
+        (rid, 7, 'Clear and wipe the lobby and the counter.', null),
+        (rid, 8, 'Lock the exterior doors.', null),
+        (rid, 9, 'Arm the alarm and confirm it set.', null);
+
+    elsif r.key = 'fd-spill' then
+      insert into staff.round_steps (round_id, step_no, instruction, detail) values
+        (rid, 1, 'Stand where nobody can walk into it and keep people back.',
+                 'You are the barrier until there is a real one.'),
+        (rid, 2, 'Decide what it is.',
+                 'Blood, vomit, urine, or anything you are unsure about is a body fluid. Water and coffee are not.'),
+        (rid, 3, 'Body fluid: call environmental services or clinical staff now. Do not clean it.',
+                 'Spill kit and PPE, by someone trained in it. This is not a front-desk task.'),
+        (rid, 4, 'Water or drink: put the wet-floor sign out, then mop it.', null),
+        (rid, 5, 'Stay until the area is dry or handed over.',
+                 'A sign on a wet floor with nobody watching it is not control of the hazard.');
+
+    elsif r.key = 'fd-deteriorating' then
+      insert into staff.round_steps (round_id, step_no, instruction, detail) values
+        (rid, 1, 'Say it out loud to clinical staff now.',
+                 'Describe what you see — pale, sweating, short of breath, slumped. Do not interpret it.'),
+        (rid, 2, 'Stay with the patient until clinical staff arrive.', null),
+        (rid, 3, 'Do not take vitals, assess, or advise.',
+                 'Watching and reporting is your job here and it is the part that matters.'),
+        (rid, 4, 'If they collapse or stop responding, call for help and start the emergency response.',
+                 'Anyone can call a code. You will never be criticised for calling one that turned out to be nothing.'),
+        (rid, 5, 'Clear a path from the lobby to the treatment area.', null);
+    end if;
+  end loop;
+
+  return n;
+end $$;
+
+grant execute on function staff.seed_rounds(text) to staff_app;
+
+create or replace function staff.rounds_seed_new_org()
+returns trigger language plpgsql as $$
+begin
+  perform staff.seed_rounds(new.slug);
+  return null;
+end $$;
+
+drop trigger if exists staff_orgs_seed_rounds on staff.orgs;
+create trigger staff_orgs_seed_rounds
+  after insert on staff.orgs
+  for each row execute function staff.rounds_seed_new_org();
+
+do $$
+declare o record;
+begin
+  for o in select slug from staff.orgs loop
+    perform staff.seed_rounds(o.slug);
   end loop;
 end $$;

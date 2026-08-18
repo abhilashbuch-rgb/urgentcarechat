@@ -11,14 +11,17 @@ import { PRODUCT_NAME } from "@/lib/site";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: `${PRODUCT_NAME} — clinic compliance`,
-    short_name: "Compliance",
+    short_name: "Medicin",
     description:
       "Daily and per-shift compliance logs for urgent care staff.",
     start_url: "/staff",
     scope: "/",
     display: "standalone",
     background_color: "#ffffff",
-    theme_color: "#b22234",
+    // The interface navy, not the red this used to carry — that was the
+    // old palette's accent and it painted the Android status bar and the
+    // launch splash in a colour the app no longer uses anywhere.
+    theme_color: "#0a2540",
     orientation: "portrait",
     icons: [
       { src: "/icon.png", sizes: "512x512", type: "image/png", purpose: "any" },

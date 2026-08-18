@@ -32,7 +32,7 @@ export function isConfigured(): boolean {
  * The callback URL for this request's hostname.
  *
  * Derived from the host rather than fixed, because each org has its own
- * hostname (afc.urgentcare.chat) and OAuth requires the redirect_uri at
+ * hostname (afc.medicin.io) and OAuth requires the redirect_uri at
  * the token exchange to byte-match the one used at authorize time. The
  * operational cost is real and worth stating plainly: every staff
  * hostname must be listed as an authorized redirect URI in the Google

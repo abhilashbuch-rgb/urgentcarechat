@@ -1,4 +1,4 @@
-# urgentcare.chat — Architecture & 7-Day Build Plan
+# medicin.io — Architecture & 7-Day Build Plan
 
 **Owner:** Abhilash Buch
 **Version:** 0.1 (MVP)
@@ -27,7 +27,7 @@
 ```
 ┌──────────────────┐
 │   User browser   │
-│  (urgentcare.chat)│
+│  (medicin.io)   │
 └────────┬─────────┘
          │ HTTPS
          ▼
@@ -74,7 +74,7 @@
 | **Google Places API** | Clinic discovery (name, address, hours, rating) | $200/mo free credit (~11K–28K calls) | Use "Text Search" + "Place Details"; cache aggressively |
 | **Supabase** | DB + admin panel | Free tier: 500MB DB, 50K monthly active users | Holds your clinic overrides, featured listings, click logs |
 | **Vercel / Netlify** | Frontend + serverless | Free tier ample for MVP | Pick Vercel if using Next.js, Netlify if vanilla |
-| **Cloudflare** | DNS + CDN + bot protection | Free | Point urgentcare.chat at Vercel via Cloudflare |
+| **Cloudflare** | DNS + CDN + bot protection | Free | Point medicin.io at Vercel via Cloudflare |
 | **Google Analytics 4** | Conversion tracking | Free | Track: started chat, got results, clicked clinic |
 
 **Optional (later, not in 7-day sprint):**

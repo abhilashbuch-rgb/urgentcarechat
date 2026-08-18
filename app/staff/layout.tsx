@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { resolve } from "@/lib/staff/auth";
 import { getTenantBySlug } from "@/lib/tenants";
 import { navFor, ROLE_LABELS } from "@/lib/staff/roles";
+import BrandIcon from "@/app/components/BrandIcon";
 
 // The staff shell. Lives at /staff on an org's own hostname
-// (afc.urgentcare.chat/staff) — see the passthrough in proxy.ts, which
+// (afc.medicin.io/staff) — see the passthrough in proxy.ts, which
 // keeps this path out of the /t/<slug> rewrite that serves the patient
 // portal.
 
@@ -37,10 +38,15 @@ export default async function StaffLayout({
     <div className="st">
       <header className="st-top">
         <div className="st-top-inner">
-          <div className="st-brand">
+          {/* The mark, then the CLINIC's name — not the product's. Staff
+              open this at 7am to run the fridge check; the name that
+              matters to them is the one on the door they walked through.
+              The mark is what says which product they are in. */}
+          <a className="st-brand" href="/staff">
+            <BrandIcon size={22} />
             <span className="st-brand-name">{orgName}</span>
             <span className="st-brand-tag">Staff</span>
-          </div>
+          </a>
 
           <nav className="st-nav">
             {nav.map((item) =>
