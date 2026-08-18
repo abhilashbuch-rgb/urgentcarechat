@@ -4360,6 +4360,59 @@ body {
   border-top: 1px solid var(--rule);
 }
 
+/* ---------- staff photos ----------
+   Three layers, none of them in the file: the face, a ring in the
+   clinic's colour, an optional badge. See supabase/staff-avatars.sql —
+   burning the frame into the image would mean re-processing every photo
+   in every clinic on every rebrand. */
+
+.st-avatar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--blue-100);
+  color: var(--blue-900);
+  font-weight: 650;
+  line-height: 1;
+  /* The ring is an inset shadow, not a border, so the box stays exactly
+     the size asked for and avatars line up down a list whatever the ring
+     width is. */
+}
+.st-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.st-avatar-initials { user-select: none; }
+
+/* The badge sits over the ring at the lower right, with a ground of its
+   own so a dark logo stays visible against a dark photo. */
+.st-avatar-badge {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 1.5px #fff;
+  object-fit: contain;
+}
+
+.st-avatar-upload { display: flex; flex-direction: column; gap: 14px; }
+.st-avatar-stage { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.st-avatar-lg { width: 132px; height: 132px; }
+.st-avatar-lg .st-avatar-img { transition: transform .1s linear; }
+.st-avatar-empty { font-size: 12px; color: var(--ink-faint); }
+.st-avatar-stage .st-field { flex: 1; min-width: 180px; }
+
+/* An avatar beside a name, the shape used in lists. */
+.st-who { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.st-who-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
 /* ---------- team roster ---------- */
 
 .st-table-wrap {

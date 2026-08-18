@@ -39,6 +39,10 @@ export interface Profile {
    *  with strict separation that means an almost-empty board, so the
    *  UI has to say so rather than look broken. */
   job_role: string | null;
+  /** Object key for the profile photo, or null. Never rendered
+   *  directly: the file is served through a signed-link route, because
+   *  the same bucket holds licences. */
+  avatar_path: string | null;
 }
 
 export interface SignedRecord {
@@ -65,7 +69,7 @@ export async function getProfile(
     select id, email, name, legal_name, job_title,
            start_date::text as start_date,
            esign_consented_at::text as esign_consented_at, role,
-           job_role::text as job_role
+           job_role::text as job_role, avatar_path
       from staff.users where id = ${userId}
   `;
   return rows[0] ?? null;

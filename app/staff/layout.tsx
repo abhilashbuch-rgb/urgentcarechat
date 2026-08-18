@@ -4,6 +4,7 @@ import { getTenantBySlug } from "@/lib/tenants";
 import { navFor, ROLE_LABELS } from "@/lib/staff/roles";
 import { withSession } from "@/lib/staff/db";
 import { getProfile } from "@/lib/staff/compliance";
+import Avatar from "@/app/components/staff/Avatar";
 import BrandIcon from "@/app/components/BrandIcon";
 
 // The staff shell. Lives at /staff on an org's own hostname
@@ -37,7 +38,14 @@ export default async function StaffLayout({
   // Nav is filtered by ROLE and by JOB. Most providers hold the plain
   // "staff" role, so a clinical link gated on role alone would be hidden
   // from the people it exists for.
-  const me = await withSession(session, (sql) => getProfile(sql, session.uid));
+  const { me, theme } = await withSession(session, async (sql) => ({
+    me: await getProfile(sql, session.uid),
+    theme: (
+      await sql<{ brand_color: string; logo_url: string | null }[]>`
+        select brand_color, logo_url from staff.org_theme where slug = ${org}
+      `
+    )[0] ?? { brand_color: "#173a8a", logo_url: null },
+  }));
   const nav = navFor(session.role, me?.job_role ?? null);
 
   return (
@@ -75,6 +83,17 @@ export default async function StaffLayout({
           </nav>
 
           <div className="st-me">
+            {/* The photo is fetched through a signed-link route rather
+                than being a public URL — the bucket also holds licences.
+                No photo renders initials on the same ring, so the empty
+                state is a state and not a broken image. */}
+            <Avatar
+              name={me?.legal_name ?? me?.name ?? session.email}
+              src={me?.avatar_path ? `/api/staff/avatar/view?u=${session.uid}` : null}
+              brandColor={theme.brand_color}
+              badgeUrl={theme.logo_url}
+              size={30}
+            />
             <span className="st-me-email">{session.email}</span>
             <span className="st-me-role">{ROLE_LABELS[session.role]}</span>
             <form method="POST" action="/api/staff/auth/signout">
