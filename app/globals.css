@@ -4153,6 +4153,63 @@ body {
   margin-bottom: 10px;
 }
 
+/* ---------- onboarding: the job step ---------- */
+
+/* The job stated once, large, on its own. It is the single fact the
+   screen exists to have read, and burying it in a paragraph is how it
+   gets confirmed without being read. */
+.st-job-card {
+  background: var(--blue-050);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 10px 10px 0;
+  padding: 16px 18px;
+}
+.st-job-eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--ink-soft);
+}
+.st-job-name {
+  font-family: var(--serif);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  margin-top: 5px;
+}
+
+.st-job-scope {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 18px;
+  align-items: start;
+}
+@media (max-width: 620px) { .st-job-scope { grid-template-columns: 1fr; } }
+.st-job-scope-head {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--ink-faint);
+  margin-bottom: 8px;
+}
+.st-job-scope ul { list-style: none; display: flex; flex-direction: column; gap: 7px; }
+.st-job-scope li {
+  font-size: 13px;
+  line-height: 1.45;
+  border-left: 2px solid var(--rule-firm);
+  padding-left: 10px;
+}
+
+.st-field-optional {
+  font-weight: 400;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--ink-faint);
+  margin-left: 8px;
+}
+
 /* ---------- team roster ---------- */
 
 .st-table-wrap {
