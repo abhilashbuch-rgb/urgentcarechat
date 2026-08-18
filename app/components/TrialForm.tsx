@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { contactMailto } from "@/lib/site";
 
 // Two fields, because two is what it takes. Asking for a phone number or
 // a clinic size here would cost more signups than the data is worth.
@@ -29,7 +30,12 @@ export default function TrialForm() {
       setError(
         res?.status === 400
           ? "Check the clinic name and email address."
-          : "That didn't go through. Try again."
+          : res?.status === 503
+            // Not the visitor's fault, and saying "try again" would send
+            // them round a loop that cannot succeed. Name the situation
+            // and give them a way to reach a person.
+            ? "notopen"
+            : "That didn't go through. Try again."
       );
       return;
     }
@@ -84,10 +90,20 @@ export default function TrialForm() {
         </span>
       </label>
 
-      {error && (
+      {error === "notopen" ? (
         <p className="st-sign-error" role="alert">
-          {error}
+          Self-serve signup isn&rsquo;t switched on yet &mdash; that&rsquo;s on
+          us, not you.{" "}
+          <a href={contactMailto("Set up my clinic")}>
+            Email us and we&rsquo;ll set your clinic up by hand.
+          </a>
         </p>
+      ) : (
+        error && (
+          <p className="st-sign-error" role="alert">
+            {error}
+          </p>
+        )
       )}
 
       <button className="st-primary" type="submit" disabled={busy}>

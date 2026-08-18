@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withOrg } from "@/lib/staff/db";
+import { withOrg, isDatabaseConfigured } from "@/lib/staff/db";
 import { slugFrom } from "@/lib/staff/stripe";
 
 // POST /api/trial — start a 14-day trial with no credit card.
@@ -34,6 +34,15 @@ export async function POST(req: NextRequest) {
   }
   if (!isEmail(email)) {
     return NextResponse.json({ error: "bad_email" }, { status: 400 });
+  }
+
+  // Checked before trying, so the homepage's primary button fails
+  // honestly instead of with a 500. A deployment without a staff
+  // database cannot provision anything, and "that didn't save" reads to
+  // the visitor as their own mistake — which is worse than saying signups
+  // aren't open on this deployment yet.
+  if (!isDatabaseConfigured()) {
+    return NextResponse.json({ error: "not_open_yet" }, { status: 503 });
   }
 
   try {
