@@ -1,9 +1,8 @@
+import BrandLockup from "@/app/components/BrandLockup";
 import { redirect } from "next/navigation";
 import { resolve } from "@/lib/staff/auth";
 import { isConfigured } from "@/lib/staff/google";
-import BrandIcon from "@/app/components/BrandIcon";
 import EmailSignIn from "@/app/components/staff/EmailSignIn";
-import Wordmark from "@/app/components/Wordmark";
 
 // Sign-in, and every way sign-in can fail.
 //
@@ -93,8 +92,7 @@ export default async function StaffSignIn({
             it is the screen that has to look like the product rather
             than describe it. */}
         <div className="st-signin-brand">
-          <BrandIcon size={34} />
-          <Wordmark tagline />
+          <BrandLockup tagline />
         </div>
         <h1 className="st-signin-title">Staff sign-in</h1>
         {/* Says what this is, not what it isn't. The previous line

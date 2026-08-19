@@ -1,10 +1,9 @@
+import BrandLockup from "@/app/components/BrandLockup";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import BrandIcon from "@/app/components/BrandIcon";
 import WaitTimeForm from "@/app/components/WaitTimeForm";
 import { getWaitByToken } from "@/lib/wait-time";
 import { contactMailto, PRODUCT_NAME } from "@/lib/site";
-import Wordmark from "@/app/components/Wordmark";
 
 export const metadata = {
   title: `Update wait time — ${PRODUCT_NAME}`,
@@ -27,8 +26,7 @@ export default async function ClinicWaitPage({
     <div className="analytics-page">
       <header className="site-header">
         <div className="brand">
-          <BrandIcon />
-          <Wordmark />
+          <BrandLockup />
         </div>
       </header>
 

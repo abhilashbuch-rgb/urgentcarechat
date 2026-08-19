@@ -1,6 +1,5 @@
+import BrandLockup from "@/app/components/BrandLockup";
 import { redirect } from "next/navigation";
-import BrandIcon from "@/app/components/BrandIcon";
-import Wordmark from "@/app/components/Wordmark";
 import LinkRedeemer from "@/app/components/staff/LinkRedeemer";
 
 // Where the link in the sign-in email lands.
@@ -30,8 +29,7 @@ export default async function LinkLanding({
     <div className="st-signin">
       <div className="st-signin-card">
         <div className="st-signin-brand">
-          <BrandIcon size={34} />
-          <Wordmark />
+          <BrandLockup />
         </div>
         <h1 className="st-signin-title">Signing you in</h1>
         <LinkRedeemer token={t} />

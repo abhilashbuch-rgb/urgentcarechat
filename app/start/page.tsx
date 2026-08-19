@@ -1,8 +1,7 @@
+import BrandLockup from "@/app/components/BrandLockup";
 import type { Metadata } from "next";
 import Link from "next/link";
-import BrandIcon from "@/app/components/BrandIcon";
 import TrialForm from "@/app/components/TrialForm";
-import Wordmark from "@/app/components/Wordmark";
 import { PRODUCT_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -18,10 +17,7 @@ export default function StartTrial() {
       <header className="lp-nav">
         <div className="lp-nav-inner">
           <Link className="lp-brand" href="/">
-            <BrandIcon />
-            <span>
-              <Wordmark />
-            </span>
+            <BrandLockup />
           </Link>
           <nav className="lp-nav-links">
             <a href="/staff/signin">Sign in</a>

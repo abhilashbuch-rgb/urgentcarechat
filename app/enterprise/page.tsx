@@ -1,7 +1,6 @@
+import BrandLockup from "@/app/components/BrandLockup";
 import type { Metadata } from "next";
 import Link from "next/link";
-import BrandIcon from "@/app/components/BrandIcon";
-import Wordmark from "@/app/components/Wordmark";
 import { contactMailto, PRODUCT_NAME } from "@/lib/site";
 
 // The enterprise door.
@@ -60,8 +59,7 @@ export default function EnterprisePage() {
       <header className="lp-nav">
         <div className="lp-nav-inner">
           <Link className="lp-brand" href="/">
-            <BrandIcon />
-            <Wordmark />
+            <BrandLockup />
           </Link>
           <nav className="lp-nav-links">
             <a href="/demo">See a live demo</a>

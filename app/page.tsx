@@ -1,8 +1,7 @@
+import BrandLockup from "@/app/components/BrandLockup";
 import type { Metadata } from "next";
 import Link from "next/link";
-import BrandIcon from "@/app/components/BrandIcon";
 import { PRODUCT_NAME } from "@/lib/site";
-import Wordmark from "@/app/components/Wordmark";
 
 // The homepage sells one thing in three seconds: pass inspections without
 // a paper binder. Everything that was here before — feature paragraphs, a
@@ -105,8 +104,7 @@ export default function LandingPage() {
       <header className="lp-nav">
         <div className="lp-nav-inner">
           <div className="lp-brand">
-            <BrandIcon />
-            <Wordmark />
+            <BrandLockup />
           </div>
           <nav className="lp-nav-links">
             <a href="/demo">See a live demo</a>

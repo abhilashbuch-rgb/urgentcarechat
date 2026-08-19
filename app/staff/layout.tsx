@@ -7,7 +7,7 @@ import { getProfile } from "@/lib/staff/compliance";
 import Avatar from "@/app/components/staff/Avatar";
 import ShiftChime from "@/app/components/staff/ShiftChime";
 import InstallPrompt from "@/app/components/staff/InstallPrompt";
-import BrandIcon from "@/app/components/BrandIcon";
+import BrandLockup from "@/app/components/BrandLockup";
 
 // The staff shell. Lives at /staff on an org's own hostname
 // (afc.medicin.io/staff) — see the passthrough in proxy.ts, which
@@ -67,12 +67,17 @@ export default async function StaffLayout({
     <div className="st">
       <header className="st-top">
         <div className="st-top-inner">
-          {/* The mark, then the CLINIC's name — not the product's. Staff
-              open this at 7am to run the fridge check; the name that
-              matters to them is the one on the door they walked through.
-              The mark is what says which product they are in. */}
+          {/* THE SAME LOCKUP AS THE PUBLIC SITE, then the clinic's name.
+              This header used to carry the mark ALONE with the clinic's
+              name where the wordmark belongs — reasonable in isolation,
+              and wrong in aggregate: the product looked like one brand
+              on the marketing site and a different one the moment you
+              signed in. The clinic's name still matters more to somebody
+              at 7am than the product's does, so it stays — after the
+              lockup and a divider, rather than instead of it. */}
           <a className="st-brand" href="/staff">
-            <BrandIcon size={22} />
+            <BrandLockup />
+            <span className="st-brand-sep" aria-hidden="true" />
             <span className="st-brand-name">{orgName}</span>
             <span className="st-brand-tag">Staff</span>
           </a>

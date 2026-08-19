@@ -1,8 +1,7 @@
+import BrandLockup from "@/app/components/BrandLockup";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import BrandIcon from "@/app/components/BrandIcon";
 import { getClinicAnalytics, type ClickSummary } from "@/lib/clinic-analytics";
-import Wordmark from "@/app/components/Wordmark";
 import { PRODUCT_NAME } from "@/lib/site";
 
 export const metadata = {
@@ -69,8 +68,7 @@ export default async function ClinicAnalyticsPage({
     <div className="analytics-page">
       <header className="site-header">
         <div className="brand">
-          <BrandIcon />
-          <Wordmark />
+          <BrandLockup />
         </div>
       </header>
 

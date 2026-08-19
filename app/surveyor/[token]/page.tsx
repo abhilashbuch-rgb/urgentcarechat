@@ -1,10 +1,9 @@
+import BrandLockup from "@/app/components/BrandLockup";
 import type { Metadata } from "next";
 import { redeem, asSurveyor } from "@/lib/staff/surveyor";
 import { getTenantBySlug } from "@/lib/tenants";
 import { formatSignedAt } from "@/lib/staff/labels";
 import { KIND_LABELS } from "@/lib/staff/credentials";
-import BrandIcon from "@/app/components/BrandIcon";
-import Wordmark from "@/app/components/Wordmark";
 
 // The inspector's view. No session, no account, no writes.
 //
@@ -104,8 +103,7 @@ export default async function SurveyorView({
     <div className="sv">
       <header className="sv-top">
         <span className="sv-brand">
-          <BrandIcon size={26} />
-          <Wordmark />
+          <BrandLockup />
         </span>
         <span className="sv-badge">Inspector view · read only</span>
       </header>
@@ -267,8 +265,7 @@ function Expired() {
     <div className="sv sv-gone">
       <div className="sv-gone-card">
         <span className="sv-brand">
-          <BrandIcon size={26} />
-          <Wordmark />
+          <BrandLockup />
         </span>
         <h1 className="sv-h1">This inspection link has expired</h1>
         <p className="sv-sub">

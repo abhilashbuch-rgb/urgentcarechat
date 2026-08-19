@@ -5804,3 +5804,27 @@ body {
   .st-install-actions { width: 100%; }
   .st-install-actions .st-btn { flex: 1; }
 }
+
+/* ---------- the one lockup ---------- */
+
+/* The mark and the wordmark are one unit and wrap as one. Without this
+   the two halves could break across lines independently in a flex
+   header, which is the one way a lockup can still look wrong after
+   being made a single component. */
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* Divides the product's identity from the clinic's in the staff header.
+   A rule rather than a bullet or a slash: it separates without adding a
+   character somebody has to read. */
+.st-brand-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 4px 2px;
+  background: var(--rule);
+  flex-shrink: 0;
+}

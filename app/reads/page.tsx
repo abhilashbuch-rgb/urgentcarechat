@@ -1,9 +1,8 @@
+import BrandLockup from "@/app/components/BrandLockup";
 import Link from "next/link";
-import BrandIcon from "@/app/components/BrandIcon";
 import { type HealthTopic } from "@/lib/medlineplus";
 import { getTodaysReads } from "@/lib/health-reads";
 import FluBanner from "@/app/components/FluBanner";
-import Wordmark from "@/app/components/Wordmark";
 import { PRODUCT_NAME } from "@/lib/site";
 
 export const metadata = {
@@ -29,8 +28,7 @@ export default async function ReadsPage() {
     <div className="reads-page">
       <header className="site-header">
         <div className="brand">
-          <BrandIcon />
-          <Wordmark />
+          <BrandLockup />
         </div>
       </header>
 

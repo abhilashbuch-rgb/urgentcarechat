@@ -1,7 +1,6 @@
+import BrandLockup from "@/app/components/BrandLockup";
 import type { Metadata } from "next";
 import Link from "next/link";
-import BrandIcon from "@/app/components/BrandIcon";
-import Wordmark from "@/app/components/Wordmark";
 import { PRODUCT_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -41,8 +40,7 @@ export default function DemoSurveyor() {
     <div className="sv">
       <header className="sv-top">
         <span className="sv-brand">
-          <BrandIcon size={26} />
-          <Wordmark />
+          <BrandLockup />
         </span>
         <span className="sv-badge">Demo &middot; inspector view, sample data</span>
       </header>

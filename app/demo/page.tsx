@@ -1,7 +1,6 @@
+import BrandLockup from "@/app/components/BrandLockup";
 import Link from "next/link";
 import type { Metadata } from "next";
-import BrandIcon from "@/app/components/BrandIcon";
-import Wordmark from "@/app/components/Wordmark";
 import { PRODUCT_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -49,8 +48,7 @@ export default function DemoIndex() {
     <div className="st-page st-page-narrow demo-index">
       <header className="demo-index-head">
         <Link href="/" className="demo-index-brand">
-          <BrandIcon size={28} />
-          <Wordmark />
+          <BrandLockup />
         </Link>
         <Link href="/start" className="demo-index-cta">
           Start the real trial
