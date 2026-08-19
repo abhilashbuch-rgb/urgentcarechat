@@ -4607,6 +4607,34 @@ body {
 }
 .st-select { appearance: auto; }
 
+.st-num-field { display: flex; flex-direction: column; gap: 8px; }
+
+/* One-tap presets for a reading that lands on the same few numbers shift
+   after shift. Selected state uses the app's one accent rather than a
+   second "confirmed" green — this brand pass already spent a session
+   collapsing six competing blues into one committed hue, and a second
+   color meaning "picked" would undo that for the sake of one control. */
+.st-preset-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.st-preset-chip {
+  padding: 7px 11px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: #fff;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.st-preset-chip:hover { background: var(--blue-050); }
+.st-preset-on {
+  background: var(--volt-ink);
+  border-color: var(--volt-ink);
+  color: #fff;
+}
+.st-preset-on:hover { background: var(--volt-ink); }
+
 /* Yes/No and short option sets as buttons: one tap, no menu to open. */
 .st-toggle { display: flex; gap: 6px; }
 .st-toggle-wide { flex-wrap: wrap; }

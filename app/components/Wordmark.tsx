@@ -23,7 +23,23 @@ import { PRODUCT_WORDS } from "@/lib/site";
 // it is punctuation doing a picture's job, and there is nothing in it
 // to read aloud.
 
-export default function Wordmark({ size = "sm" }: { size?: "sm" | "lg" }) {
+// A regulatory-descriptor variant of the second line, for the screens a
+// buyer or a brand-new hire reaches before anything else has told them
+// what this is — the sign-in card, not the marketing header, which
+// already spends a whole hero explaining it in specific, concrete terms.
+// Kept out of the compact nav lockup on purpose: at 10px letterspaced
+// caps this line is roughly four times as wide as "BINDER", and the top
+// nav has no room to wrap it without the same overflow bugs this brand
+// pass already spent a session hunting down.
+const REGULATORY_TAGLINE = "Clinical safety & regulatory infrastructure";
+
+export default function Wordmark({
+  size = "sm",
+  tagline = false,
+}: {
+  size?: "sm" | "lg";
+  tagline?: boolean;
+}) {
   const [first, second] = PRODUCT_WORDS;
   return (
     <span className={`wordmark wordmark-${size}`}>
@@ -33,7 +49,7 @@ export default function Wordmark({ size = "sm" }: { size?: "sm" | "lg" }) {
           .
         </span>
       </span>
-      <span className="wordmark-2">{second}</span>
+      <span className="wordmark-2">{tagline ? REGULATORY_TAGLINE : second}</span>
     </span>
   );
 }

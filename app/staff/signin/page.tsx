@@ -94,7 +94,7 @@ export default async function StaffSignIn({
             than describe it. */}
         <div className="st-signin-brand">
           <BrandIcon size={34} />
-          <Wordmark />
+          <Wordmark tagline />
         </div>
         <h1 className="st-signin-title">Staff sign-in</h1>
         {/* Says what this is, not what it isn't. The previous line

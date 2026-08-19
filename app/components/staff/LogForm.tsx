@@ -280,22 +280,43 @@ function FieldRow({
 
       <div className="st-log-input">
         {field.type === "number" && (
-          <div className="st-num-wrap">
-            <input
-              data-field={field.id}
-              className="st-input st-input-num"
-              type="number"
-              // Brings up a keypad with a decimal point on a phone rather
-              // than the full keyboard.
-              inputMode="decimal"
-              step={field.step ?? "any"}
-              value={value === null || value === undefined ? "" : String(value)}
-              onChange={(e) =>
-                onChange(e.target.value === "" ? null : Number(e.target.value))
-              }
-              autoFocus={autoFocus}
-            />
-            {field.unit && <span className="st-num-unit">{field.unit}</span>}
+          <div className="st-num-field">
+            {field.presets && field.presets.length > 0 && (
+              // Tapping a chip sets the exact same value a keyboard
+              // would have produced — it runs through the identical
+              // min/max check, so a chip cannot be a way to skip the
+              // out-of-range flow, only a way to skip typing.
+              <div className="st-preset-row" role="group" aria-label={`${field.label} presets`}>
+                {field.presets.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    className={`st-preset-chip${value === p ? " st-preset-on" : ""}`}
+                    onClick={() => onChange(p)}
+                  >
+                    {p}
+                    {field.unit ? ` ${field.unit}` : ""}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="st-num-wrap">
+              <input
+                data-field={field.id}
+                className="st-input st-input-num"
+                type="number"
+                // Brings up a keypad with a decimal point on a phone rather
+                // than the full keyboard.
+                inputMode="decimal"
+                step={field.step ?? "any"}
+                value={value === null || value === undefined ? "" : String(value)}
+                onChange={(e) =>
+                  onChange(e.target.value === "" ? null : Number(e.target.value))
+                }
+                autoFocus={autoFocus}
+              />
+              {field.unit && <span className="st-num-unit">{field.unit}</span>}
+            </div>
           </div>
         )}
 
