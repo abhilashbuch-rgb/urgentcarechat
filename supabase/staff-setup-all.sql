@@ -7119,3 +7119,510 @@ where not exists (
   select 1 from staff.policy_docs d
    where d.org_slug = o.slug and d.key = 'code-of-ethics' and d.version = 1
 );
+
+
+-- ========== staff-ops-manual.sql ==========
+
+-- ============================================================
+-- THE OPERATIONS MANUAL
+--
+-- Run AFTER supabase/staff-ethics.sql. Idempotent.
+--
+-- A separate signed document rather than a section of the code of
+-- ethics, because they answer different questions and are read at
+-- different moments. The code of ethics is what to do when the rules run
+-- out; this is the rules. Somebody looks one of them up in a crisis of
+-- conscience and the other one on their third day when they cannot
+-- remember who orders the gloves.
+--
+-- IT IS A SPINE, NOT AN ENCYCLOPAEDIA. The packet already holds eleven
+-- policy documents, seven shift logs, eleven emergency guides and a
+-- scope of practice per job. Restating any of that here would create two
+-- copies that drift, and the copy people happen to read would start
+-- being the out-of-date one. So this points at them by name and fills
+-- only the gaps nothing else covers — hours, coverage, opening and
+-- closing, supplies, retention, and what to do when something breaks.
+--
+-- RETENTION PERIODS ARE THE PART MOST OFTEN GOT WRONG, so each one below
+-- carries its own citation and they are not rounded to a convenient
+-- number. Note particularly that the exposure-records period is
+-- duration of employment PLUS thirty years, which is far longer than
+-- anybody guesses, and that it is the reason a clinic cannot simply
+-- purge everything after seven.
+--
+-- Same substitution mechanism as the code of ethics — resolved once at
+-- insert, never at render, because staff.attestations hashes the body
+-- and lib/staff/compliance.ts re-verifies that hash against
+-- policy_docs.body_md on every read. See the header of staff-ethics.sql
+-- for the full reasoning.
+--
+-- Seeded as a DRAFT. Half of what follows is a placeholder a center
+-- administrator must replace with what is actually true of this clinic —
+-- its hours, its suppliers, its call rota. Publishing it unedited would
+-- put a document full of blanks in front of staff as their employer's
+-- operating procedure, so published_at stays null until somebody has
+-- been through it.
+-- ============================================================
+
+insert into staff.policy_docs
+  (org_slug, key, version, title, category, citation, summary, body_md,
+   attestation, renew_months, sort_order, applies_to)
+select o.slug, 'operations-manual', 1,
+  'Operations manual',
+  'operations',
+  'OSHA recordkeeping, 29 C.F.R. § 1904.33; OSHA access to exposure and medical records, 29 C.F.R. § 1910.1020(d); Bloodborne Pathogens training records, 29 C.F.R. § 1910.1030(h); HIPAA documentation retention, 45 C.F.R. § 164.316(b)(2)',
+  'How this center runs day to day, and where to look for everything else.',
+  staff.render_org_text(o.slug, $md$
+## What this is
+
+The day-to-day operating procedure for **{{center_name}}**. If you need to know
+how something is done here, start here. If this document does not answer it,
+the last section says where to look.
+
+Everything marked *[to be completed]* has to be filled in by a center
+administrator before this is published. A manual with blanks in it is worse
+than no manual, because it teaches people that the manual is not maintained.
+
+## Hours and coverage
+
+- Operating hours: *[to be completed]*
+- Last patient accepted: *[to be completed]*
+- Who opens, and who holds the keys: *[to be completed]*
+- Who to call when someone cannot make a shift: *[to be completed]*
+- After-hours contact for a building or equipment emergency: *[to be completed]*
+
+**The center does not open without a provider on site.** If the provider is
+delayed, the doors stay shut and waiting patients are told honestly how long
+it will be — not brought inside to wait in rooms.
+
+## Opening and closing
+
+Both are logged, not remembered. The opening and closing sheets are in this
+system under **Logs**, and they are the record — a shift that was worked but
+not logged did not happen as far as any inspection is concerned.
+
+Opening covers the drawer count, privacy screens and the lobby walk. Closing
+covers drawer reconciliation, the end-of-day PHI sweep, the log book close and
+the card batch. The center administrator's day-sheet reconciliation is a
+separate sheet from the front desk's closing sheet, deliberately: one person
+should not sign for both halves of a money control.
+
+## Who does what
+
+Every person has a job set on their account, and their board only shows the
+work that belongs to that job. That is not a display preference — it is the
+scope of practice, and it is set out per job under **Rules**.
+
+Two things follow from it that people get wrong:
+
+- **A task not on your board is not yours to do**, however busy it is and
+  however capable you are. Ask the person whose board it is on.
+- **The narcotics count needs two people**, one counting and one witnessing.
+  That is the control. One person doing both is not a faster count, it is no
+  count.
+
+## Equipment and supplies
+
+- Ordering, and who approves it: *[to be completed]*
+- Preferred suppliers and account numbers: *[to be completed]*
+- Where the par levels are kept: *[to be completed]*
+- Biomedical / calibration contractor: *[to be completed]*
+- Who to call for the refrigerator, the autoclave, the X-ray unit:
+  *[to be completed]*
+
+**Anything out of range gets tagged before it gets reported.** A refrigerator
+reading warm is taken out of service with a DO NOT USE tag and the stock
+quarantined — not discarded — before anybody makes a phone call. Discarding
+vaccine before the manufacturer has been asked is how a recoverable excursion
+becomes a loss.
+
+## Records, and how long they are kept
+
+These periods are federal minimums. {{state}} may require longer, and where it
+does, the longer period wins.
+
+- **OSHA 300 log, 300A summary and 301 incident reports — five years** beyond
+  the year they cover. *(29 C.F.R. § 1904.33.)*
+- **Employee exposure records and medical records — duration of employment
+  plus thirty years.** *(29 C.F.R. § 1910.1020(d).)* This is the one nobody
+  expects, and it is why a general "purge after seven years" rule is unsafe.
+- **Bloodborne pathogens training records — three years** from the date of
+  training. *(29 C.F.R. § 1910.1030(h)(2)(ii).)*
+- **HIPAA policies, and documentation of actions and assessments required by
+  the Security Rule — six years** from creation or last effective date.
+  *(45 C.F.R. § 164.316(b)(2).)*
+- **Patient records — set by {{state}} law**, not by federal rule, and the
+  period differs for minors. *[to be completed: the period for {{state}},
+  confirmed with counsel.]*
+
+Nothing recorded in this system is deleted or edited. Corrections are made as
+amendments that sit alongside the original, which is why there is no delete
+button anywhere in it.
+
+## Money
+
+- Cash drawer float and where it is held: *[to be completed]*
+- Who prepares and who takes the deposit: *[to be completed]*
+- Deposit frequency: *[to be completed]*
+
+**The person who counts is not the person who reconciles**, wherever staffing
+allows it. Where it does not, the variance is written down and initialled by
+the second person the next morning rather than resolved quietly.
+
+A variance is reported the day it is found. A shortfall found and reported is
+a reconciliation; the same shortfall found later by somebody else is an
+investigation.
+
+## When something goes wrong
+
+- **A patient safety event, an injury, or a near miss** is an incident report,
+  filed the same day, under the incident reporting policy in this packet. Near
+  misses count. They are the cheapest information this center will ever get.
+- **A privacy breach, or a suspected one** — including an email to the wrong
+  address — goes to the privacy officer immediately, not after somebody has
+  worked out how serious it was. Breach notification runs on a clock that
+  starts at discovery.
+- **Equipment failure** is logged and tagged before the shift ends, even when
+  a workaround was found.
+- **Anything you are unsure about** goes to {{medical_director}} or a center
+  administrator. Asking is expected here, not tolerated.
+
+Nobody is penalised for reporting something in good faith. That is stated in
+the code of ethics and it is meant literally.
+
+## Where everything else lives
+
+| What you need | Where it is |
+|---|---|
+| What your job may and may not do | **Rules** |
+| Today's shift checks | **Logs** |
+| Walked runbooks, signed at the end | **Rounds** |
+| Anaphylaxis, code blue, needlestick, eye splash | **Learning** |
+| Your own license and certification dates | **My documents** |
+| The clinic's own protocols, searchable | **Protocols** |
+| Deadlines and who owns them | **Obligations** |
+| What to do when the rules run out | **Code of ethics** |
+
+## Keeping this true
+
+This manual is reviewed at least annually and whenever something in it
+changes. A center administrator owns it. If you find something in here that is
+no longer how the center works, say so — a manual nobody corrects becomes a
+manual nobody reads, and then it becomes evidence of what the center said it
+did rather than what it did.
+$md$),
+  'I have read this operations manual and I understand how this center runs. Where it did not answer something, I know where to look and who to ask.',
+  12,
+  6,
+  null
+from staff.orgs o
+where not exists (
+  select 1 from staff.policy_docs d
+   where d.org_slug = o.slug and d.key = 'operations-manual' and d.version = 1
+);
+
+
+-- ========== staff-reports.sql ==========
+
+-- ============================================================
+-- SCHEDULED LOG REPORTS
+--
+-- Run AFTER supabase/staff-alerts.sql and staff-surveyor.sql. Idempotent.
+--
+-- The owner wants the week's logs to arrive without asking for them, at a
+-- cadence they choose, with every timestamp and every name on it. Daily,
+-- weekly, monthly, or all three at once for somebody who wants the daily
+-- AND the roll-up.
+--
+-- ---------------------------------------------------------------
+-- A LINK, NOT AN ATTACHMENT. This was the design question.
+-- ---------------------------------------------------------------
+-- These reports name people. Who filed what, at what minute, from how far
+-- away, and what they wrote in a corrective action. An emailed PDF of
+-- that lives in an inbox permanently, syncs to every phone on the
+-- account, gets forwarded, and sits in backups nobody controls. It cannot
+-- be recalled when an administrator leaves or a center changes hands.
+--
+-- A tokened link can be expired and revoked, and it records whether
+-- anybody actually opened it — which an attachment never can. It also
+-- reuses the surveyor-token design in staff-surveyor.sql, which is
+-- already proven here: the token is never stored, only its SHA-256, so a
+-- database dump yields no working links.
+--
+-- THE FRICTION OBJECTION IS REAL, so the email carries the headline
+-- numbers in its body — filed, missed, out of range, off site. An owner
+-- whose week was clean never has to click anything. The link is for the
+-- week that was not.
+--
+-- ---------------------------------------------------------------
+-- THE PDF IS NOT STORED. It is rendered when the link is opened.
+-- ---------------------------------------------------------------
+-- Storing generated files would mean a storage bucket, a cleanup job for
+-- expired ones, and a permanent question about whether the stored copy
+-- still matches the record. Rendering on open needs none of that: the row
+-- below holds only the PERIOD, and the report is built from the live
+-- tables each time. The binder renderer already does 90 days in ~200ms,
+-- so a week is not worth caching.
+--
+-- It also means a corrected record shows corrected. A stored PDF from
+-- Monday would keep asserting Monday's version of events after an
+-- amendment, which is the opposite of what a compliance record is for.
+-- ============================================================
+
+-- ---------- 1. Who gets what, how often ----------
+
+-- ONE ROW PER (org, email, cadence), NOT one row per person with three
+-- booleans. Each cadence has its own last_sent_at and its own next due
+-- date, and somebody who wants daily and monthly genuinely wants two
+-- independent schedules — collapsing them into one row means one
+-- last_sent_at doing two jobs and a daily send suppressing the monthly.
+create table if not exists staff.report_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  org_slug text not null references staff.orgs(slug) on delete cascade,
+
+  -- An address, not a user id. The owner who wants the weekly report may
+  -- not have a staff account at all, and requiring one to receive a PDF
+  -- would mean provisioning logins for accountants and franchise
+  -- managers who should never see the inside of the app.
+  email text not null,
+
+  -- A name for the report's greeting and for the audit trail.
+  label text,
+
+  cadence text not null check (cadence in ('daily', 'weekly', 'monthly')),
+
+  -- Local hour to send, 0-23, in the ORG's timezone. Default 7 so the
+  -- daily lands before the clinic opens and the weekly lands with Monday
+  -- morning coffee.
+  send_hour integer not null default 7 check (send_hour between 0 and 23),
+
+  -- Weekly only: 0 = Sunday .. 6 = Saturday, matching Postgres dow.
+  -- Default 1 (Monday) so a weekly report covers a finished week.
+  send_dow integer check (send_dow between 0 and 6),
+
+  -- Monthly only: day of month. Capped at 28 so no cadence silently skips
+  -- February — a subscription set to the 31st would fire seven times a
+  -- year and the owner would never know which months it missed.
+  send_dom integer check (send_dom between 1 and 28),
+
+  active boolean not null default true,
+
+  -- The last period this subscription was sent for. Compared against the
+  -- period that is currently due, which is what makes the sweep
+  -- idempotent: a cron that fires twice, or a retry after a timeout,
+  -- cannot send the same report twice.
+  last_period_end date,
+  last_sent_at timestamptz,
+
+  created_by uuid references staff.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+
+  -- One subscription per address per cadence per org. Re-subscribing is
+  -- an update, not a second email arriving twice every morning.
+  unique (org_slug, email, cadence)
+);
+
+-- The shape each cadence actually needs, enforced rather than assumed. A
+-- weekly row with no day-of-week has no defined send time, and a monthly
+-- row carrying a day-of-week is a row somebody edited from weekly and
+-- half-finished.
+do $$ begin
+  alter table staff.report_subscriptions add constraint staff_report_sub_shape
+    check (
+      (cadence = 'daily'   and send_dow is null     and send_dom is null)
+      or (cadence = 'weekly'  and send_dow is not null and send_dom is null)
+      or (cadence = 'monthly' and send_dow is null     and send_dom is not null)
+    );
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  alter table staff.report_subscriptions add constraint staff_report_sub_email
+    check (email ~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]{2,}$');
+exception when duplicate_object then null; end $$;
+
+create index if not exists staff_report_subs_due
+  on staff.report_subscriptions (org_slug, cadence) where active;
+
+
+-- ---------- 2. What was sent, and was it opened ----------
+
+create table if not exists staff.report_runs (
+  id uuid primary key default gen_random_uuid(),
+  org_slug text not null references staff.orgs(slug) on delete cascade,
+  subscription_id uuid references staff.report_subscriptions(id) on delete set null,
+
+  cadence text not null check (cadence in ('daily', 'weekly', 'monthly')),
+
+  -- The window the report covers, inclusive. Stored rather than derived
+  -- so a report opened in a year still renders the period it was sent
+  -- for, not a period recomputed from today.
+  period_start date not null,
+  period_end   date not null,
+
+  -- SHA-256 of the link token, hex. Never the token itself.
+  token_hash text not null,
+  expires_at timestamptz not null,
+
+  sent_to text not null,
+  sent_at timestamptz,
+  -- Null until delivery is attempted; set when the provider accepts it.
+  send_error text,
+
+  -- Was it read. Answers "does the owner actually look at these" a year
+  -- later, which is the question that decides whether this feature earns
+  -- its place.
+  viewed_count integer not null default 0,
+  last_viewed_at timestamptz,
+
+  revoked_at timestamptz,
+
+  created_at timestamptz not null default now(),
+
+  constraint staff_report_period check (period_end >= period_start)
+);
+
+do $$ begin
+  alter table staff.report_runs add constraint staff_report_token_hash_shape
+    check (token_hash ~ '^[0-9a-f]{64}$');
+exception when duplicate_object then null; end $$;
+
+-- A window is only ever sent once per subscription. The unique index is
+-- what makes that true regardless of how many times a cron retries.
+create unique index if not exists staff_report_runs_once
+  on staff.report_runs (subscription_id, period_end)
+  where subscription_id is not null;
+
+create index if not exists staff_report_runs_token
+  on staff.report_runs (token_hash);
+
+create index if not exists staff_report_runs_org
+  on staff.report_runs (org_slug, created_at desc);
+
+
+-- ---------- 3. Which period is due right now ----------
+
+-- Returns the period a cadence should cover if it is due at this moment
+-- in the org's timezone, or no row if it is not due.
+--
+-- COMPLETED PERIODS ONLY. A daily report sent at 07:00 covers YESTERDAY,
+-- not the morning it is sent in. A weekly one covers the week that ended,
+-- not the one in progress. Sending a partial period would produce a
+-- report whose "3 logs filed" means nothing, and an owner who learns the
+-- numbers are partial stops reading them.
+--
+-- STABLE, not immutable: it reads the org's timezone.
+create or replace function staff.report_period_due(
+  p_org text, p_cadence text, p_send_hour integer,
+  p_send_dow integer, p_send_dom integer, p_at timestamptz default now()
+) returns table (period_start date, period_end date)
+language plpgsql stable
+as $$
+declare
+  tz    text;
+  local timestamp;
+begin
+  select timezone into tz from staff.orgs where slug = p_org;
+  if tz is null then tz := 'America/New_York'; end if;
+
+  local := p_at at time zone tz;
+
+  -- Not the send hour yet, so nothing is due. Compared on the hour rather
+  -- than the minute because the sweep runs hourly; a subscription set to
+  -- 07:00 fires on the 07:00 sweep whenever within that hour it lands.
+  if extract(hour from local)::integer <> p_send_hour then
+    return;
+  end if;
+
+  if p_cadence = 'daily' then
+    return query select (local::date - 1), (local::date - 1);
+
+  elsif p_cadence = 'weekly' then
+    if extract(dow from local)::integer <> p_send_dow then return; end if;
+    -- The seven days ending yesterday.
+    return query select (local::date - 7), (local::date - 1);
+
+  elsif p_cadence = 'monthly' then
+    if extract(day from local)::integer <> p_send_dom then return; end if;
+    -- The whole of last calendar month, regardless of which day of this
+    -- month the subscription fires on. A "monthly" report covering the
+    -- 30 days before the 12th is not a month anybody can reconcile
+    -- against anything else.
+    return query
+      select (date_trunc('month', local::date) - interval '1 month')::date,
+             (date_trunc('month', local::date) - interval '1 day')::date;
+  end if;
+end $$;
+
+revoke all on function staff.report_period_due(text, text, integer, integer, integer, timestamptz) from public;
+grant execute on function staff.report_period_due(text, text, integer, integer, integer, timestamptz) to staff_app;
+
+
+-- ---------- 4. What goes in the report ----------
+
+-- Every filing in a window with everything a reader needs to judge it:
+-- who, when to the minute, whether it was in range, what they did about
+-- it if not, and where they filed it from.
+--
+-- security_invoker so it is read under the caller's RLS, and dropped
+-- first because CREATE OR REPLACE VIEW can only append columns.
+drop view if exists staff.report_log_rows cascade;
+create view staff.report_log_rows
+with (security_invoker = true)
+as
+select r.id,
+       r.org_slug,
+       i.due_date,
+       t.name          as form_name,
+       t.slug          as form_slug,
+       t.category,
+       i.slot,
+       r.submitted_at,
+       u.legal_name    as filed_by,
+       r.has_out_of_range,
+       r.out_of_range_fields,
+       r.corrective_action,
+       r.location_status,
+       round(r.filed_distance_m)::integer as distance_m,
+       r.answers_json
+  from staff.form_responses r
+  join staff.form_instances i on i.id = r.instance_id
+  join staff.form_templates t on t.id = i.template_id
+  left join staff.users u     on u.id = r.submitted_by
+ order by i.due_date, t.sort_order, i.slot;
+
+grant select on staff.report_log_rows to staff_app;
+
+-- The headline numbers that go in the EMAIL BODY, so a clean period needs
+-- no click. Deliberately a handful of integers and nothing else: an owner
+-- reading this on a phone is answering one question, which is whether
+-- they need to look further.
+drop view if exists staff.report_totals cascade;
+create view staff.report_totals
+with (security_invoker = true)
+as
+select r.org_slug,
+       i.due_date,
+       count(*)                                        as filed,
+       count(*) filter (where r.has_out_of_range)       as out_of_range,
+       count(*) filter (where r.location_status = 'off_site') as off_site,
+       count(distinct r.submitted_by)                  as people
+  from staff.form_responses r
+  join staff.form_instances i on i.id = r.instance_id
+ group by r.org_slug, i.due_date;
+
+grant select on staff.report_totals to staff_app;
+
+-- DELETE IS REVOKED, UPDATE IS NOT — and the distinction is the point.
+-- A report run must stay updatable because two things are written after
+-- the row is created: sent_at once the mail provider accepts it, and the
+-- view counter each time the link is opened. Revoking update would have
+-- made the view counter silently impossible, which is the same mistake
+-- the obligations table made once already (see staff-security.sql: the
+-- schema's ALTER DEFAULT PRIVILEGES grants delete on every future table,
+-- so each one needs its own explicit revoke).
+--
+-- Deleting is what must not happen. A delivery history with rows removed
+-- is not a delivery history.
+grant select, insert, update on staff.report_runs to staff_app;
+revoke delete on staff.report_runs from staff_app;
+grant select, insert, update, delete on staff.report_subscriptions to staff_app;

@@ -43,6 +43,7 @@ const RESERVED_ROOT_PATHS = new Set([
   "demo",
   "start",
   "verify",
+  "report",
 ]);
 
 // Conservative slug shape — also keeps files (anything with a dot, e.g.
@@ -231,7 +232,14 @@ export async function proxy(request: NextRequest) {
   //
   // Cache-Control because these are per-inspector documents and must not
   // sit in a shared cache keyed only on the path.
-  if (request.nextUrl.pathname.startsWith("/surveyor/")) {
+  // Same treatment for a scheduled report link: its token is its path,
+  // so the URL is the credential and must not leak through a Referer
+  // header, a search index, or a shared cache. See the surveyor note
+  // below — the reasoning is identical and deliberately not duplicated.
+  if (
+    request.nextUrl.pathname.startsWith("/surveyor/") ||
+    request.nextUrl.pathname.startsWith("/report/")
+  ) {
     const res = NextResponse.next();
     res.headers.set("Referrer-Policy", "no-referrer");
     res.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");

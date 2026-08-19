@@ -29,10 +29,10 @@ import type { Binder } from "@/lib/staff/accreditation";
 // an 80-page binder with no navigation pane will page through the first
 // ten and judge the rest by those.
 
-const A4 = { w: 595.28, h: 841.89 };
-const M = 46; // page margin
+export const A4 = { w: 595.28, h: 841.89 };
+export const M = 46; // page margin
 const INK = rgb(0.04, 0.15, 0.25);
-const SOFT = rgb(0.28, 0.4, 0.54);
+export const SOFT = rgb(0.28, 0.4, 0.54);
 const FAINT = rgb(0.55, 0.64, 0.73);
 const RULE = rgb(0.84, 0.89, 0.94);
 const ROYAL = rgb(0.09, 0.23, 0.54);
@@ -46,7 +46,7 @@ const VOLT = rgb(0.133, 0.827, 0.933);
 // against the cool trace.
 const GOLD_MID = rgb(0.851, 0.671, 0.208);
 
-interface Ctx {
+export interface Ctx {
   doc: PDFDocument;
   page: PDFPage;
   y: number;
@@ -103,7 +103,7 @@ export async function renderBinder(b: Binder): Promise<Uint8Array> {
 /* layout primitives                                                  */
 /* ---------------------------------------------------------------- */
 
-function newPage(c: Ctx): void {
+export function newPage(c: Ctx): void {
   c.page = c.doc.addPage([A4.w, A4.h]);
   c.y = A4.h - M;
   c.pageNo += 1;
@@ -111,11 +111,11 @@ function newPage(c: Ctx): void {
 
 /** Reserve vertical space, starting a page when it will not fit. Every
  *  draw call goes through this so nothing is ever half off the page. */
-function need(c: Ctx, h: number): void {
+export function need(c: Ctx, h: number): void {
   if (c.y - h < M + 26) newPage(c);
 }
 
-function text(
+export function text(
   c: Ctx,
   s: string,
   opts: { size?: number; font?: PDFFont; color?: ReturnType<typeof rgb>; x?: number } = {}
@@ -139,7 +139,7 @@ function text(
  * Curly quotes, dashes and degree signs are mapped; anything else
  * outside the range becomes a question mark rather than an exception.
  */
-function sanitise(s: string): string {
+export function sanitise(s: string): string {
   return s
     .replace(/[‘’]/g, "'")
     .replace(/[“”]/g, '"')
@@ -149,7 +149,7 @@ function sanitise(s: string): string {
     .replace(/[^\x20-\x7E]/g, "?");
 }
 
-function heading(c: Ctx, title: string, sub?: string): void {
+export function heading(c: Ctx, title: string, sub?: string): void {
   need(c, 60);
   // Recorded before drawing, so the outline points at the page the
   // heading actually landed on rather than the one we were on before.
@@ -162,7 +162,7 @@ function heading(c: Ctx, title: string, sub?: string): void {
   c.y -= 8;
 }
 
-function kv(c: Ctx, k: string, v: string | null | undefined): void {
+export function kv(c: Ctx, k: string, v: string | null | undefined): void {
   need(c, 15);
   const label = `${k}`;
   c.page.drawText(sanitise(label), {
@@ -182,14 +182,14 @@ function kv(c: Ctx, k: string, v: string | null | undefined): void {
   c.y -= 15;
 }
 
-interface Col<T> {
+export interface Col<T> {
   label: string;
   width: number;
   get: (row: T) => string;
   mono?: boolean;
 }
 
-function table<T>(c: Ctx, cols: Col<T>[], rows: T[], emptyNote: string): void {
+export function table<T>(c: Ctx, cols: Col<T>[], rows: T[], emptyNote: string): void {
   if (rows.length === 0) {
     text(c, emptyNote, { size: 9, color: FAINT });
     c.y -= 6;
@@ -665,7 +665,7 @@ function section6(c: Ctx, b: Binder): void {
 
 /** Page numbers and provenance on every page, added at the end when the
  *  total is finally known. */
-function footerAll(c: Ctx): void {
+export function footerAll(c: Ctx): void {
   const pages = c.doc.getPages();
   const stamp = `${c.org} — generated ${c.generatedAt.slice(0, 19).replace("T", " ")} UTC`;
   pages.forEach((p, i) => {
@@ -702,7 +702,7 @@ function footerAll(c: Ctx): void {
  * navigation pane is empty, and an 80-page binder with no navigation is
  * one a surveyor pages through for ten pages and then puts down.
  */
-function writeOutline(c: Ctx): void {
+export function writeOutline(c: Ctx): void {
   if (c.marks.length === 0) return;
   const ctxLow = c.doc.context;
 
