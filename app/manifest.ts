@@ -11,17 +11,22 @@ import { PRODUCT_NAME } from "@/lib/site";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: `${PRODUCT_NAME} — clinic compliance`,
-    short_name: "Medicin",
+    // The brand's own lowercase form, dot included — it is the domain
+    // compressed and it is what the wordmark says everywhere else.
+    short_name: "medicin.",
     description:
-      "Daily and per-shift compliance logs for urgent care staff.",
+      "Daily and per-shift compliance logs for clinical staff.",
     start_url: "/staff",
     scope: "/",
     display: "standalone",
     background_color: "#ffffff",
-    // The interface navy, not the red this used to carry — that was the
-    // old palette's accent and it painted the Android status bar and the
-    // launch splash in a colour the app no longer uses anywhere.
-    theme_color: "#0a2540",
+    // --ground from globals.css, exactly. This was #0a2540, a navy from
+    // the palette before the identity pass, and it painted the Android
+    // status bar and the launch splash a colour that appears nowhere
+    // else in the app. A third navy was proposed (#003366) and would
+    // have had the same problem. There is one ground colour and this
+    // is it.
+    theme_color: "#0b1220",
     orientation: "portrait",
     icons: [
       { src: "/icon.png", sizes: "512x512", type: "image/png", purpose: "any" },

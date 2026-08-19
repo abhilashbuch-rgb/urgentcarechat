@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import BrandIcon from "@/app/components/BrandIcon";
-import { contactMailto, PRODUCT_NAME } from "@/lib/site";
+import { PRODUCT_NAME } from "@/lib/site";
 import Wordmark from "@/app/components/Wordmark";
 
 // The homepage sells one thing in three seconds: pass inspections without
@@ -172,12 +172,20 @@ export default function LandingPage() {
             </Link>
           </div>
 
+          {/* ONE PRICE PER CLINIC, no volume discount. A second clinic is a
+              second set of logs, alarms, reports and inspections — the work
+              the product does does not get cheaper per site, and a
+              published discount sets the ceiling for every later
+              negotiation. Groups are handled by adding clinics, each at
+              the same price. */}
           <p className="mh-multi">
-            Three or more clinics? $99 per clinic per month.{" "}
-            <a href={contactMailto("Multi-unit pricing")}>
-              Talk to us
-            </a>
-            .
+            More than one clinic? Add them from inside the app — same price
+            each, one login across all of them.
+          </p>
+
+          <p className="mh-multi">
+            Hospital system or a large network?{" "}
+            <Link href="/enterprise">Talk to us about enterprise terms</Link>.
           </p>
         </section>
 

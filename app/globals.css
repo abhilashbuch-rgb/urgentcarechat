@@ -5724,3 +5724,83 @@ body {
 }
 .tr-fac-label { font-size: 13.5px; font-weight: 600; color: var(--ink); }
 .tr-fac-hint { font-size: 11.5px; line-height: 1.4; color: var(--ink-soft); }
+
+/* ---------- enterprise enquiry page ---------- */
+
+.ent-card { max-width: 620px; }
+.ent-h2 {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -.01em;
+  margin: 26px 0 8px;
+  color: var(--ink);
+}
+.ent-list { margin: 0 0 4px; padding-left: 18px; }
+.ent-list li {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  margin-bottom: 5px;
+}
+.ent-note { font-size: 12.5px; color: var(--ink-faint); margin-bottom: 8px; }
+.ent-cta { display: block; text-align: center; margin: 26px 0 18px; }
+.ent-prompts-intro { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 6px; }
+.ent-prompts { margin: 0 0 20px; padding-left: 18px; list-style: none; }
+.ent-prompts li {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+  margin-bottom: 3px;
+}
+
+/* ---------- add-to-home-screen banner ---------- */
+
+.st-install {
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: auto;
+  padding: 12px 18px;
+  background: var(--ground, #0b1220);
+  color: #fff;
+  border-top: 2px solid var(--volt);
+}
+.st-install-body strong { display: block; font-size: 13.5px; font-weight: 650; }
+.st-install-body p {
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, .68);
+  margin-top: 2px;
+  max-width: 46ch;
+}
+/* The Share and Add to Home Screen labels are things to LOOK FOR on the
+   device, so they read as keys rather than as emphasis. */
+.st-install-key {
+  color: #fff;
+  font-weight: 600;
+  border-bottom: 1px solid var(--volt);
+}
+.st-install-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.st-install .st-btn {
+  background: transparent;
+  color: rgba(255, 255, 255, .8);
+  border-color: rgba(255, 255, 255, .3);
+  min-height: 38px;
+}
+.st-install .st-btn:hover { border-color: rgba(255, 255, 255, .6); color: #fff; }
+.st-install-go {
+  background: var(--volt) !important;
+  color: var(--ground) !important;
+  border-color: var(--volt) !important;
+  font-weight: 650;
+}
+@media (max-width: 560px) {
+  .st-install { padding: 11px 14px; }
+  .st-install-actions { width: 100%; }
+  .st-install-actions .st-btn { flex: 1; }
+}

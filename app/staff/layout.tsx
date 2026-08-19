@@ -6,6 +6,7 @@ import { withSession } from "@/lib/staff/db";
 import { getProfile } from "@/lib/staff/compliance";
 import Avatar from "@/app/components/staff/Avatar";
 import ShiftChime from "@/app/components/staff/ShiftChime";
+import InstallPrompt from "@/app/components/staff/InstallPrompt";
 import BrandIcon from "@/app/components/BrandIcon";
 
 // The staff shell. Lives at /staff on an org's own hostname
@@ -113,6 +114,12 @@ export default async function StaffLayout({
       </header>
 
       <main className="st-main">{children}</main>
+
+      {/* Sits at the bottom of the signed-in shell, so it only ever
+          reaches staff — and renders nothing at all when the app is
+          already installed, when it has been dismissed, or on a browser
+          where the instruction would not be true. */}
+      <InstallPrompt />
     </div>
   );
 }
