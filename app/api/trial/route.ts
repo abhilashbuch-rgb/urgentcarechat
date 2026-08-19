@@ -20,8 +20,19 @@ export const runtime = "nodejs";
 
 const isEmail = (s: string) => /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(s);
 
+/** Mirrors the CHECK on staff.orgs.facility_type. Kept as a set here so a
+ *  bad value is a silent fallback rather than a constraint violation
+ *  surfacing to a visitor as "that didn't go through". */
+const FACILITY_TYPES = new Set([
+  "urgent_care",
+  "primary_care",
+  "med_spa",
+  "ambulatory_surgery",
+  "dental",
+]);
+
 export async function POST(req: NextRequest) {
-  let body: { clinic?: string; email?: string };
+  let body: { clinic?: string; email?: string; facility?: string };
   try {
     body = await req.json();
   } catch {
@@ -29,6 +40,12 @@ export async function POST(req: NextRequest) {
   }
 
   const clinic = (body.clinic ?? "").trim().slice(0, 120);
+  // Anything unrecognised becomes urgent_care rather than an error: a
+  // stale client sending nothing must still be able to sign up, and the
+  // CHECK constraint would reject a typo with a 500 instead.
+  const facility = FACILITY_TYPES.has(String(body.facility))
+    ? String(body.facility)
+    : "urgent_care";
   const email = (body.email ?? "").trim().toLowerCase().slice(0, 160);
 
   if (clinic.length < 2) {
@@ -51,7 +68,7 @@ export async function POST(req: NextRequest) {
     const slug = await withOrg("", "platform_super_admin", async (sql) => {
       const rows = await sql<{ provision_trial: string }[]>`
         select staff.provision_trial(
-          ${slugFrom(clinic, email)}, ${clinic}, ${email}, 14
+          ${slugFrom(clinic, email)}, ${clinic}, ${email}, 14, ${facility}
         )
       `;
       return rows[0].provision_trial;

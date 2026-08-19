@@ -3,12 +3,28 @@
 import { useState } from "react";
 import { contactMailto } from "@/lib/site";
 
-// Two fields, because two is what it takes. Asking for a phone number or
-// a clinic size here would cost more signups than the data is worth.
+// Two fields and one choice, because that is what it takes. Asking for a
+// phone number or a clinic size here would cost more signups than the
+// data is worth.
+//
+// THE TYPE IS ASKED BECAUSE IT CHANGES THE PRODUCT, not because it is
+// useful to know. It decides which logs the clinic opens with — a med
+// spa has no narcotics count, a primary care has no lead aprons — and
+// the alternative is every clinic starting with an urgent care's board
+// and deleting what does not apply. Defaulted, so somebody who ignores
+// it still gets a working workspace.
+const FACILITIES: { id: string; label: string; hint: string }[] = [
+  { id: "urgent_care", label: "Urgent care", hint: "Crash cart, X-ray, POCT, narcotics" },
+  { id: "primary_care", label: "Primary care or pediatrics", hint: "VFC vaccine storage, POCT" },
+  { id: "med_spa", label: "Medical spa", hint: "Injectable lots, laser safety, autoclave" },
+  { id: "ambulatory_surgery", label: "Surgery center", hint: "MH cart, sterile processing, narcotics" },
+  { id: "dental", label: "Dental or oral surgery", hint: "Spore testing, sedation, amalgam" },
+];
 
 export default function TrialForm() {
   const [clinic, setClinic] = useState("");
   const [email, setEmail] = useState("");
+  const [facility, setFacility] = useState("urgent_care");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -22,7 +38,11 @@ export default function TrialForm() {
     const res = await fetch("/api/trial", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ clinic: clinic.trim(), email: email.trim() }),
+      body: JSON.stringify({
+        clinic: clinic.trim(),
+        email: email.trim(),
+        facility,
+      }),
     }).catch(() => null);
 
     if (!res?.ok) {
@@ -75,6 +95,28 @@ export default function TrialForm() {
           autoFocus
         />
       </label>
+      <fieldset className="tr-fac">
+        <legend className="st-field-label">What kind of clinic</legend>
+        <div className="tr-fac-grid">
+          {FACILITIES.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              className={`tr-fac-card${facility === f.id ? " tr-fac-on" : ""}`}
+              aria-pressed={facility === f.id}
+              onClick={() => setFacility(f.id)}
+            >
+              <span className="tr-fac-label">{f.label}</span>
+              <span className="tr-fac-hint">{f.hint}</span>
+            </button>
+          ))}
+        </div>
+        <span className="st-field-hint">
+          This picks the logs you start with. You can add or remove any of
+          them afterwards, and add more clinics of other kinds later.
+        </span>
+      </fieldset>
+
       <label className="st-field">
         <span className="st-field-label">Your work email</span>
         <input
