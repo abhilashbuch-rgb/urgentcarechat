@@ -361,10 +361,14 @@ function FieldRow({
         )}
 
         {field.type === "select" &&
-          // Four or fewer options become buttons — one tap instead of the
-          // open-then-choose a native select costs. More than that and the
-          // buttons stop fitting, so it goes back to a select.
-          (field.options.length <= 4 ? (
+          // Six or fewer options become buttons — one tap instead of the
+          // two an open-then-choose native select costs. The old limit was
+          // four, on the reasoning that more would not fit; that stopped
+          // being true when .st-toggle-wide got flex-wrap, so the row now
+          // wraps to a second line instead of overflowing. Above six it
+          // goes back to a select: seven assay names wrapped across three
+          // rows is a wall, not a shortcut.
+          (field.options.length <= 6 ? (
             <div className="st-toggle st-toggle-wide" role="group" aria-label={field.label}>
               {field.options.map((o, i) => (
                 <button
