@@ -3,6 +3,8 @@
 import { useMemo, useRef, useState } from "react";
 import { evaluate, type Answers, type Field, type FormSchema } from "@/lib/staff/forms";
 import CameraProof, { type Proof } from "@/app/components/staff/CameraProof";
+import LocationStamp, { type LocationResult } from "@/app/components/staff/LocationStamp";
+import type { OrgGeofence } from "@/lib/staff/geo";
 
 // The three logs where a photograph is worth the extra seconds, because
 // the record is a number somebody typed and the evidence is a display
@@ -37,6 +39,7 @@ export default function LogForm({
   signedBy,
   todayLabel,
   slotLabel,
+  geofence,
 }: {
   slug: string;
   slot: string;
@@ -44,6 +47,7 @@ export default function LogForm({
   signedBy: string;
   todayLabel: string;
   slotLabel: string;
+  geofence: OrgGeofence;
 }) {
   const [answers, setAnswers] = useState<Answers>({});
   const [corrective, setCorrective] = useState("");
@@ -51,6 +55,11 @@ export default function LogForm({
   // see app/api/staff/logs/photo/route.ts. A failed upload must not cost
   // the reading.
   const [proof, setProof] = useState<Proof | null>(null);
+  // Where this is being filed from. Null until the browser answers; the
+  // submit button does not wait on it, because a log blocked behind a
+  // geolocation timeout is a log filed later from somewhere worse.
+  const [loc, setLoc] = useState<LocationResult | null>(null);
+  const [locNote, setLocNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showMissing, setShowMissing] = useState(false);
@@ -68,6 +77,12 @@ export default function LogForm({
   const MIN_CORRECTIVE = 20;
   const correctiveLeft = MIN_CORRECTIVE - corrective.trim().length;
   const correctiveOk = !flagged || correctiveLeft <= 0;
+
+  // Same twenty characters, same reason, and enforced by a CHECK as well
+  // as here — see supabase/staff-geofence.sql.
+  const needsNote = loc?.needsNote === true;
+  const locNoteLeft = MIN_CORRECTIVE - locNote.trim().length;
+  const locNoteOk = !needsNote || locNoteLeft <= 0;
 
   function set(id: string, value: Answers[string]) {
     setAnswers((a) => ({ ...a, [id]: value }));
@@ -98,7 +113,7 @@ export default function LogForm({
       first?.focus();
       return;
     }
-    if (!correctiveOk) return;
+    if (!correctiveOk || !locNoteOk) return;
 
     setSubmitting(true);
     setError(null);
@@ -106,7 +121,24 @@ export default function LogForm({
     const res = await fetch("/api/staff/logs/submit", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ slug, slot, answers, correctiveAction: corrective.trim() }),
+      body: JSON.stringify({
+        slug,
+        slot,
+        answers,
+        correctiveAction: corrective.trim(),
+        // The server re-classifies this against the clinic's own
+        // coordinates; what the client believes is a convenience for the
+        // person filling the form in, exactly as with the range check.
+        location: loc
+          ? {
+              lat: loc.fix?.lat ?? null,
+              lng: loc.fix?.lng ?? null,
+              accuracy: loc.fix?.accuracy ?? null,
+              denied: loc.denied,
+              note: locNote.trim() || null,
+            }
+          : null,
+      }),
     }).catch(() => null);
 
     if (!res?.ok) {
@@ -158,6 +190,8 @@ export default function LogForm({
         <span className="st-log-slot">{slotLabel}</span>
       </div>
 
+      <LocationStamp org={geofence} onChange={setLoc} />
+
       {schema.standard && <p className="st-log-standard">{schema.standard}</p>}
 
       <div className="st-log-fields">
@@ -195,6 +229,33 @@ export default function LogForm({
         </div>
       )}
 
+      {/* Filed away from the clinic, and this clinic asks why. The log
+          is not withheld — see the migration header — but the reason is
+          part of the record from here on. */}
+      {needsNote && (
+        <div className="st-log-alert" role="alert">
+          <strong>
+            {loc?.status === "off_site"
+              ? "Filed away from the clinic"
+              : loc?.status === "denied"
+                ? "Location was declined"
+                : "Location unavailable"}
+          </strong>
+          <p>
+            This still files. Say why it is being entered from here, so the
+            record explains itself to whoever reads it next.
+          </p>
+          <textarea
+            className="st-textarea"
+            value={locNote}
+            onChange={(e) => setLocNote(e.target.value)}
+            rows={2}
+            placeholder="e.g. Reading taken at 07:10 on site; phone had no signal until I got to the car park."
+            aria-label="Reason this log is filed away from the clinic"
+          />
+        </div>
+      )}
+
       {/* Photo proof. Optional on every form — a log must never be
           blocked on a camera. Offered on the three where a surveyor's
           next question is "show me". */}
@@ -221,7 +282,7 @@ export default function LogForm({
       <button
         className={`st-primary${flagged ? " st-primary-warn" : ""}`}
         type="submit"
-        disabled={submitting || !correctiveOk}
+        disabled={submitting || !correctiveOk || !locNoteOk}
       >
         {submitting
           ? "Saving…"
@@ -229,6 +290,16 @@ export default function LogForm({
             ? "Submit with corrective action"
             : "Submit log"}
       </button>
+
+      {needsNote && !locNoteOk && (
+        <p className="st-log-hint">
+          {locNote.trim().length === 0
+            ? "Add a line about why this is being filed from here."
+            : `A few more words — ${locNoteLeft} more ${
+                locNoteLeft === 1 ? "character" : "characters"
+              }.`}
+        </p>
+      )}
 
       {flagged && !correctiveOk && (
         <p className="st-log-hint">

@@ -15,14 +15,47 @@ import Wordmark from "@/app/components/Wordmark";
 // state and finding, and the first prospect who checks one and finds it
 // wrong stops believing the rest of the page.
 
-const FEATURES = [
-  ["15-second logs", "Staff tap through a shift check on the phone already in their pocket."],
-  ["Range alarms", "An out-of-range reading is caught as it's typed and can't be filed without a fix."],
-  ["Surveyor link", "One read-only link, time-limited, for the inspector's iPad."],
+// The homepage used to say "Sign in" and leave the reason to the
+// imagination. These are the reasons, in the order an owner cares about
+// them: can the record be trusted, does the work actually get done, and
+// what happens when an inspector walks in.
+//
+// Each one is a thing the product does today, not a roadmap. The
+// location line in particular is worded as what it IS — every log
+// carries where it was filed from — and not as "logs cannot be filed
+// off-site", because browser geolocation is defeatable and a marketing
+// claim the product cannot keep is worse than no claim. See the header
+// of supabase/staff-geofence.sql.
+const FEATURES: [string, string][] = [
+  [
+    "Filed at the clinic, and the record says so",
+    "Every log is stamped with where it was entered and how far that is from your address. One filed from home still saves \u2014 and arrives on your desk flagged, with the distance and a written reason.",
+  ],
+  [
+    "15-second shift checks",
+    "Fridge temps, crash cart, O2, narcotics counts \u2014 tapped through on the phone already in their pocket. Repeat readings are one-tap presets, not typing.",
+  ],
+  [
+    "An alarming number can't be filed quietly",
+    "Out-of-range is caught as it's entered and cannot be saved without a corrective action in writing. Excursions text you immediately; everything else is a digest at nine and five.",
+  ],
+  [
+    "Nothing can be backdated or deleted",
+    "Signatures are insert-only at the database level, not by convention. There is no edit button, and no delete grant to take away.",
+  ],
+  [
+    "One link for the surveyor",
+    "Time-limited, read-only, no login. They see logs, credential dates and open obligations \u2014 no billing, no patient information, and no way into your account.",
+  ],
+  [
+    "The binder, exported",
+    "Ninety days of temperature curves, staff currency and corrective actions as one bookmarked PDF, generated on demand.",
+  ],
 ];
 
 const INCLUDED = [
   "Every regulatory shift log, ready on day one",
+  "Location stamped on every entry, with off-site filings flagged to you",
   "Unlimited staff accounts",
   "Automatic range alarms and corrective-action capture",
   "One-click surveyor view",
@@ -33,7 +66,7 @@ const INCLUDED = [
 export const metadata: Metadata = {
   title: `${PRODUCT_NAME} — kill the paper binder`,
   description:
-    "Digital compliance logs for urgent care. Crash cart, fridge temperatures and narcotics counts done in seconds on staff phones, with an audit trail nobody can backdate.",
+    "Digital compliance logs for urgent care. Crash cart, fridge temperatures and narcotics counts done in seconds on staff phones — location stamped, range alarms enforced, and an audit trail nobody can backdate.",
   alternates: { canonical: "/" },
 };
 
