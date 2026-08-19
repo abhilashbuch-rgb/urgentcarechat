@@ -64,16 +64,43 @@ const CHECKS: Check[] = [
         ? null
         : `only ${v.length} chars; use at least 32 of randomness`,
   },
+  // OPTIONAL SINCE EMAILED-CODE SIGN-IN SHIPPED. These were required
+  // when Google was the only door; a deployment without them now shows
+  // the six-digit-code path alone, which is the whole point of it —
+  // a Microsoft 365 clinic never touches Google. Left in the list
+  // because a MALFORMED value is still worth catching.
   {
     name: "GOOGLE_OAUTH_CLIENT_ID",
-    level: "required",
-    consequence: "the sign-in button does not appear",
+    level: "optional",
+    consequence: "no Google button; emailed-code sign-in still works",
     shape: (v) =>
       v.endsWith(".apps.googleusercontent.com")
         ? null
         : "does not look like a Google client id",
   },
-  { name: "GOOGLE_OAUTH_CLIENT_SECRET", level: "required", consequence: "sign-in fails at the callback" },
+  {
+    name: "GOOGLE_OAUTH_CLIENT_SECRET",
+    level: "optional",
+    consequence: "Google sign-in fails at the callback; emailed code unaffected",
+  },
+  {
+    // THE FIX FOR GOOGLE SIGN-IN ON A PREVIEW URL. callbackUrl() in
+    // lib/staff/google.ts derives redirect_uri from the request host,
+    // so on a *.vercel.app preview it sends a URI that is not — and
+    // cannot practically be — registered in Google Cloud, since the
+    // hostname changes per branch. Google answers redirect_uri_mismatch
+    // and the button looks broken. Setting this pins the redirect to the
+    // one registered origin. Undocumented until now, which is why the
+    // symptom kept reading as "Google isn't set up".
+    name: "STAFF_OAUTH_REDIRECT_ORIGIN",
+    level: "optional",
+    consequence:
+      "Google sign-in on preview/non-canonical hosts fails with redirect_uri_mismatch",
+    shape: (v) =>
+      /^https?:\/\/[^/]+$/.test(v)
+        ? null
+        : "expected a bare origin with no trailing path, e.g. https://medicin.io",
+  },
 
   {
     name: "STRIPE_SECRET_KEY",

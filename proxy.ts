@@ -33,6 +33,16 @@ const RESERVED_ROOT_PATHS = new Set([
   "terms",
   "widget",
   "embed",
+  // Root-only pages that a TENANT SLUG COULD OTHERWISE SHADOW. This is
+  // not hypothetical: /start derives a slug from the clinic name via
+  // slugFrom(), so a clinic that signs up as "Demo" or "Start" claims
+  // that slug and its portal then swallows the page that created it.
+  // /verify is the worst of the three to lose — it is the QR target
+  // printed on every exported binder, so a collision breaks documents
+  // already in a surveyor's hands, years after the fact.
+  "demo",
+  "start",
+  "verify",
 ]);
 
 // Conservative slug shape — also keeps files (anything with a dot, e.g.
