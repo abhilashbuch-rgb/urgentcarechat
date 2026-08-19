@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { resolve } from "@/lib/staff/auth";
 import { isConfigured } from "@/lib/staff/google";
 import BrandIcon from "@/app/components/BrandIcon";
+import EmailSignIn from "@/app/components/staff/EmailSignIn";
 import Wordmark from "@/app/components/Wordmark";
 
 // Sign-in, and every way sign-in can fail.
@@ -96,9 +97,14 @@ export default async function StaffSignIn({
           <Wordmark />
         </div>
         <h1 className="st-signin-title">Staff sign-in</h1>
+        {/* Says what this is, not what it isn't. The previous line
+            explained that patients don't need an account — true, but it
+            described a symptom checker that is no longer what this
+            product is for. The people reading this screen are clinical
+            staff about to file a log. */}
         <p className="st-signin-sub">
-          For clinic staff only. Patients don&rsquo;t need an account &mdash; the
-          symptom checker never asks for one.
+          Clinical and operational records for your clinic. Access is by
+          invitation from your administrator.
         </p>
 
         {message && (
@@ -108,23 +114,41 @@ export default async function StaffSignIn({
           </div>
         )}
 
-        {canSignIn ? (
-          <a className="st-google" href="/api/staff/auth/start">
-            <GoogleMark />
-            Continue with Google
-          </a>
-        ) : (
-          !message && (
-            <div className="st-notice" role="status">
-              <strong>{MESSAGES.unconfigured.title}</strong>
-              <span>{MESSAGES.unconfigured.body}</span>
+        {/* TWO DOORS INTO ONE CORRIDOR.
+            Google where the clinic has Workspace — it brings their own
+            hardware keys, device policy and session revocation for free
+            and there is nothing for us to store.
+            An emailed code for everyone else. A great many urgent cares
+            run Microsoft 365, and for those clinics a Google-only screen
+            was not a login, it was a wall.
+            NEITHER GRANTS ACCESS. Both prove you hold an address; the
+            invite decides whether that address may come in. */}
+        {canSignIn && (
+          <>
+            <a className="st-google" href="/api/staff/auth/start">
+              <GoogleMark />
+              Continue with Google
+            </a>
+            <div className="st-or">
+              <span>or</span>
             </div>
-          )
+          </>
+        )}
+
+        <EmailSignIn />
+
+        {!canSignIn && !message && (
+          <p className="st-signin-fine">
+            Google sign-in isn&rsquo;t configured on this deployment, so the
+            emailed code is the way in. It works with any work address &mdash;
+            Microsoft, Google or anything else.
+          </p>
         )}
 
         <p className="st-signin-fine">
-          Access is by invitation. Signing in with Google proves who you are;
-          it doesn&rsquo;t grant access on its own.
+          Access is by invitation. Proving you hold the address doesn&rsquo;t
+          grant access on its own &mdash; your administrator has to have
+          invited it.
         </p>
       </div>
     </div>

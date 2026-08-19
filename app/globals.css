@@ -5513,3 +5513,37 @@ body {
 .mh-dark .wordmark-1 { color: #fff; }
 .mh-dark .wordmark-dot { color: var(--volt); }
 .mh-dark .wordmark-2 { color: rgba(255,255,255,.45); }
+
+/* ---------- email sign-in ---------- */
+
+.st-email-auth { display: flex; flex-direction: column; gap: 4px; }
+.st-email-auth .st-primary { margin-top: 6px; }
+.st-email-again { margin-top: 8px; align-self: center; }
+
+/* Six digits, spaced and large. This is typed from a phone notification
+   with a glance, so the characters have to be unmistakable and the
+   tracking wide enough that a transposition is visible. */
+.st-code {
+  font-family: var(--mono);
+  font-size: 24px;
+  letter-spacing: .38em;
+  text-align: center;
+  padding-left: .38em; /* offsets the trailing letter-space, so it centres */
+}
+
+.st-or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0 14px;
+  color: var(--ink-faint);
+  font-size: 12px;
+}
+.st-or::before, .st-or::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--rule);
+}
+
+.st-link-back { display: block; text-align: center; margin-top: 18px; }
