@@ -34,8 +34,13 @@ interface Pending {
 
 export default function ShiftChime({
   audioEnabled,
+  openNow,
 }: {
   audioEnabled: boolean;
+  /** Is the clinic inside its own operating hours right now. Decided
+   *  server-side by staff.within_operating_hours(), so this badge and the
+   *  alert sweep cannot disagree about when a shift is running. */
+  openNow: boolean;
 }) {
   const [on, setOn] = useState(audioEnabled);
   const [ready, setReady] = useState(false);
@@ -149,7 +154,9 @@ export default function ShiftChime({
       title={
         on
           ? "Shift reminders will chime during clinic hours"
-          : "Sound is off — you will still see reminders on screen"
+          : openNow
+            ? "Sound is off during clinic hours. Reminders still appear on screen, and your administrator can see that it is off."
+            : "Sound is off — you will still see reminders on screen"
       }
       aria-pressed={on}
     >
@@ -159,7 +166,20 @@ export default function ShiftChime({
           real — a reminder nobody hears is a reminder that did not
           happen — but a persistent warning banner over a deliberate
           choice is just noise. */}
-      {!on && <span className="st-chime-hint">Recommended on</span>}
+      {/* DURING CLINIC HOURS THIS SAYS SO, and stops there. The toggle
+          is deliberately NOT disabled — see the header of
+          supabase/staff-audio-audit.sql. No browser can be made to emit
+          a sound without a gesture, a device on silent stays silent
+          whatever the flag says, and a workstation that cannot be
+          hushed for ninety seconds beside a distressed patient is one
+          that gets closed. Turning it off is instead visible: it is
+          stamped, and it appears on the administrator's digest for as
+          long as it is off. */}
+      {!on && (
+        <span className="st-chime-hint">
+          {openNow ? "Off during clinic hours" : "Recommended on"}
+        </span>
+      )}
       {on && !ready && (
         <span className="st-chime-hint">Tap anywhere to enable</span>
       )}

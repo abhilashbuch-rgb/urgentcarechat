@@ -318,10 +318,42 @@ export async function digestFor(
     order by slot, name
   `;
 
+  // Filed away from the clinic today. Previously this reached the owner
+  // only through staff.off_site_filings or the scheduled report — so a
+  // reading entered from a car park was invisible to anybody who reads
+  // the twice-daily digest and nothing else, which is most owners.
+  const offSite = await sql<
+    {
+      form_name: string;
+      filed_by: string | null;
+      location_status: string;
+      distance_m: number | null;
+      location_note: string | null;
+    }[]
+  >`
+    select form_name, filed_by, location_status, distance_m, location_note
+      from staff.off_site_today where org_slug = ${org}
+  `;
+
+  // Anybody running silent during clinic hours. See the header of
+  // supabase/staff-audio-audit.sql for why this is reported rather than
+  // prevented — the short version is that no browser can be made to
+  // play a sound, so a lock would be a promise the software cannot keep.
+  const silent = await sql<
+    { legal_name: string | null; minutes_off: number; during_hours: boolean }[]
+  >`
+    select legal_name, minutes_off, during_hours
+      from staff.audio_off_now where org_slug = ${org} and during_hours
+     order by minutes_off desc
+  `;
+
   // The headline says the answer, not the numbers. Somebody reading this
   // on a phone at 9am wants to know whether to act, and a subject line
   // of "12 logs" makes them open the mail to find out.
-  const clean = counts.outstanding === 0 && counts.flagged === 0;
+  const clean =
+    counts.outstanding === 0 &&
+    counts.flagged === 0 &&
+    offSite.length === 0;
   const subject = clean
     ? `${org}: all clear`
     : `${org}: ${
@@ -339,6 +371,36 @@ export async function digestFor(
     `Still due: ${counts.outstanding}`,
     `Out of range: ${counts.flagged}`,
   ];
+
+  if (offSite.length > 0) {
+    lines.push("", "Filed away from the clinic:");
+    for (const o of offSite) {
+      const where =
+        o.location_status === "denied"
+          ? "location declined"
+          : o.distance_m === null
+            ? "off site"
+            : `${o.distance_m} m away`;
+      lines.push(`  ${o.form_name} — ${o.filed_by ?? "unknown"} (${where})`);
+      // The reason they gave, indented under it. Without this the owner
+      // sees a distance and has to open the app to learn it was a phone
+      // with no signal until the car park.
+      if (o.location_note) lines.push(`    "${o.location_note}"`);
+    }
+  }
+
+  if (silent.length > 0) {
+    lines.push("", "Shift sound off during clinic hours:");
+    for (const p of silent) {
+      lines.push(
+        `  ${p.legal_name ?? "unnamed"} — ${p.minutes_off} min`
+      );
+    }
+    lines.push(
+      "  (Reminders still appear on screen. Sound cannot be forced on by",
+      "   the app — a device on silent stays silent.)"
+    );
+  }
 
   if (late.length > 0) {
     lines.push("", "Already late:");

@@ -40,13 +40,21 @@ export default async function StaffLayout({
   // Nav is filtered by ROLE and by JOB. Most providers hold the plain
   // "staff" role, so a clinical link gated on role alone would be hidden
   // from the people it exists for.
-  const { me, theme, audio } = await withSession(session, async (sql) => ({
+  const { me, theme, audio, openNow } = await withSession(session, async (sql) => ({
     me: await getProfile(sql, session.uid),
     audio: (
       await sql<{ audio_alerts_enabled: boolean }[]>`
         select audio_alerts_enabled from staff.users where id = ${session.uid}
       `
     )[0]?.audio_alerts_enabled ?? true,
+    // Whether the clinic is open right now, in ITS timezone. Decided in
+    // SQL by the same function the alert sweep uses, so the badge and the
+    // sweep can never disagree about whether it is clinic hours.
+    openNow: (
+      await sql<{ within: boolean }[]>`
+        select staff.within_operating_hours(${session.org}) as within
+      `
+    )[0]?.within ?? false,
     theme: (
       await sql<{ brand_color: string; logo_url: string | null }[]>`
         select brand_color, logo_url from staff.org_theme where slug = ${org}
@@ -90,7 +98,7 @@ export default async function StaffLayout({
           </nav>
 
           <div className="st-me">
-            <ShiftChime audioEnabled={audio} />
+            <ShiftChime audioEnabled={audio} openNow={openNow} />
             {/* The photo is fetched through a signed-link route rather
                 than being a public URL — the bucket also holds licences.
                 No photo renders initials on the same ring, so the empty

@@ -75,7 +75,10 @@ export async function POST(req: NextRequest) {
   await withSession(session, (sql) =>
     sql`
       update staff.users
-         set audio_alerts_enabled = ${body.audio_alerts_enabled}
+         set audio_alerts_enabled = ${body.audio_alerts_enabled},
+             -- Stamped when sound goes off, cleared when it comes back.
+             -- staff.audio_off_now reads this, and the digest reads that.
+             audio_muted_at = ${body.audio_alerts_enabled ? null : new Date().toISOString()}
        where id = ${session.uid}
     `
   );
