@@ -47,9 +47,10 @@ export default function TrialForm() {
       <div className="tr-done">
         <h2>Your workspace is ready.</h2>
         <p>
-          Sign in with Google using <strong>{done}</strong>{" "}
-          &mdash; that address is the administrator. Any other account will be
-          turned away.
+          Sign in as <strong>{done}</strong> &mdash; with Google if that
+          address is on Google Workspace, or with the emailed six-digit code
+          otherwise. That address is the administrator; any other account
+          will be turned away.
         </p>
         <a className="lp-btn-primary" href="/staff/signin">
           Sign in and set it up
@@ -85,8 +86,9 @@ export default function TrialForm() {
           autoComplete="email"
         />
         <span className="st-field-hint">
-          You&rsquo;ll sign in with Google using this address, so use the one
-          your Google account is on.
+          You&rsquo;ll sign in as this address afterward &mdash; with Google
+          if it&rsquo;s on Google Workspace, or with an emailed code if not.
+          Microsoft 365 and any other mailbox work.
         </span>
       </label>
 

@@ -76,6 +76,7 @@ export default function LandingPage() {
             <Wordmark />
           </div>
           <nav className="lp-nav-links">
+            <a href="/demo">See a live demo</a>
             <a href="/staff/signin">Sign in</a>
           </nav>
         </div>
@@ -101,8 +102,11 @@ export default function LandingPage() {
             <Link className="mh-cta" href="/start">
               Start the 14-day trial
             </Link>
-            <span className="mh-cta-note">No credit card required</span>
+            <Link className="mh-cta-secondary" href="/demo">
+              See a live demo
+            </Link>
           </div>
+          <span className="mh-cta-note">No credit card required</span>
         </section>
 
         <section className="mh-features">

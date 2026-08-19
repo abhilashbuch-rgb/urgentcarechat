@@ -33,8 +33,9 @@ export default function StartTrial() {
         <div className="tr-card">
           <h1 className="tr-h1">Start your clinic&rsquo;s trial</h1>
           <p className="tr-lede">
-            Two fields, then sign in with Google. Your logs are ready to run
-            the same day.
+            Two fields, then sign in &mdash; with Google or with an emailed
+            code, whichever your inbox is on. Your logs are ready to run the
+            same day.
           </p>
           <TrialForm />
         </div>

@@ -6,9 +6,11 @@ import { slugFrom } from "@/lib/staff/stripe";
 //
 // This is the only unauthenticated write in the staff system, so it is
 // deliberately small: it creates an org and an invite, and nothing else.
-// The org it creates is inert until someone signs in with Google using
-// the address given, so a provisioned org an attacker cannot authenticate
-// into is a wasted row rather than access to anything.
+// The org it creates is inert until someone signs in as the address
+// given — with Google, or with the emailed six-digit code if that
+// address isn't on Google Workspace — so a provisioned org an attacker
+// cannot authenticate into is a wasted row rather than access to
+// anything.
 //
 // No email is sent because none is needed: the person is standing right
 // here, and the next screen tells them to sign in with the address they

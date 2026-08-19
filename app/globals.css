@@ -5006,6 +5006,22 @@ body {
   letter-spacing: -.01em;
 }
 .mh-cta:hover { background: #67e8f9; }
+/* The secondary path on the one dark section of the page, so it has to
+   read as "the other option" rather than "the real button" — an
+   outline against the near-black ground, not a second fill competing
+   with --volt for the one accent this hero spends on purpose. */
+.mh-cta-secondary {
+  display: inline-block;
+  padding: 15px 30px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, .35);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  text-decoration: none;
+}
+.mh-cta-secondary:hover { border-color: rgba(255, 255, 255, .6); }
 .mh-cta-block {
   display: block;
   text-align: center;
@@ -5014,7 +5030,7 @@ body {
   color: #fff;
 }
 .mh-cta-block:hover { background: var(--accent-deep); }
-.mh-cta-note { font-size: 13px; color: rgba(255, 255, 255, .5); }
+.mh-cta-note { display: block; margin-top: 14px; font-size: 13px; color: rgba(255, 255, 255, .5); }
 
 @media (max-width: 620px) {
   .mh-hero { padding: 54px 22px 78px; border-radius: 16px; margin-top: 14px; }
@@ -5575,3 +5591,83 @@ body {
 }
 
 .st-link-back { display: block; text-align: center; margin-top: 18px; }
+
+/* ---------- read-only buyer demo (/demo) ---------- */
+
+.demo-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--volt-wash);
+  border: 1px solid var(--volt-ink);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-bottom: 20px;
+}
+.demo-banner-tag {
+  flex: 0 0 auto;
+  background: var(--volt-ink);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  border-radius: 5px;
+  padding: 3px 8px;
+}
+.demo-banner strong { color: var(--ink); }
+.demo-banner-switch { margin-left: auto; font-weight: 600; color: var(--accent); white-space: nowrap; }
+
+.demo-index-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.demo-index-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.demo-index-cta {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.demo-role-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 24px;
+}
+@media (max-width: 620px) {
+  .demo-role-grid { grid-template-columns: 1fr; }
+}
+.demo-role-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 18px 20px;
+  text-decoration: none;
+  color: var(--ink);
+  transition: border-color .15s ease;
+}
+.demo-role-card:hover { border-color: var(--volt-ink); }
+.demo-role-emoji { font-size: 22px; }
+.demo-role-title { font-size: 15px; font-weight: 650; }
+.demo-role-body { font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); }
+
+.demo-log-done {
+  text-align: center;
+  padding: 32px 22px;
+}
+.demo-log-done strong { display: block; font-size: 15px; margin-bottom: 8px; }
+.demo-log-done p { font-size: 13px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 18px; }
+
+.demo-surveyor-back { margin-top: 16px; }
+.demo-surveyor-back a { color: var(--volt-ink); font-size: 13px; font-weight: 600; }
