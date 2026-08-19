@@ -54,7 +54,7 @@ alter table clinics add column if not exists analytics_token uuid not null defau
 -- write-scoped wait_token (see /api/clinics/wait): (1) staff update it
 -- themselves from /clinics/wait/[token] on their phone between patients
 -- (wait_source='manual'), or (2) a real-time queue vendor the clinic
--- already uses (Solv, Experity, ClockWise.MD, etc.) pushes to the same
+-- already uses pushes to the same
 -- endpoint once they set up a webhook (wait_source='feed'). Treated as
 -- stale and hidden after WAIT_STALE_MINUTES (see lib/wait-time.ts) so a
 -- forgotten update doesn't show a confidently wrong number for days.

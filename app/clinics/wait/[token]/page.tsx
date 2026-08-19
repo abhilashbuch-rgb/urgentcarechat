@@ -45,9 +45,9 @@ export default async function ClinicWaitPage({
         <WaitTimeForm token={token} initialWaitMinutes={wait.waitMinutes} />
 
         <p className="reads-sub" style={{ marginTop: 28 }}>
-          Have a live queue system already (Solv, Experity, ClockWise.MD,
-          etc.)? It can push updates directly to this same link&apos;s API
-          instead of a person clicking buttons —{" "}
+          Have a live queue or check-in system already? It can push updates
+          directly to this same link&apos;s API instead of a person clicking
+          buttons —{" "}
           <a href={contactMailto("Wait-time feed integration")}>
             ask us to wire it up
           </a>

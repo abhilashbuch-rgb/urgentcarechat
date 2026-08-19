@@ -4,15 +4,21 @@
 -- Run AFTER supabase/staff-job-roles-seed.sql. Idempotent.
 --
 -- Built from a real practice-management end-of-day checklist. The
--- substance is kept exactly; the VENDOR NAMES ARE NOT. The source
--- names one PM system, one clearinghouse and one card-terminal app by
--- brand, and hard-coding those into the default set every clinic
--- receives would ship a checklist that is wrong for any clinic on a
--- different stack — which is most of them. So the fields say "your PM
--- system", "the card terminal", "the clearinghouse", and the specific
--- products appear only as "e.g." inside help text an administrator can
--- edit. A clinic on that exact stack loses nothing; a clinic on another
--- one is not told to click a menu it does not have.
+-- substance is kept exactly; NO VENDOR IS NAMED ANYWHERE, not even as an
+-- example. The source names one PM system, one clearinghouse and one
+-- card-terminal app by brand. Those are gone.
+--
+-- Two reasons, and the second is the one that matters. The practical
+-- one: hard-coding a stack into the default set every clinic receives
+-- ships a checklist that is wrong for anyone on a different one, which
+-- is most of them. The real one: this is meant to read as a universal
+-- standard of practice, and a standard that name-checks a supplier
+-- reads as that supplier's documentation instead — it borrows their
+-- authority and inherits their scope. The obligations here are the
+-- clinic's own regardless of what software it runs.
+--
+-- So the fields say "your PM system", "the card terminal", "the
+-- clearinghouse". Every step still maps exactly onto the same work.
 --
 -- WHY TWO FORMS AND NOT ONE. The source is a single sheet, but it has
 -- two owners: the log book is the front desk's work, and the money
@@ -99,7 +105,7 @@ cross join (values
          "help": "Card payments only. Cash and checks are reconciled on the front desk closing sheet." },
        { "id": "terminal_batch_total", "label": "Card terminal batch total", "type": "number",
          "unit": "USD", "min": 0, "step": 0.01,
-         "help": "From the terminal's current-batch report (e.g. PaymentMate: right-click the tray icon, Manager Functions, Credit Card, Current Batch)." },
+         "help": "From the card terminal's current-batch or settlement report, before the batch is closed." },
        { "id": "batch_matches", "label": "The two totals match", "type": "boolean",
          "expected": true,
          "help": "If they do not, say what you found and what you did. A variance recorded honestly is a reconciliation; a variance left silent is what an audit finds first." },
