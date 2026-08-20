@@ -22,8 +22,12 @@ export interface AlertInput {
   payload?: Record<string, unknown>;
 }
 
-/** File an alert. Excursions go out immediately; clean logs wait for the
- *  digest unless the clinic has asked for every one. */
+/** How long an amendable excursion waits before it is sent. See the
+ *  note at the insert below for why it is three and not ten. */
+export const AMEND_HOLD_MINUTES = 3;
+
+/** File an alert. Excursions go out after a short hold; clean logs wait
+ *  for the digest unless the clinic has asked for every one. */
 export async function enqueue(
   sql: StaffSql,
   input: AlertInput
@@ -35,6 +39,22 @@ export async function enqueue(
         ? "now"
         : "digest";
 
+  // THREE MINUTES BEFORE AN EXCURSION LEAVES THE BUILDING.
+  //
+  // Long enough for the person who typed 55 instead of 38.5 to notice in
+  // the same breath and amend it, which cancels this row before anybody
+  // is woken. Short enough that a fridge that really is at 55°F is still
+  // savable: the cost of ten minutes' silence is a vaccine lot and a
+  // letter to every patient dosed from it.
+  //
+  // ONLY excursions, and only ones tied to a response — those are the
+  // ones an amendment can retract. A missed task has nothing to amend,
+  // and holding it would just make the clinic later.
+  const holdMinutes =
+    input.kind === "excursion" && input.sourceKind === "form_response"
+      ? AMEND_HOLD_MINUTES
+      : null;
+
   // ON CONFLICT DO NOTHING against the unique index: a retried submit or
   // a second browser tab must not send the medical director the same
   // excursion twice. An alert that arrives twice is trusted slightly
@@ -42,12 +62,15 @@ export async function enqueue(
   await sql`
     insert into staff.alert_queue
       (org_slug, kind, urgency, subject, body,
-       source_kind, source_id, submitted_by, payload)
+       source_kind, source_id, submitted_by, payload, hold_until)
     values
       (${input.org}, ${input.kind}, ${urgency}, ${input.subject},
        ${input.body}, ${input.sourceKind ?? null},
        ${input.sourceId ?? null}, ${input.submittedBy ?? null},
-       ${sql.json((input.payload ?? {}) as Record<string, never>)})
+       ${sql.json((input.payload ?? {}) as Record<string, never>)},
+       ${holdMinutes === null
+         ? null
+         : sql`now() + (${holdMinutes} || ' minutes')::interval`})
     on conflict do nothing
   `;
 }
@@ -170,6 +193,11 @@ export async function sweep(
      where org_slug = ${org}
        and urgency = 'now'
        and attempts < 5
+       -- Without these two lines the hold is decorative: the sweep would
+       -- pick the row up on its next pass regardless, and a cancelled
+       -- alert would still be delivered.
+       and cancelled_at is null
+       and (hold_until is null or hold_until <= now())
        and (
          (${orgRow.owner_alert_email}::text is not null and owner_sent_at is null)
          or (${orgRow.medical_director_alert_email}::text is not null

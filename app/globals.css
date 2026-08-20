@@ -5982,3 +5982,31 @@ body {
   background: var(--rule);
   flex-shrink: 0;
 }
+
+/* ---------- the administrator's activity board ---------- */
+.st-stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  margin: 0 0 22px;
+}
+.st-activity { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.st-act {
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: var(--bg-card);
+}
+/* A superseded entry stays on the board rather than disappearing —
+   removing it would hide exactly the history this feature exists to
+   keep — but it recedes, because the correction is the current fact. */
+.st-act-old { opacity: .62; background: var(--bg-sunk); }
+.st-act-flag { border-left: 3px solid var(--volt-ink); }
+.st-act-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.st-act-time { font-family: var(--mono); font-size: 12px; color: var(--ink-faint); }
+.st-act-name { font-weight: 600; font-size: 14px; }
+.st-act-slot { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+.st-act-by { font-size: 13px; color: var(--ink-soft); margin-top: 3px; }
+.st-act-off { margin-left: 8px; font-weight: 600; color: var(--volt-ink); }
+.st-act-reason { font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); margin-top: 6px; }
+.st-pill-old { opacity: .8; }
