@@ -5694,6 +5694,24 @@ body {
   margin-top: 3px;
 }
 
+/* Who the signup screen is for, said above the heading. */
+.tr-eyebrow {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+/* The way out for somebody who should be signing in instead. */
+.tr-lede-alt {
+  font-size: 13px;
+  color: var(--ink-soft);
+  border-top: 1px solid var(--rule);
+  padding-top: 12px;
+  margin-top: 12px;
+}
+
 /* ---------- facility picker on /start ---------- */
 
 .tr-fac { border: 0; padding: 0; margin: 0 0 18px; }

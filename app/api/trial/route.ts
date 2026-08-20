@@ -65,6 +65,32 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // SIGNUP IS THE OWNER'S DOOR. STAFF COME IN BY INVITATION ONLY.
+    //
+    // Without this, a medical assistant at an already-onboarded clinic
+    // could type their own clinic's name here and get a SECOND
+    // workspace — same clinic, same people, two boards, two sets of
+    // logs, and a surveyor eventually shown the emptier one. Nobody
+    // would see it until an inspection.
+    //
+    // 409 and not 400: the request is well-formed, it conflicts with
+    // something that already exists. The response names the clinic so
+    // the person knows who to ask, and carries no invite, no member
+    // list and no way in — it confirms only what an employee of that
+    // clinic already knows.
+    const taken = await withOrg("", "platform_super_admin", async (sql) => {
+      const rows = await sql<{ org_slug: string; org_name: string }[]>`
+        select org_slug, org_name from staff.domain_taken(${email})
+      `;
+      return rows[0] ?? null;
+    });
+    if (taken) {
+      return NextResponse.json(
+        { error: "already_onboarded", clinic: taken.org_name },
+        { status: 409 }
+      );
+    }
+
     const slug = await withOrg("", "platform_super_admin", async (sql) => {
       const rows = await sql<{ provision_trial: string }[]>`
         select staff.provision_trial(

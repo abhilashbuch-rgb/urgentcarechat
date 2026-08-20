@@ -104,6 +104,14 @@ export default async function StaffSignIn({
           Clinical and operational records for your clinic. Access is by
           invitation from your administrator.
         </p>
+        {/* THE OTHER SIDE OF THE SAME BOUNDARY. Small, and below the
+            fold of attention on purpose: nearly everybody on this screen
+            is staff who belong here, and the one owner a month who
+            landed in the wrong place still needs a way out. */}
+        <p className="st-signin-fine">
+          Setting up a clinic for the first time?{" "}
+          <a href="/start">Start here instead</a>.
+        </p>
 
         {message && (
           <div className="st-notice" role="status">

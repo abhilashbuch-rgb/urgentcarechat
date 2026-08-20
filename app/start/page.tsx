@@ -27,11 +27,22 @@ export default function StartTrial() {
 
       <main className="lp-main tr-main">
         <div className="tr-card">
-          <h1 className="tr-h1">Start your clinic&rsquo;s trial</h1>
+          {/* WHO THIS SCREEN IS FOR, SAID FIRST. The old heading was
+              "Start your clinic's trial", which reads as an invitation to
+              everybody who works at a clinic — including the medical
+              assistant whose clinic already has a workspace. Two doors
+              only work if each one says which it is. */}
+          <p className="tr-eyebrow">For clinic owners and administrators</p>
+          <h1 className="tr-h1">Set up your clinic</h1>
           <p className="tr-lede">
             Two fields, then sign in &mdash; with Google or with an emailed
             code, whichever your inbox is on. Your logs are ready to run the
             same day.
+          </p>
+          <p className="tr-lede tr-lede-alt">
+            Already work somewhere that uses this? You don&rsquo;t sign up
+            &mdash; your administrator invites you, then you{" "}
+            <Link href="/staff/signin">sign in here</Link>.
           </p>
           <TrialForm />
         </div>

@@ -48,6 +48,18 @@ export default function TrialForm() {
 
     if (!res?.ok) {
       setBusy(false);
+      // Already onboarded. The clinic name comes back so the message can
+      // say which one, because "ask your administrator" is useless to
+      // somebody who does not yet know a workspace exists.
+      if (res?.status === 409) {
+        const body = await res.json().catch(() => null);
+        setError(
+          body?.clinic
+            ? `taken:${body.clinic}`
+            : "taken:your clinic"
+        );
+        return;
+      }
       setError(
         res?.status === 400
           ? "Check the clinic name and email address."
@@ -161,7 +173,15 @@ export default function TrialForm() {
         </span>
       </label>
 
-      {error === "notopen" ? (
+      {error?.startsWith("taken:") ? (
+        <p className="st-sign-error" role="alert">
+          <strong>{error.slice(6)} already has a workspace.</strong>{" "}
+          Staff don&rsquo;t sign up here &mdash; an administrator adds you,
+          and then you sign in. Ask whoever runs your clinic to invite this
+          address, then use{" "}
+          <a href="/staff/signin">the staff sign-in</a>.
+        </p>
+      ) : error === "notopen" ? (
         <p className="st-sign-error" role="alert">
           Self-serve signup isn&rsquo;t switched on yet &mdash; that&rsquo;s on
           us, not you.{" "}
