@@ -137,7 +137,13 @@ export async function recentLogs(
       join staff.form_instances i on i.id = r.instance_id
       join staff.form_templates t on t.id = i.template_id
       join staff.users u on u.id = r.submitted_by
-     where r.supersedes_id is null
+     -- The CURRENT version is the row nothing supersedes, not the row
+     -- with a null supersedes_id — that one is the original mistake.
+     -- See staff-amend.sql; this read path would otherwise show 55°F
+     -- forever while the correction sat in the table unread.
+     where not exists (
+       select 1 from staff.form_responses newer where newer.supersedes_id = r.id
+     )
      order by r.submitted_at desc
      limit ${limit}
   `;

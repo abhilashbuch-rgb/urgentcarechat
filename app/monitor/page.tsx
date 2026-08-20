@@ -119,6 +119,7 @@ export default async function MonitorPage() {
             <Link href="/">Home</Link>
             <Link href="/reads">Health Reads</Link>
             <Link href="/security">Security</Link>
+            <Link href="/contact">Contact</Link>
             <Link href="/privacy">Privacy</Link>
           </span>
         </div>

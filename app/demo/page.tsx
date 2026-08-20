@@ -1,4 +1,10 @@
 import BrandLockup from "@/app/components/BrandLockup";
+import {
+  IconThermometer,
+  IconTrace,
+  IconCard,
+  IconVault,
+} from "@/app/components/demo/RoleIcon";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { PRODUCT_NAME } from "@/lib/site";
@@ -19,25 +25,25 @@ export const metadata: Metadata = {
 const ROLES = [
   {
     href: "/demo/today",
-    emoji: "🩺",
+    icon: IconThermometer,
     title: "Medical assistant",
     body: "The 15-second shift check: fridge temps and O2 pressure filled in with one tap, not typed.",
   },
   {
     href: "/demo/learning",
-    emoji: "🚨",
+    icon: IconTrace,
     title: "Provider",
     body: "Emergency guides — every step visible at once, nothing to sign, nothing collapsed.",
   },
   {
     href: "/demo/documents",
-    emoji: "🪪",
+    icon: IconCard,
     title: "Any staff member",
     body: "The credential shelf everyone keeps for themselves — BLS, licence, CME, with expiry called out early.",
   },
   {
     href: "/demo/surveyor",
-    emoji: "📋",
+    icon: IconVault,
     title: "Surveyor / owner",
     body: "The read-only inspection vault: 90 days of temperature history and nothing financial in sight.",
   },
@@ -65,8 +71,8 @@ export default function DemoIndex() {
       <div className="demo-role-grid">
         {ROLES.map((r) => (
           <Link key={r.href} href={r.href} className="demo-role-card">
-            <span className="demo-role-emoji" aria-hidden="true">
-              {r.emoji}
+            <span className="demo-role-icon-wrap" aria-hidden="true">
+              <r.icon />
             </span>
             <span className="demo-role-title">{r.title}</span>
             <span className="demo-role-body">{r.body}</span>

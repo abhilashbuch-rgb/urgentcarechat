@@ -1530,7 +1530,9 @@ body {
 .lp-nav-inner,
 .lp-footer-inner,
 .lp-main > section {
-  max-width: 1120px;
+  /* 1120 left ~400px of dead white on either side of a 1920 display and
+     made the whole page read as a narrow column floating in space. */
+  max-width: 1280px;
   margin: 0 auto;
   padding-left: 28px;
   padding-right: 28px;
@@ -1561,17 +1563,54 @@ body {
 .lp-nav-links {
   display: flex;
   align-items: center;
-  gap: 22px;
+  gap: 12px;
   font-size: 14px;
 }
 
+/* BOTH NAV ITEMS ARE BUTTONS, AND THEY ARE NOT EQUAL.
+   As plain text these read as footer links and the demo — the one thing
+   a stranger should press first — was the quietest element above the
+   fold. Fully rounded so they read as controls at a glance rather than
+   as boxed text.
+   The demo is filled and the sign-in is outlined, because they serve
+   opposite people: a visitor evaluating the product, and a member of
+   staff who already knows where they are going and does not need
+   persuading. Two filled buttons side by side make neither one a
+   choice. */
 .lp-nav-links a {
-  color: var(--l-ink-soft);
+  display: inline-flex;
+  align-items: center;
+  /* Fully rounded: any radius at or beyond half the height is a pill,
+     and 999px stays one at every font size. */
+  border-radius: 999px;
+  padding: 9px 20px;
+  font-weight: 500;
   text-decoration: none;
-  transition: color .15s;
+  white-space: nowrap;
+  /* 44px is the smallest reliable touch target; the nav is the first
+     thing a thumb reaches for on a phone. */
+  min-height: 44px;
+  transition: background .15s, color .15s, border-color .15s;
 }
 
-.lp-nav-links a:hover { color: var(--l-navy); }
+/* The demo leads. */
+.lp-nav-links a[href="/demo"] {
+  background: var(--l-navy);
+  color: #fff;
+  border: 1px solid var(--l-navy);
+}
+.lp-nav-links a[href="/demo"]:hover { background: var(--blue-600); border-color: var(--blue-600); }
+
+/* Sign-in follows. */
+.lp-nav-links a[href="/staff/signin"] {
+  background: transparent;
+  color: var(--l-navy);
+  border: 1px solid var(--rule-firm);
+}
+.lp-nav-links a[href="/staff/signin"]:hover {
+  border-color: var(--l-navy);
+  background: var(--volt-wash);
+}
 
 .lp-nav-cta {
   background: var(--l-navy);
@@ -4927,11 +4966,46 @@ body {
 .lp-min .lp-main {
   width: 100%;
   min-width: 0;
-  max-width: 900px;
+  /* WAS 900px, WHICH IS A READING MEASURE, NOT A PAGE. On a 1920 display
+     it left ~500px of empty white either side and the whole landing page
+     read as a narrow column floating in space. The measure that matters
+     is the one on the TEXT — set per block below — not on the shell. */
+  max-width: none;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0;
 }
-.lp-min .lp-main > section { min-width: 0; max-width: 100%; padding-left: 0; padding-right: 0; }
+/* Each block carries the column now, so the shell can be full width. */
+.lp-min .lp-main > section {
+  min-width: 0;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+/* THE HERO IS THE EXCEPTION: it spans the window.
+   A centred dark card on a white page has two empty margins by
+   construction. Running the ground edge to edge removes them without
+   touching the measure — the text still sits in the same 1280 column,
+   it just no longer has a box drawn around it. */
+.lp-min .lp-main > section.mh-hero {
+  max-width: none;
+  margin-top: 0;
+  border-radius: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+.lp-min .mh-hero > *:not(.mh-rule) {
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+/* 48ch against a 1200px block is a short paragraph with half a screen of
+   nothing beside it. Still inside a comfortable measure. */
+.lp-min .mh-lede { max-width: 62ch; }
 .lp-min .mh-h1 { overflow-wrap: break-word; }
 
 /* ---------- the hero, on the ground ----------
@@ -5042,6 +5116,14 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 32px;
   padding: 56px 0 72px;
+}
+/* THREE, EXPLICITLY, ONCE THERE IS ROOM FOR THREE.
+   auto-fit packs as many 220px tracks as fit, which on a wide shell
+   became five columns and left the sixth feature alone on a second row.
+   Six items want two rows of three, and the only way to say that is to
+   say it. */
+@media (min-width: 900px) {
+  .mh-features { grid-template-columns: repeat(3, 1fr); gap: 40px 48px; }
 }
 /* Numbered by the accent rather than boxed. A card for every idea is
    what made the old page read as a template; a short rule in the one
@@ -5658,7 +5740,11 @@ body {
   transition: border-color .15s ease;
 }
 .demo-role-card:hover { border-color: var(--volt-ink); }
-.demo-role-emoji { font-size: 22px; }
+/* The icon takes the accent at its text-safe step, so the four marks
+   read as a set with the rules above the feature blocks rather than as
+   four unrelated pictures. */
+.demo-role-icon-wrap { display: block; color: var(--volt-ink); line-height: 0; }
+.demo-role-icon { display: block; }
 .demo-role-title { font-size: 15px; font-weight: 650; }
 .demo-role-body { font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); }
 
@@ -5793,6 +5879,101 @@ body {
    is never mistaken for part of the sentence. */
 .st-notice-action { align-self: flex-start; margin-top: 10px; text-decoration: none; }
 
+/* ---------- event records, and the amend affordance ---------- */
+
+/* Quiet on purpose. It sits beside a green "Done" pill and must not
+   compete with it — amending is the rarer, more deliberate act. */
+.st-board-amend {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  margin-left: 10px;
+  white-space: nowrap;
+}
+.st-board-amend:hover { color: var(--ink); }
+
+.st-rec-list { list-style: none; display: grid; gap: 10px; margin: 18px 0 26px; }
+.st-rec {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--bg-card);
+}
+.st-rec-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.st-rec-name { font-weight: 600; font-size: 15px; color: var(--ink); }
+.st-rec-desc { font-size: 13px; color: var(--ink-soft); }
+/* The citation, set small and in mono so it reads as a reference rather
+   than as prose somebody wrote. */
+.st-rec-std {
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+  margin-top: 2px;
+}
+.st-rec-meta { font-size: 11.5px; color: var(--ink-faint); margin-top: 2px; }
+.st-rec-go { flex: 0 0 auto; align-self: center; }
+
+@media (max-width: 560px) {
+  .st-rec { flex-direction: column; align-items: stretch; }
+  .st-rec-go { align-self: flex-start; }
+}
+
+/* ---------- contact ---------- */
+
+.ct-head { padding: 56px 0 8px; max-width: 62ch; }
+.ct-lede { font-size: 16px; line-height: 1.65; color: var(--ink-soft); margin-top: 14px; }
+/* The address is the point of the page, so it is set at heading weight
+   rather than tucked into a paragraph. */
+.ct-addr { margin-top: 18px; font-size: 19px; font-weight: 600; }
+.ct-addr a { color: var(--volt-ink); text-decoration: none; border-bottom: 2px solid var(--volt-wash); }
+.ct-addr a:hover { border-bottom-color: var(--volt-ink); }
+
+.ct-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  padding: 34px 0 8px;
+}
+.ct-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--bg-card);
+}
+.ct-card-h { font-size: 16px; font-weight: 600; color: var(--ink); }
+.ct-card-b { font-size: 13.5px; line-height: 1.6; color: var(--ink-soft); }
+/* What the sender gets back, set apart from what they send. */
+.ct-card-u {
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+  margin-top: 2px;
+}
+.ct-card-go {
+  margin-top: auto;
+  padding-top: 12px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--volt-ink);
+  text-decoration: none;
+}
+.ct-card-go:hover { text-decoration: underline; }
+
+.ct-foot { padding: 30px 0 72px; max-width: 62ch; }
+.ct-foot-h { font-size: 16px; font-weight: 600; color: var(--ink); margin-bottom: 10px; }
+.ct-foot-b { font-size: 13.5px; line-height: 1.7; color: var(--ink-soft); margin-bottom: 10px; }
+.ct-foot-b a { color: var(--volt-ink); }
+
 /* ---------- enterprise enquiry page ---------- */
 
 .ent-card { max-width: 620px; }
@@ -5896,3 +6077,151 @@ body {
   background: var(--rule);
   flex-shrink: 0;
 }
+
+/* ---------- the administrator's activity board ---------- */
+.st-stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  margin: 0 0 22px;
+}
+.st-activity { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.st-act {
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: var(--bg-card);
+}
+/* A superseded entry stays on the board rather than disappearing —
+   removing it would hide exactly the history this feature exists to
+   keep — but it recedes, because the correction is the current fact. */
+.st-act-old { opacity: .62; background: var(--bg-sunk); }
+.st-act-flag { border-left: 3px solid var(--volt-ink); }
+.st-act-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.st-act-time { font-family: var(--mono); font-size: 12px; color: var(--ink-faint); }
+.st-act-name { font-weight: 600; font-size: 14px; }
+.st-act-slot { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+.st-act-by { font-size: 13px; color: var(--ink-soft); margin-top: 3px; }
+.st-act-off { margin-left: 8px; font-weight: 600; color: var(--volt-ink); }
+.st-act-reason { font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); margin-top: 6px; }
+.st-pill-old { opacity: .8; }
+
+/* ---------- the accreditation console ---------- */
+/* Two columns because the matrix is wide and everything else is narrow.
+   Collapses to one below 1100px rather than squeezing the grid, which is
+   the element that stops being readable first. */
+.st-page-wide { max-width: 1440px; }
+.st-acc-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 18px;
+  align-items: start;
+}
+.st-acc-side { display: flex; flex-direction: column; gap: 18px; }
+@media (max-width: 1100px) {
+  .st-acc-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+.st-panel {
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 16px 18px;
+  background: var(--bg-card);
+}
+.st-panel-sub { font-size: 13px; line-height: 1.55; color: var(--ink-soft); margin: 4px 0 12px; }
+.st-block { display: block; text-align: center; text-decoration: none; }
+.st-fine { font-size: 11.5px; line-height: 1.5; color: var(--ink-faint); margin-top: 8px; }
+
+/* The grid scrolls inside its own panel. A clinic with nine credential
+   types must not push the whole page sideways. */
+.st-matrix-wrap { overflow-x: auto; margin: 0 -18px; padding: 0 18px; }
+.st-matrix { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.st-matrix th {
+  text-align: left;
+  font-size: 11px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-weight: 600;
+  padding: 0 8px 8px;
+  white-space: nowrap;
+}
+.st-matrix td { padding: 7px 8px; border-top: 1px solid var(--rule); vertical-align: middle; }
+.st-matrix-name { font-weight: 600; color: var(--ink); white-space: nowrap; }
+.st-matrix-job { color: var(--ink-faint); font-size: 11.5px; white-space: nowrap; }
+
+/* STATE IS THE WORD FIRST AND THE FILL SECOND. A grid that signals only
+   by hue is unreadable for a colourblind administrator and meaningless
+   in a printed binder — and this table gets printed. */
+.st-cell { white-space: nowrap; }
+.st-cell-state { display: block; font-weight: 600; font-size: 11.5px; }
+.st-cell-days { display: block; font-size: 10.5px; color: var(--ink-faint); font-family: var(--mono); }
+.st-cell-current  { background: var(--blue-050); }
+.st-cell-current  .st-cell-state { color: var(--blue-600); }
+.st-cell-expiring { background: #fff7e6; }
+.st-cell-expiring .st-cell-state { color: #8a5a00; }
+.st-cell-expired  { background: #fdecec; }
+.st-cell-expired  .st-cell-state { color: #a11616; }
+.st-cell-missing  { background: #fdecec; }
+.st-cell-missing  .st-cell-state { color: #a11616; }
+.st-cell-undated  { background: var(--bg-sunk); }
+.st-cell-undated  .st-cell-state { color: var(--ink-soft); }
+.st-cell-na { color: var(--ink-faint); }
+/* Not required for this job: present for completeness, recessive so the
+   eye goes to the cells that are actually findings. */
+.st-cell-optional { opacity: .5; }
+.st-matrix-key { font-size: 11.5px; color: var(--ink-faint); margin-top: 12px; line-height: 1.5; }
+
+/* ---------- photographs in the surveyor vault ---------- */
+/* A contact sheet, not thumbnails in a table cell. A surveyor works
+   through these one at a time, so they are big enough to read a
+   thermometer display in without opening anything. */
+.sv-note {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  margin-bottom: 14px;
+  max-width: 68ch;
+}
+.sv-proof-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 16px;
+}
+.sv-proof {
+  margin: 0;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+.sv-proof img {
+  display: block;
+  width: 100%;
+  /* Fixed height so the sheet stays a grid rather than a ragged column;
+     `contain` because cropping a thermometer display is the one thing
+     this image must never do. */
+  height: 190px;
+  object-fit: contain;
+  background: var(--blue-050);
+}
+.sv-proof-gone {
+  height: 190px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 16px;
+  font-size: 12.5px;
+  color: var(--ink-faint);
+  background: var(--blue-050);
+}
+.sv-proof figcaption {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--rule);
+}
+.sv-proof figcaption strong { font-size: 13px; color: var(--ink); font-weight: 600; }
+.sv-proof figcaption span { font-size: 11.5px; color: var(--ink-soft); }

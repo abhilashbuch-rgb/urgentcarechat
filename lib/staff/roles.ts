@@ -79,6 +79,10 @@ export const NAV: NavItem[] = [
   { href: "/staff", label: "Today", minRole: "staff" },
   { href: "/staff/logs", label: "Logs", minRole: "staff" },
   { href: "/staff/rounds", label: "Rounds", minRole: "staff" },
+  // Next to Logs rather than under an admin menu: the person who needs
+  // it has just been stuck with a needle, and the record is required of
+  // the employer whether or not a manager is on shift.
+  { href: "/staff/records", label: "Record an event", minRole: "staff" },
   { href: "/staff/rules", label: "Rules", minRole: "staff" },
   // Emergency guides. Everyone, every job — the front desk needs the
   // lobby-recognition guide more than anybody, and gating life-safety
@@ -111,6 +115,8 @@ export const NAV: NavItem[] = [
     placeholder: true,
     note: "Approve or flag submitted logs.",
   },
+  { href: "/staff/activity", label: "Activity", minRole: "org_admin" },
+  { href: "/staff/accreditation", label: "Accreditation", minRole: "org_admin" },
   { href: "/staff/surveyor", label: "Inspection", minRole: "org_admin" },
   { href: "/staff/team", label: "Team", minRole: "org_admin" },
 ];

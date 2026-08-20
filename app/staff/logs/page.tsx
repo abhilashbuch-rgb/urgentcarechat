@@ -143,7 +143,27 @@ export default async function LogsBoard({
                   <span className="st-pill st-pill-due">Out of range</span>
                 )}
                 {doneAt ? (
-                  <span className="st-pill st-pill-ok">Done</span>
+                  <>
+                    <span className="st-pill st-pill-ok">Done</span>
+                    {/* THE CORRECTION PATH, WHERE THE MISTAKE IS VISIBLE.
+                        Offered on a filed entry rather than hidden in an
+                        admin screen, because the person who knows a
+                        reading is wrong is almost always the person who
+                        typed it, within a minute of typing it. Hidden
+                        here, the alternative they reach for is asking a
+                        manager to "fix it in the system", which is the
+                        habit this product exists to remove. */}
+                    {!billing.is_read_only && r.response_id && (
+                      <a
+                        className="st-board-amend"
+                        href={`/staff/logs/${r.slug}?amend=${r.response_id}${
+                          r.slot ? `&slot=${r.slot}` : ""
+                        }`}
+                      >
+                        Amend
+                      </a>
+                    )}
+                  </>
                 ) : billing.is_read_only ? (
                   <span className="st-pill st-pill-new">Paused</span>
                 ) : (

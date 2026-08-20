@@ -32,6 +32,21 @@ const PHOTO_LABELS: Record<string, string> = {
 //    thermometer, and this is exactly the moment the person is still
 //    standing in front of it.
 
+// AMENDING IS THE SAME FORM, NOT A SECOND ONE.
+//
+// A separate correction screen would drift from this one: a field added
+// here would be missing there, and the range check that blocks a bad
+// reading on the way in would not block the same bad reading on the way
+// through a correction. So amend mode changes the endpoint, prefills the
+// previous answers, and demands a reason — and every validation rule is
+// literally the same code.
+export interface AmendTarget {
+  responseId: string;
+  answers: Answers;
+  filedAtLabel: string;
+  filedByName: string;
+}
+
 export default function LogForm({
   slug,
   slot,
@@ -40,6 +55,7 @@ export default function LogForm({
   todayLabel,
   slotLabel,
   geofence,
+  amend,
 }: {
   slug: string;
   slot: string;
@@ -48,8 +64,13 @@ export default function LogForm({
   todayLabel: string;
   slotLabel: string;
   geofence: OrgGeofence;
+  amend?: AmendTarget;
 }) {
-  const [answers, setAnswers] = useState<Answers>({});
+  // Prefilled from the entry being corrected, so the person changes the
+  // one number that was wrong instead of retyping a whole shift check
+  // from memory — which is how a correction introduces its own errors.
+  const [answers, setAnswers] = useState<Answers>(amend ? amend.answers : {});
+  const [reason, setReason] = useState("");
   const [corrective, setCorrective] = useState("");
   // The photograph is uploaded AFTER the log is filed, never with it —
   // see app/api/staff/logs/photo/route.ts. A failed upload must not cost
@@ -84,6 +105,13 @@ export default function LogForm({
   const locNoteLeft = MIN_CORRECTIVE - locNote.trim().length;
   const locNoteOk = !needsNote || locNoteLeft <= 0;
 
+  // A correction has to say why, to the same twenty characters as a
+  // corrective action and for the same reason: "typo" is not something a
+  // surveyor can evaluate three years later. Enforced by a CHECK on
+  // staff.form_responses as well as here.
+  const reasonLeft = MIN_CORRECTIVE - reason.trim().length;
+  const reasonOk = !amend || reasonLeft <= 0;
+
   function set(id: string, value: Answers[string]) {
     setAnswers((a) => ({ ...a, [id]: value }));
   }
@@ -113,17 +141,25 @@ export default function LogForm({
       first?.focus();
       return;
     }
-    if (!correctiveOk || !locNoteOk) return;
+    if (!correctiveOk || !locNoteOk || !reasonOk) return;
 
     setSubmitting(true);
     setError(null);
 
-    const res = await fetch("/api/staff/logs/submit", {
+    const res = await fetch(
+      amend ? "/api/staff/logs/amend" : "/api/staff/logs/submit",
+      {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        slug,
-        slot,
+        // The amend route identifies the entry being replaced; the
+        // submit route identifies the slot being filled. Sending both
+        // everywhere would mean each route quietly ignoring half its
+        // input, which is how the wrong one gets called and nobody
+        // notices for a month.
+        ...(amend
+          ? { responseId: amend.responseId, reason: reason.trim() }
+          : { slug, slot }),
         answers,
         correctiveAction: corrective.trim(),
         // The server re-classifies this against the clinic's own
@@ -139,7 +175,8 @@ export default function LogForm({
             }
           : null,
       }),
-    }).catch(() => null);
+      }
+    ).catch(() => null);
 
     if (!res?.ok) {
       setSubmitting(false);
@@ -189,6 +226,22 @@ export default function LogForm({
         <span>{todayLabel}</span>
         <span className="st-log-slot">{slotLabel}</span>
       </div>
+
+      {/* SAYS WHAT IS BEING REPLACED, AND THAT NOTHING IS ERASED.
+          Somebody correcting a number they typed wrongly needs to know
+          the original stays on the record — both because it is true and
+          because believing otherwise is what turns a correction into a
+          quiet edit attempt. */}
+      {amend && (
+        <div className="st-notice st-notice-warn" role="status">
+          <strong>Correcting an earlier entry</strong>
+          <span>
+            Filed {amend.filedAtLabel} by {amend.filedByName}. The original
+            stays on the record and an inspector will see both, with your
+            reason beside them.
+          </span>
+        </div>
+      )}
 
       <LocationStamp org={geofence} onChange={setLoc} />
 
@@ -282,13 +335,15 @@ export default function LogForm({
       <button
         className={`st-primary${flagged ? " st-primary-warn" : ""}`}
         type="submit"
-        disabled={submitting || !correctiveOk || !locNoteOk}
+        disabled={submitting || !correctiveOk || !locNoteOk || !reasonOk}
       >
         {submitting
           ? "Saving…"
-          : flagged
-            ? "Submit with corrective action"
-            : "Submit log"}
+          : amend
+            ? "File correction"
+            : flagged
+              ? "Submit with corrective action"
+              : "Submit log"}
       </button>
 
       {needsNote && !locNoteOk && (
@@ -299,6 +354,24 @@ export default function LogForm({
                 locNoteLeft === 1 ? "character" : "characters"
               }.`}
         </p>
+      )}
+
+      {amend && (
+        <label className="st-field">
+          <span className="st-field-label">Why are you changing this?</span>
+          <textarea
+            className="st-input st-textarea"
+            rows={3}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="e.g. Transposed the digits — the display read 38.5, I typed 385."
+          />
+          <span className="st-field-hint">
+            {reasonLeft > 0
+              ? `${reasonLeft} more ${reasonLeft === 1 ? "character" : "characters"}.`
+              : "This is kept with both versions, permanently."}
+          </span>
+        </label>
       )}
 
       {flagged && !correctiveOk && (

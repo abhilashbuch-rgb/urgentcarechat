@@ -43,16 +43,33 @@ function client() {
   // Somebody then re-copies a password that was right all along. Checked
   // once, at pool construction, so the message is the first thing in the
   // log rather than the fourth thing tried.
+  //
+  // NARROWLY, THOUGH. The first version of this check threw on anything
+  // `new URL()` could not parse, which rejected a perfectly valid
+  // socket-style string — postgresql://user@/db?host=/var/run — because
+  // it has no host component. A guard that refuses correct input is
+  // worse than no guard: it fails a deployment that would have worked,
+  // with a message confidently naming the wrong cause. So the only
+  // failure claimed here is the one actually diagnosable, and anything
+  // else goes to postgres.js, whose parser handles the forms URL cannot.
   try {
     const parsed = new URL(url);
     decodeURIComponent(parsed.password);
-  } catch {
-    throw new Error(
-      "STAFF_DATABASE_URL could not be parsed. This is almost always an " +
-        "unencoded password: percent-encode #, ?, / and % (%23 %3F %2F %25). " +
-        "The credentials are probably correct — the URL is not. " +
-        "Run `npm run verify-env` for the exact character."
-    );
+  } catch (e) {
+    const passwordIsUndecodable =
+      e instanceof URIError ||
+      // `new URL` threw: only blame the password when the authority
+      // actually contains a character that would do it.
+      /:\/\/[^/@]*[#?[\]][^/@]*@/.test(url);
+    if (passwordIsUndecodable) {
+      throw new Error(
+        "STAFF_DATABASE_URL has an unencoded password. Percent-encode " +
+          "#, ?, / and % (%23 %3F %2F %25) — the credentials are " +
+          "probably correct and the URL is not. Run `npm run verify-env` " +
+          "for the exact character."
+      );
+    }
+    // Not a shape this can diagnose. Let the driver try.
   }
 
   const sql = postgres(url, {

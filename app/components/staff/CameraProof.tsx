@@ -80,10 +80,14 @@ export default function CameraProof({
         patient faces, charts, wristbands or screens in shot.
       </p>
 
+      {/* accept matches what the server allows and what the PDF binder
+          can embed. "image/*" offered the gallery's webp files, which
+          the route now refuses — better to grey them out in the picker
+          than to reject them after the upload finishes. */}
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png"
         capture="environment"
         hidden
         disabled={disabled}

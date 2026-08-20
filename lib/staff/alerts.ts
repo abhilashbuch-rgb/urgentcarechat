@@ -22,8 +22,12 @@ export interface AlertInput {
   payload?: Record<string, unknown>;
 }
 
-/** File an alert. Excursions go out immediately; clean logs wait for the
- *  digest unless the clinic has asked for every one. */
+/** How long an amendable excursion waits before it is sent. See the
+ *  note at the insert below for why it is three and not ten. */
+export const AMEND_HOLD_MINUTES = 3;
+
+/** File an alert. Excursions go out after a short hold; clean logs wait
+ *  for the digest unless the clinic has asked for every one. */
 export async function enqueue(
   sql: StaffSql,
   input: AlertInput
@@ -35,6 +39,22 @@ export async function enqueue(
         ? "now"
         : "digest";
 
+  // THREE MINUTES BEFORE AN EXCURSION LEAVES THE BUILDING.
+  //
+  // Long enough for the person who typed 55 instead of 38.5 to notice in
+  // the same breath and amend it, which cancels this row before anybody
+  // is woken. Short enough that a fridge that really is at 55°F is still
+  // savable: the cost of ten minutes' silence is a vaccine lot and a
+  // letter to every patient dosed from it.
+  //
+  // ONLY excursions, and only ones tied to a response — those are the
+  // ones an amendment can retract. A missed task has nothing to amend,
+  // and holding it would just make the clinic later.
+  const holdMinutes =
+    input.kind === "excursion" && input.sourceKind === "form_response"
+      ? AMEND_HOLD_MINUTES
+      : null;
+
   // ON CONFLICT DO NOTHING against the unique index: a retried submit or
   // a second browser tab must not send the medical director the same
   // excursion twice. An alert that arrives twice is trusted slightly
@@ -42,12 +62,15 @@ export async function enqueue(
   await sql`
     insert into staff.alert_queue
       (org_slug, kind, urgency, subject, body,
-       source_kind, source_id, submitted_by, payload)
+       source_kind, source_id, submitted_by, payload, hold_until)
     values
       (${input.org}, ${input.kind}, ${urgency}, ${input.subject},
        ${input.body}, ${input.sourceKind ?? null},
        ${input.sourceId ?? null}, ${input.submittedBy ?? null},
-       ${sql.json((input.payload ?? {}) as Record<string, never>)})
+       ${sql.json((input.payload ?? {}) as Record<string, never>)},
+       ${holdMinutes === null
+         ? null
+         : sql`now() + (${holdMinutes} || ' minutes')::interval`})
     on conflict do nothing
   `;
 }
@@ -170,6 +193,11 @@ export async function sweep(
      where org_slug = ${org}
        and urgency = 'now'
        and attempts < 5
+       -- Without these two lines the hold is decorative: the sweep would
+       -- pick the row up on its next pass regardless, and a cancelled
+       -- alert would still be delivered.
+       and cancelled_at is null
+       and (hold_until is null or hold_until <= now())
        and (
          (${orgRow.owner_alert_email}::text is not null and owner_sent_at is null)
          or (${orgRow.medical_director_alert_email}::text is not null
@@ -408,4 +436,62 @@ export async function digestFor(
   }
 
   return { subject, body: lines.join("\n") };
+}
+
+/**
+ * The stamp that goes in an alert's subject line: who filed it and when,
+ * in the CLINIC's timezone.
+ *
+ * WHY THE SUBJECT AND NOT JUST THE BODY. An owner reads the subject on a
+ * lock screen and decides from that whether to open anything. "Fridge out
+ * of range" tells them something is wrong; "Fridge out of range —
+ * R. Alvarez, Aug 20 2:14pm" tells them who to ask and whether it is
+ * happening now or happened while they were asleep. That is the whole
+ * decision, made without unlocking the phone.
+ *
+ * THE CLINIC'S TIMEZONE, NOT THE SERVER'S AND NOT THE READER'S.
+ * formatSignedAt hardcodes America/New_York, which is correct for
+ * exactly the clinics in Eastern time and silently wrong for everyone
+ * else — a 7am fridge check in Phoenix would read as 10am. The org row
+ * carries the real zone; it is passed in rather than looked up here so
+ * this stays a pure function.
+ *
+ * No year: an alert is read the day it arrives, and the subject line has
+ * about forty characters of visible room on a phone.
+ */
+export function localStamp(timezone: string, at: Date = new Date()): string {
+  try {
+    // THE DATE IS DROPPED WHEN THE EVENT IS TODAY, and that is not
+    // cosmetic. A phone lock screen shows roughly forty characters of a
+    // subject line; "Aug 20, " is eight of them, and spending them on a
+    // date the reader can infer pushed the STAFF MEMBER'S NAME off the
+    // end — the one thing this stamp exists to surface. An immediate
+    // alert is about something that happened minutes ago; anything older
+    // still carries its date, because then it genuinely is ambiguous.
+    const today =
+      new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(at) ===
+      new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(new Date());
+
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      ...(today ? {} : { month: "short", day: "numeric" }),
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(at);
+  } catch {
+    // An invalid IANA name must not cost the clinic its alert. Fall back
+    // to UTC and say so, rather than throwing inside a submit handler.
+    return `${at.toISOString().slice(0, 16).replace("T", " ")} UTC`;
+  }
+}
+
+export function whoAndWhen(
+  name: string | null,
+  email: string,
+  timezone: string,
+  at: Date = new Date()
+): string {
+  // The display name where there is one; the address is a poor substitute
+  // in a subject line but better than "somebody".
+  return `${name ?? email} · ${localStamp(timezone, at)}`;
 }

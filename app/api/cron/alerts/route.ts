@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withOrg, isDatabaseConfigured } from "@/lib/staff/db";
-import { sweep, digestFor, enqueue } from "@/lib/staff/alerts";
+import { sweep, digestFor, enqueue, localStamp } from "@/lib/staff/alerts";
 
 // GET /api/cron/alerts — deliver queued alerts, and file the digests.
 //
@@ -41,8 +41,8 @@ export async function GET(req: NextRequest) {
   // and sets the org context per iteration. There is no session here to
   // derive it from, which is exactly why withOrg exists.
   const orgs = await withOrg("", "platform_super_admin", (sql) =>
-    sql<{ slug: string; due: boolean }[]>`
-      select slug,
+    sql<{ slug: string; due: boolean; timezone: string }[]>`
+      select slug, timezone,
              -- Is this the hour of a digest, in the clinic's own zone?
              (
                date_trunc('hour', now() at time zone timezone)
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
 
   const results: Record<string, unknown>[] = [];
 
-  for (const { slug, due } of orgs) {
+  for (const { slug, due, timezone } of orgs) {
     try {
       const outcome = await withOrg(slug, "platform_super_admin", async (sql) => {
         // Newly-late tasks. The unique index on (org, source_kind,
@@ -68,11 +68,18 @@ export async function GET(req: NextRequest) {
         const late = await sql<{ template_id: string; name: string; slot: string }[]>`
           select template_id, name, slot from staff.overdue_today
         `;
+        const nowLocal = localStamp(timezone);
+
         for (const t of late) {
           await enqueue(sql, {
             org: slug,
             kind: "missed_task",
-            subject: `${slug}: ${t.name} is late`,
+            // NO NAME IN THIS ONE, DELIBERATELY. Every other alert names
+            // the person who filed the entry; a missed task has nobody to
+            // name, and putting the on-shift staff member's name on
+            // "nobody did this" attributes a failure that may not be
+            // theirs. The slot and the hour are what an owner acts on.
+            subject: `NOT LOGGED · ${nowLocal} · ${t.name} (${t.slot.toUpperCase()}) · ${slug}`,
             body: `${t.name} (${t.slot.toUpperCase()}) has not been logged and is now late.`,
             sourceKind: "late_template",
             sourceId: t.template_id,
