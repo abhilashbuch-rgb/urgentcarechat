@@ -42,10 +42,6 @@ const WARN = rgb(0.04, 0.15, 0.25);
 // app/globals.css --ground and --volt.
 const GROUND = rgb(0.043, 0.071, 0.125);
 const VOLT = rgb(0.133, 0.827, 0.933);
-// Kept for the wordmark's full stop on the cover, which stays warm
-// against the cool trace.
-const GOLD_MID = rgb(0.851, 0.671, 0.208);
-
 export interface Ctx {
   doc: PDFDocument;
   page: PDFPage;

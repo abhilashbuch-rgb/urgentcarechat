@@ -2,8 +2,9 @@ import { requireStaff } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
 import { todaysBoard } from "@/lib/staff/logs";
 import { getProfile } from "@/lib/staff/compliance";
-import { billingState } from "@/lib/staff/billing";
+import { billingState, paymentLink } from "@/lib/staff/billing";
 import { SLOT_LABELS, currentSlot } from "@/lib/staff/forms";
+import { atLeast } from "@/lib/staff/roles";
 import { formatSignedAt } from "@/lib/staff/labels";
 
 // Today's board.
@@ -34,6 +35,7 @@ export default async function LogsBoard({
     };
   });
   const now = currentSlot();
+  const pay = billing.is_read_only ? paymentLink() : null;
 
   const outstanding = rows.filter((r) => !r.response_id).length;
   const flagged = rows.filter((r) => r.has_out_of_range).length;
@@ -58,6 +60,21 @@ export default async function LogsBoard({
             still exportable for a surveyor. Only new submissions are on hold
             until an administrator sorts out billing.
           </span>
+          {/* THE WAY OUT, SHOWN ONLY TO SOMEBODY WHO HAS ONE.
+              The banner used to end at "an administrator sorts out
+              billing" with nothing to press, which for the administrator
+              reading it on their own screen is a dead end. It is shown
+              to owners and administrators alone: a medical assistant
+              cannot act on it, and putting a payment link in front of
+              one is how a personal card ends up on a clinic's
+              subscription. It appears only when a link is configured,
+              so a deployment without one keeps the old wording rather
+              than offering a button that goes nowhere. */}
+          {pay && atLeast(session.role, "org_admin") && (
+            <a className="st-btn st-notice-action" href={pay}>
+              Set up billing
+            </a>
+          )}
         </div>
       )}
 

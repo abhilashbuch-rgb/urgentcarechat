@@ -27,9 +27,12 @@ import { useEffect, useState } from "react";
 // clinician opening the app to file a fridge temperature. It sits at the
 // bottom, it is dismissible, and the dismissal sticks.
 //
-// IT LIVES IN THE STAFF AREA, not on the marketing site. The person who
-// benefits from a home-screen icon is staff opening this at 7am every
-// day, not a prospect reading pricing on a laptop.
+// IT LIVES IN THE STAFF AREA, plus exactly one screen outside it: the
+// confirmation shown after a trial is created. The person who benefits
+// from a home-screen icon is staff opening this at 7am every day, and
+// the owner who has just made the clinic and is about to become the
+// first of them. A prospect reading pricing on a laptop is not offered
+// it, which is why this is not in the site layout.
 
 const DISMISS_KEY = "medicin.install.dismissed";
 

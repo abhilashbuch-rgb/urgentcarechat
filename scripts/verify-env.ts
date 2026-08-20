@@ -121,6 +121,28 @@ const CHECKS: Check[] = [
       "subscription changes never reach the app; a lapsed card never flips is_read_only",
     shape: startsWith("whsec_"),
   },
+  {
+    name: "STRIPE_PAYMENT_LINK",
+    level: "optional",
+    consequence:
+      "a read-only clinic is told to sort out billing with nothing to click",
+    // Only Stripe's own hosted domains. This is a link an administrator
+    // is asked to put a card into, so anything else must fail here
+    // rather than in front of a customer.
+    shape: (v) => {
+      let url: URL;
+      try {
+        url = new URL(v);
+      } catch {
+        return "not a URL";
+      }
+      if (url.protocol !== "https:") return "must be https";
+      const host = url.hostname.toLowerCase();
+      return host === "buy.stripe.com" || host.endsWith(".stripe.com")
+        ? null
+        : "expected a Stripe-hosted link (buy.stripe.com)";
+    },
+  },
 
   {
     name: "ALERT_FROM_EMAIL",

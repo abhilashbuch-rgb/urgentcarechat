@@ -116,7 +116,6 @@ export default function OpenGraphImage() {
           Daily logs that can&rsquo;t be backdated. Signatures that hold up.
         </div>
 
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={TRACE_SRC}
           width={1200}

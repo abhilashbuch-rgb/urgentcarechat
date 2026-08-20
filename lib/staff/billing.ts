@@ -35,3 +35,34 @@ export async function billingState(
     }
   );
 }
+
+/**
+ * The Payment Link an administrator is sent to when the clinic is
+ * read-only, or null when none is configured.
+ *
+ * A LINK, NOT A CHECKOUT SESSION. This integration deliberately makes no
+ * Stripe API calls (see lib/staff/stripe.ts): checkout is a Payment Link
+ * and card changes are the no-code Customer Portal, both configured in
+ * the dashboard. Creating sessions here would mean carrying the SDK, a
+ * price ID in code, and a second place for the price to be wrong.
+ *
+ * VALIDATED, BECAUSE THIS IS A LINK WE ASK PEOPLE TO PUT A CARD INTO.
+ * Only Stripe's own hosted domains are accepted. A mistyped or
+ * substituted value must fail closed and leave the banner with no link at
+ * all, rather than send a clinic administrator to somebody else's page
+ * with our wording around it.
+ */
+export function paymentLink(): string | null {
+  const raw = process.env.STRIPE_PAYMENT_LINK?.trim();
+  if (!raw) return null;
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:") return null;
+  const host = url.hostname.toLowerCase();
+  const ok = host === "buy.stripe.com" || host.endsWith(".stripe.com");
+  return ok ? url.toString() : null;
+}

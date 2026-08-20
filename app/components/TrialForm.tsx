@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { contactMailto } from "@/lib/site";
+import InstallPrompt from "@/app/components/staff/InstallPrompt";
 
 // Two fields and one choice, because that is what it takes. Asking for a
 // phone number or a clinic size here would cost more signups than the
@@ -79,6 +80,15 @@ export default function TrialForm() {
           14 days, no card. When it ends nothing is deleted — the workspace
           goes read-only and everything stays exportable.
         </p>
+        {/* OFFERED HERE AND NOWHERE ELSE ON THE MARKETING SITE.
+            A prospect reading pricing on a laptop has no use for a
+            home-screen icon. The person on this screen has just created
+            a clinic and is the account's first user — very often on the
+            phone they will file from every morning — so this is the one
+            moment before sign-in where the suggestion is earned. It is
+            still a dismissible banner, and still silent on any platform
+            where the instruction would not be true. */}
+        <InstallPrompt />
       </div>
     );
   }
@@ -115,6 +125,23 @@ export default function TrialForm() {
           This picks the logs you start with. You can add or remove any of
           them afterwards, and add more clinics of other kinds later.
         </span>
+        {/* THE SIXTH DOOR IS A LINK, NOT A SIXTH CHOICE.
+            A hospital or a multi-site system cannot be served by this
+            form: it needs a BAA negotiated against their template, a
+            security review, SSO against their directory, and a contract
+            that is not $149 on a card. Putting it in the picker would
+            take their card details and hand them a single-clinic
+            workspace they cannot legally put staff into. So it is
+            labelled as what it is and it goes somewhere a person
+            answers. */}
+        <a className="tr-fac-more" href="/enterprise">
+          <span className="tr-fac-label">Hospital or health system?</span>
+          <span className="tr-fac-hint">
+            Several sites on one contract, with a BAA and your own SSO
+            &mdash; that is a conversation, not a signup form. Talk to us
+            about enterprise terms &rarr;
+          </span>
+        </a>
       </fieldset>
 
       <label className="st-field">
