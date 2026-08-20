@@ -19,7 +19,18 @@ import { isStorageConfigured, keyFor, putFile } from "@/lib/staff/storage";
 export const runtime = "nodejs";
 
 const MAX_BYTES = 4 * 1024 * 1024;
-const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp"]);
+// JPEG AND PNG ONLY, AND WEBP IS EXCLUDED ON PURPOSE.
+//
+// pdf-lib exposes embedJpg and embedPng and nothing else. A webp upload
+// stored cleanly, displayed cleanly in the surveyor vault, and then
+// disappeared from the exported binder without an error anywhere —
+// meaning the one photograph somebody bothered to take would be missing
+// from the document handed to an inspector.
+//
+// Nothing is lost by refusing it: a camera capture arrives as JPEG, and
+// canvas.toBlob falls back to PNG. Webp only appears when somebody picks
+// an existing file from a gallery.
+const ALLOWED = new Set(["image/jpeg", "image/png"]);
 const MAX_CAPTION = 200;
 
 export async function POST(req: NextRequest) {

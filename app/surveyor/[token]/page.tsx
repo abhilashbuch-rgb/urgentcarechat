@@ -1,4 +1,5 @@
 import BrandLockup from "@/app/components/BrandLockup";
+import { signedUrl } from "@/lib/staff/storage";
 import type { Metadata } from "next";
 import { redeem, asSurveyor } from "@/lib/staff/surveyor";
 import { getTenantBySlug } from "@/lib/tenants";
@@ -23,6 +24,11 @@ import { KIND_LABELS } from "@/lib/staff/credentials";
 // declines, access locks, and a clinic fails a state inspection because
 // it cannot show logs it already recorded. A billing dispute must never
 // become a regulatory finding.
+
+// Ten minutes: long enough to read the page and open every photograph,
+// short enough that a URL copied out of the HTML is dead by the time it
+// reaches anywhere else.
+const PHOTO_URL_SECONDS = 600;
 
 export const dynamic = "force-dynamic";
 
@@ -60,9 +66,38 @@ export default async function SurveyorView({
       }[]
     >`
       select name, slot, submitted_at::text as submitted_at,
-             has_out_of_range, submitted_by_name
+             has_out_of_range, submitted_by_name, response_id
         from staff.todays_logs
        order by sort_order, slot
+    `,
+    // PHOTOGRAPHS OF THE THING ITSELF.
+    //
+    // A log entry says the fridge read 4.1°C. A photograph of the NIST
+    // display reading 4.1 is the difference between a record and
+    // evidence — it is the single artefact a surveyor cannot argue with,
+    // and it was being captured, stored, and then shown to nobody.
+    //
+    // Scoped to today's responses only, matching the rest of this page.
+    // The bucket is private and stays private; each URL below is minted
+    // per request and dies with the link.
+    photos: await sql<
+      {
+        response_id: string;
+        file_path: string;
+        file_type: string;
+        caption: string | null;
+        taken_by_name: string | null;
+        created_at: string;
+      }[]
+    >`
+      select p.response_id, p.file_path, p.file_type, p.caption,
+             u.legal_name as taken_by_name,
+             p.created_at::text as created_at
+        from staff.log_photos p
+        join staff.form_responses r on r.id = p.response_id
+        left join staff.users u on u.id = p.taken_by
+       where r.submitted_at >= current_date
+       order by p.created_at
     `,
     creds: await sql<
       {
@@ -92,6 +127,20 @@ export default async function SurveyorView({
     `,
   }));
 
+  // SIGNED HERE, NOT IN THE MARKUP. The bucket is private; these URLs
+  // are minted per request with a short life, so the page a surveyor
+  // saves to disk stops resolving its images long before the link
+  // itself expires. Failures are dropped rather than thrown: one
+  // unreadable object must not take down the whole vault.
+  const signed = await Promise.all(
+    data.photos.map(async (p) => {
+      try {
+        return { ...p, url: await signedUrl(p.file_path, PHOTO_URL_SECONDS) };
+      } catch {
+        return { ...p, url: null };
+      }
+    })
+  );
   const done = data.today.filter((t) => t.submitted_at).length;
   const flagged = data.today.filter((t) => t.has_out_of_range).length;
   const expired = data.creds.filter(
@@ -157,6 +206,51 @@ export default async function SurveyorView({
             </table>
           )}
         </Section>
+
+        {/* THE PHOTOGRAPHS.
+            A row saying the fridge read 4.1°C is a record. A photograph
+            of the display reading 4.1, taken at the clinic, at the time,
+            by a named person, is evidence — and it is the one artefact
+            in this vault that does not depend on trusting the person who
+            typed the number.
+            Given its own section rather than an icon in the table: a
+            thumbnail in a cell is a decoration, a contact sheet is
+            something a surveyor works through. */}
+        {signed.length > 0 && (
+          <Section title="Photographs filed today">
+            <p className="sv-note">
+              Taken in the app at the moment each log was filed. Captions
+              are the staff member&rsquo;s own words. These images open for
+              ten minutes and are not downloadable copies of anything
+              stored publicly.
+            </p>
+            <div className="sv-proof-grid">
+              {signed.map((p) => (
+                <figure className="sv-proof" key={p.file_path}>
+                  {p.url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={p.url}
+                      alt={p.caption ?? "Photograph filed with a shift log"}
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="sv-proof-gone">
+                      Stored, but temporarily unreadable
+                    </div>
+                  )}
+                  <figcaption>
+                    <strong>{p.caption ?? "No caption"}</strong>
+                    <span>
+                      {p.taken_by_name ?? "Unknown"} &middot;{" "}
+                      {formatSignedAt(p.created_at)}
+                    </span>
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          </Section>
+        )}
 
         <Section title="Credential currency">
           {/* Expiry dates and status. No licence, ARRT or DEA numbers

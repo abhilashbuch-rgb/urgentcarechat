@@ -6076,3 +6076,57 @@ body {
    eye goes to the cells that are actually findings. */
 .st-cell-optional { opacity: .5; }
 .st-matrix-key { font-size: 11.5px; color: var(--ink-faint); margin-top: 12px; line-height: 1.5; }
+
+/* ---------- photographs in the surveyor vault ---------- */
+/* A contact sheet, not thumbnails in a table cell. A surveyor works
+   through these one at a time, so they are big enough to read a
+   thermometer display in without opening anything. */
+.sv-note {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  margin-bottom: 14px;
+  max-width: 68ch;
+}
+.sv-proof-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 16px;
+}
+.sv-proof {
+  margin: 0;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+.sv-proof img {
+  display: block;
+  width: 100%;
+  /* Fixed height so the sheet stays a grid rather than a ragged column;
+     `contain` because cropping a thermometer display is the one thing
+     this image must never do. */
+  height: 190px;
+  object-fit: contain;
+  background: var(--blue-050);
+}
+.sv-proof-gone {
+  height: 190px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 16px;
+  font-size: 12.5px;
+  color: var(--ink-faint);
+  background: var(--blue-050);
+}
+.sv-proof figcaption {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--rule);
+}
+.sv-proof figcaption strong { font-size: 13px; color: var(--ink); font-weight: 600; }
+.sv-proof figcaption span { font-size: 11.5px; color: var(--ink-soft); }

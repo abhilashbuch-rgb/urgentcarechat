@@ -437,3 +437,61 @@ export async function digestFor(
 
   return { subject, body: lines.join("\n") };
 }
+
+/**
+ * The stamp that goes in an alert's subject line: who filed it and when,
+ * in the CLINIC's timezone.
+ *
+ * WHY THE SUBJECT AND NOT JUST THE BODY. An owner reads the subject on a
+ * lock screen and decides from that whether to open anything. "Fridge out
+ * of range" tells them something is wrong; "Fridge out of range —
+ * R. Alvarez, Aug 20 2:14pm" tells them who to ask and whether it is
+ * happening now or happened while they were asleep. That is the whole
+ * decision, made without unlocking the phone.
+ *
+ * THE CLINIC'S TIMEZONE, NOT THE SERVER'S AND NOT THE READER'S.
+ * formatSignedAt hardcodes America/New_York, which is correct for
+ * exactly the clinics in Eastern time and silently wrong for everyone
+ * else — a 7am fridge check in Phoenix would read as 10am. The org row
+ * carries the real zone; it is passed in rather than looked up here so
+ * this stays a pure function.
+ *
+ * No year: an alert is read the day it arrives, and the subject line has
+ * about forty characters of visible room on a phone.
+ */
+export function localStamp(timezone: string, at: Date = new Date()): string {
+  try {
+    // THE DATE IS DROPPED WHEN THE EVENT IS TODAY, and that is not
+    // cosmetic. A phone lock screen shows roughly forty characters of a
+    // subject line; "Aug 20, " is eight of them, and spending them on a
+    // date the reader can infer pushed the STAFF MEMBER'S NAME off the
+    // end — the one thing this stamp exists to surface. An immediate
+    // alert is about something that happened minutes ago; anything older
+    // still carries its date, because then it genuinely is ambiguous.
+    const today =
+      new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(at) ===
+      new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(new Date());
+
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      ...(today ? {} : { month: "short", day: "numeric" }),
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(at);
+  } catch {
+    // An invalid IANA name must not cost the clinic its alert. Fall back
+    // to UTC and say so, rather than throwing inside a submit handler.
+    return `${at.toISOString().slice(0, 16).replace("T", " ")} UTC`;
+  }
+}
+
+export function whoAndWhen(
+  name: string | null,
+  email: string,
+  timezone: string,
+  at: Date = new Date()
+): string {
+  // The display name where there is one; the address is a poor substitute
+  // in a subject line but better than "somebody".
+  return `${name ?? email} · ${localStamp(timezone, at)}`;
+}

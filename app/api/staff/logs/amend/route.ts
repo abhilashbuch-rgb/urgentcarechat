@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolve } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
-import { enqueue } from "@/lib/staff/alerts";
+import { enqueue, whoAndWhen } from "@/lib/staff/alerts";
 import { loadTemplate } from "@/lib/staff/logs";
 import { coerce, evaluate, type Answers } from "@/lib/staff/forms";
 import { classify, isPlausible, type GeofenceMode, type OrgGeofence } from "@/lib/staff/geo";
@@ -108,14 +108,19 @@ export async function POST(req: NextRequest) {
         return { error: "corrective_action_required" as const, status: 400 };
       }
 
+      const [amender] = await sql<{ legal_name: string | null }[]>`
+        select legal_name from staff.users where id = ${session.uid}
+      `;
+
       // Where the person was standing when they made the correction —
       // its own fact, not copied from the original.
       const geoRow = (
         await sql<{
           latitude: number | null; longitude: number | null;
           geofence_radius_m: number; geofence_mode: GeofenceMode;
+          timezone: string;
         }[]>`
-          select latitude, longitude, geofence_radius_m, geofence_mode
+          select latitude, longitude, geofence_radius_m, geofence_mode, timezone
             from staff.orgs where slug = ${org}
         `
       )[0];
@@ -158,6 +163,8 @@ export async function POST(req: NextRequest) {
         alarmCancelled: amended.alarm_cancelled,
         flagged,
         templateName: template.name,
+        timezone: geoRow?.timezone ?? "UTC",
+        amendedByName: amender?.legal_name ?? null,
       };
     });
 
@@ -174,12 +181,18 @@ export async function POST(req: NextRequest) {
     // one thing worse than a late amendment is a staff member who
     // decides it is not worth the trouble and leaves the wrong number
     // standing.
+    const stamp = whoAndWhen(
+      result.amendedByName,
+      session.email,
+      result.timezone
+    );
+
     if (result.flagged) {
       await withSession(session, (sql) =>
         enqueue(sql, {
           org,
           kind: "excursion",
-          subject: `${result.templateName} — amended, still out of range`,
+          subject: `STILL OUT OF RANGE · ${stamp} · ${result.templateName} · ${org}`,
           body: `${result.templateName} was amended and the new reading is still outside its range. Reason given: ${reason}`,
           sourceKind: "form_response",
           sourceId: result.id,
@@ -191,7 +204,7 @@ export async function POST(req: NextRequest) {
         enqueue(sql, {
           org,
           kind: "log",
-          subject: `${result.templateName} — entry amended`,
+          subject: `Amended · ${stamp} · ${result.templateName} · ${org}`,
           body: `An entry was amended after its alert window. Reason given: ${reason}`,
           sourceKind: "form_response",
           sourceId: result.id,

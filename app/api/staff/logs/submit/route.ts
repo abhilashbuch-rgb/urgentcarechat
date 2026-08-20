@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolve } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
-import { enqueue } from "@/lib/staff/alerts";
+import { enqueue, whoAndWhen } from "@/lib/staff/alerts";
 import { loadTemplate, ensureInstance } from "@/lib/staff/logs";
 import { coerce, evaluate, type Answers } from "@/lib/staff/forms";
 import {
@@ -79,9 +79,10 @@ export async function POST(req: NextRequest) {
           longitude: number | null;
           geofence_radius_m: number;
           geofence_mode: GeofenceMode;
+          timezone: string;
         }[]
       >`
-        select latitude, longitude, geofence_radius_m, geofence_mode
+        select latitude, longitude, geofence_radius_m, geofence_mode, timezone
           from staff.orgs where slug = ${org}
       `;
       const geofence: OrgGeofence = {
@@ -198,17 +199,30 @@ export async function POST(req: NextRequest) {
       // would make the mail provider's slow afternoon into this person's
       // slow submit button, and a provider outage into either a 500 on
       // an already-filed log or a silently lost excursion.
+      const stamp = whoAndWhen(
+        profileName ?? null,
+        session.email,
+        geoRow?.timezone ?? "UTC"
+      );
+
       await enqueue(sql, {
         org,
         kind: flagged ? "excursion" : "log",
+        // ORDERED FOR A LOCK SCREEN, which shows about forty characters.
+        // Status, then who, then when, then what — because the first
+        // three are what decide whether to open it, and the template
+        // name is both the longest field and the least urgent. Leading
+        // with the clinic slug and the template name pushed the staff
+        // member's name off the end of every excursion subject, which
+        // defeated the point of putting it there.
         subject: flagged
-          ? `${org}: ${template.name} out of range`
-          : `${org}: ${template.name} logged`,
+          ? `OUT OF RANGE · ${stamp} · ${template.name} · ${org}`
+          : `Logged · ${stamp} · ${template.name} · ${org}`,
         body: flagged
           ? [
               `${template.name} (${slot.toUpperCase()}) is out of range.`,
               `Out of range: ${check.outOfRangeLabels.join(", ")}`,
-              `Filed by ${profileName ?? session.email} at ${new Date().toISOString()}`,
+              `Filed by ${stamp} (${geoRow?.timezone ?? "UTC"})`,
               "",
               `Corrective action recorded: ${corrective}`,
             ].join("\n")
