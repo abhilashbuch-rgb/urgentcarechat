@@ -1530,7 +1530,9 @@ body {
 .lp-nav-inner,
 .lp-footer-inner,
 .lp-main > section {
-  max-width: 1120px;
+  /* 1120 left ~400px of dead white on either side of a 1920 display and
+     made the whole page read as a narrow column floating in space. */
+  max-width: 1280px;
   margin: 0 auto;
   padding-left: 28px;
   padding-right: 28px;
@@ -4927,11 +4929,46 @@ body {
 .lp-min .lp-main {
   width: 100%;
   min-width: 0;
-  max-width: 900px;
+  /* WAS 900px, WHICH IS A READING MEASURE, NOT A PAGE. On a 1920 display
+     it left ~500px of empty white either side and the whole landing page
+     read as a narrow column floating in space. The measure that matters
+     is the one on the TEXT — set per block below — not on the shell. */
+  max-width: none;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0;
 }
-.lp-min .lp-main > section { min-width: 0; max-width: 100%; padding-left: 0; padding-right: 0; }
+/* Each block carries the column now, so the shell can be full width. */
+.lp-min .lp-main > section {
+  min-width: 0;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+/* THE HERO IS THE EXCEPTION: it spans the window.
+   A centred dark card on a white page has two empty margins by
+   construction. Running the ground edge to edge removes them without
+   touching the measure — the text still sits in the same 1280 column,
+   it just no longer has a box drawn around it. */
+.lp-min .lp-main > section.mh-hero {
+  max-width: none;
+  margin-top: 0;
+  border-radius: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+.lp-min .mh-hero > *:not(.mh-rule) {
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+/* 48ch against a 1200px block is a short paragraph with half a screen of
+   nothing beside it. Still inside a comfortable measure. */
+.lp-min .mh-lede { max-width: 62ch; }
 .lp-min .mh-h1 { overflow-wrap: break-word; }
 
 /* ---------- the hero, on the ground ----------
@@ -5042,6 +5079,14 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 32px;
   padding: 56px 0 72px;
+}
+/* THREE, EXPLICITLY, ONCE THERE IS ROOM FOR THREE.
+   auto-fit packs as many 220px tracks as fit, which on a wide shell
+   became five columns and left the sixth feature alone on a second row.
+   Six items want two rows of three, and the only way to say that is to
+   say it. */
+@media (min-width: 900px) {
+  .mh-features { grid-template-columns: repeat(3, 1fr); gap: 40px 48px; }
 }
 /* Numbered by the accent rather than boxed. A card for every idea is
    what made the old page read as a template; a short rule in the one
@@ -5658,7 +5703,11 @@ body {
   transition: border-color .15s ease;
 }
 .demo-role-card:hover { border-color: var(--volt-ink); }
-.demo-role-emoji { font-size: 22px; }
+/* The icon takes the accent at its text-safe step, so the four marks
+   read as a set with the rules above the feature blocks rather than as
+   four unrelated pictures. */
+.demo-role-icon-wrap { display: block; color: var(--volt-ink); line-height: 0; }
+.demo-role-icon { display: block; }
 .demo-role-title { font-size: 15px; font-weight: 650; }
 .demo-role-body { font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); }
 
