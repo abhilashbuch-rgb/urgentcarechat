@@ -6010,3 +6010,69 @@ body {
 .st-act-off { margin-left: 8px; font-weight: 600; color: var(--volt-ink); }
 .st-act-reason { font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); margin-top: 6px; }
 .st-pill-old { opacity: .8; }
+
+/* ---------- the accreditation console ---------- */
+/* Two columns because the matrix is wide and everything else is narrow.
+   Collapses to one below 1100px rather than squeezing the grid, which is
+   the element that stops being readable first. */
+.st-page-wide { max-width: 1440px; }
+.st-acc-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 18px;
+  align-items: start;
+}
+.st-acc-side { display: flex; flex-direction: column; gap: 18px; }
+@media (max-width: 1100px) {
+  .st-acc-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+.st-panel {
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 16px 18px;
+  background: var(--bg-card);
+}
+.st-panel-sub { font-size: 13px; line-height: 1.55; color: var(--ink-soft); margin: 4px 0 12px; }
+.st-block { display: block; text-align: center; text-decoration: none; }
+.st-fine { font-size: 11.5px; line-height: 1.5; color: var(--ink-faint); margin-top: 8px; }
+
+/* The grid scrolls inside its own panel. A clinic with nine credential
+   types must not push the whole page sideways. */
+.st-matrix-wrap { overflow-x: auto; margin: 0 -18px; padding: 0 18px; }
+.st-matrix { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.st-matrix th {
+  text-align: left;
+  font-size: 11px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-weight: 600;
+  padding: 0 8px 8px;
+  white-space: nowrap;
+}
+.st-matrix td { padding: 7px 8px; border-top: 1px solid var(--rule); vertical-align: middle; }
+.st-matrix-name { font-weight: 600; color: var(--ink); white-space: nowrap; }
+.st-matrix-job { color: var(--ink-faint); font-size: 11.5px; white-space: nowrap; }
+
+/* STATE IS THE WORD FIRST AND THE FILL SECOND. A grid that signals only
+   by hue is unreadable for a colourblind administrator and meaningless
+   in a printed binder — and this table gets printed. */
+.st-cell { white-space: nowrap; }
+.st-cell-state { display: block; font-weight: 600; font-size: 11.5px; }
+.st-cell-days { display: block; font-size: 10.5px; color: var(--ink-faint); font-family: var(--mono); }
+.st-cell-current  { background: var(--blue-050); }
+.st-cell-current  .st-cell-state { color: var(--blue-600); }
+.st-cell-expiring { background: #fff7e6; }
+.st-cell-expiring .st-cell-state { color: #8a5a00; }
+.st-cell-expired  { background: #fdecec; }
+.st-cell-expired  .st-cell-state { color: #a11616; }
+.st-cell-missing  { background: #fdecec; }
+.st-cell-missing  .st-cell-state { color: #a11616; }
+.st-cell-undated  { background: var(--bg-sunk); }
+.st-cell-undated  .st-cell-state { color: var(--ink-soft); }
+.st-cell-na { color: var(--ink-faint); }
+/* Not required for this job: present for completeness, recessive so the
+   eye goes to the cells that are actually findings. */
+.st-cell-optional { opacity: .5; }
+.st-matrix-key { font-size: 11.5px; color: var(--ink-faint); margin-top: 12px; line-height: 1.5; }
