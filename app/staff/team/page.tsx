@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { requireStaff } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
 import { teamStatus } from "@/lib/staff/compliance";
-import { atLeast, ROLE_LABELS } from "@/lib/staff/roles";
+import { atLeast, ROLE_LABELS, JOB_LABELS } from "@/lib/staff/roles";
+import { pending, INVITE_TTL_HOURS } from "@/lib/staff/invites";
 import { formatSignedAt } from "@/lib/staff/labels";
 
 // Who has completed their packet and who hasn't.
@@ -22,6 +23,14 @@ const NOTICES: Record<string, string> = {
   last_admin: "That would leave this organization with no active administrator.",
   not_found: "No such person in this organization.",
   server_error: "That didn't go through. Nothing changed.",
+  invited: "Invitation sent. The link works once and expires in 72 hours.",
+  invited_no_mail:
+    "Invitation created, but this deployment has no mail provider configured, so nothing was sent. Set a mail provider key and invite again.",
+  revoked: "Invitation withdrawn. That link stops working immediately.",
+  already_member: "That person already has active access — no invitation needed.",
+  bad_email: "That doesn't look like an email address.",
+  bad_role: "Unrecognised role.",
+  invite_failed: "The invitation could not be sent. Nothing was changed.",
 };
 
 export default async function Team({
@@ -36,7 +45,10 @@ export default async function Team({
   // not access control — someone who types the URL gets the same answer.
   if (!atLeast(session.role, "org_admin")) redirect("/staff");
 
-  const team = await withSession(session, (sql) => teamStatus(sql));
+  const { team, invites } = await withSession(session, async (sql) => ({
+    team: await teamStatus(sql),
+    invites: await pending(sql, session.org ?? ""),
+  }));
   const active = team.filter((m) => m.active);
   const behind = active.filter((m) => m.outstanding_count > 0).length;
   const mfaGaps = active.filter((m) => m.mfa_required && !m.mfa_enrolled).length;
@@ -61,6 +73,117 @@ export default async function Team({
           <span>{NOTICES[(e ?? done)!] ?? "Updated."}</span>
         </div>
       )}
+
+      {/* WHO MAY COME IN AT ALL.
+          Above the roster, because the roster answers "how are my people
+          doing" and this answers "who are my people" — and on a Monday
+          morning with three new hires, the second question is the one
+          that brought the administrator here.
+
+          NO SHARED CODE ANYWHERE ON THIS SCREEN. One link, minted for one
+          address, mailed to that address, dead after 72 hours or one use.
+          A code passed around a clinic outlives the people who were given
+          it; a link tied to a mailbox does not. */}
+      <section className="st-invite">
+        <h2 className="st-h2">Invite someone</h2>
+        <p className="st-page-sub">
+          They get a link at this address that works once and expires in{" "}
+          {INVITE_TTL_HOURS} hours. Opening it doesn&rsquo;t sign them in on
+          its own &mdash; they still prove the address is theirs, so a
+          forwarded link is not access.
+        </p>
+
+        <form className="st-invite-form" method="POST" action="/api/staff/team/invite">
+          <input type="hidden" name="action" value="invite" />
+
+          <label className="st-field st-invite-email">
+            <span className="st-field-label">Work email</span>
+            <input
+              className="st-input"
+              type="email"
+              name="email"
+              required
+              placeholder="them@yourclinic.com"
+              autoComplete="off"
+            />
+          </label>
+
+          <label className="st-field">
+            <span className="st-field-label">Job</span>
+            <select className="st-input" name="job_role" defaultValue="medical_assistant">
+              {Object.entries(JOB_LABELS).map(([id, label]) => (
+                <option key={id} value={id}>{label}</option>
+              ))}
+            </select>
+          </label>
+
+          {/* THE ADMINISTRATOR PICKS THIS, NOT THE INVITEE. A new hire
+              choosing their own permissions on their first morning is
+              the one moment nobody is watching. */}
+          <label className="st-field">
+            <span className="st-field-label">Can administer</span>
+            <select className="st-input" name="role" defaultValue="staff">
+              <option value="staff">No &mdash; clinical staff</option>
+              <option value="org_admin">Yes &mdash; administrator</option>
+            </select>
+          </label>
+
+          <button className="st-primary st-invite-go" type="submit">
+            Send invitation
+          </button>
+        </form>
+
+        {invites.length > 0 && (
+          <div className="st-invite-pending">
+            <h3 className="st-h2">
+              Waiting to be accepted ({invites.length})
+            </h3>
+            <table className="st-table">
+              <thead>
+                <tr>
+                  <th>Address</th>
+                  <th>Job</th>
+                  <th>Expires</th>
+                  <th>Access</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invites.map((i) => (
+                  <tr key={i.id}>
+                    <td>
+                      {i.email}
+                      {i.role === "org_admin" && (
+                        <span className="st-flag-admin">Administrator</span>
+                      )}
+                    </td>
+                    <td>{i.job_role ? JOB_LABELS[i.job_role] ?? i.job_role : "\u2014"}</td>
+                    <td>
+                      {/* Expired is shown rather than hidden. An
+                          administrator wondering why somebody never
+                          arrived needs to see the reason, and the fix
+                          is the same button either way. */}
+                      {i.expired ? (
+                        <span className="st-pill st-pill-due">Expired</span>
+                      ) : (
+                        formatSignedAt(i.expires_at)
+                      )}
+                    </td>
+                    <td>
+                      <form method="POST" action="/api/staff/team/invite">
+                        <input type="hidden" name="action" value="revoke" />
+                        <input type="hidden" name="invite_id" value={i.id} />
+                        <button className="st-quiet" type="submit">
+                          {i.expired ? "Remove" : "Withdraw"}
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       <div className="st-table-wrap">
         <table className="st-table">

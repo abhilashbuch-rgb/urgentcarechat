@@ -69,15 +69,20 @@ const MESSAGES: Record<string, { title: string; body: string }> = {
 export default async function StaffSignIn({
   searchParams,
 }: {
-  searchParams: Promise<{ e?: string }>;
+  searchParams: Promise<{ e?: string; invited?: string }>;
 }) {
   // Already signed in and in the right place — the sign-in page has
   // nothing to offer.
   const existing = await resolve();
   if (existing.ok) redirect("/staff");
 
-  const { e } = await searchParams;
+  const { e, invited } = await searchParams;
   const message = e ? MESSAGES[e] : undefined;
+
+  // Arrived from an invitation link. Only used to prefill a form field —
+  // it grants nothing, so a hand-typed value costs an attacker a
+  // pre-filled box and no more.
+  const invitedEmail = (invited ?? "").trim().slice(0, 160);
 
   // One staff door for every clinic, so the only thing that can stop the
   // button appearing is the server missing its OAuth credentials — which
@@ -141,7 +146,7 @@ export default async function StaffSignIn({
           </>
         )}
 
-        <EmailSignIn />
+        <EmailSignIn initialEmail={invitedEmail} />
 
         {!canSignIn && !message && (
           <p className="st-signin-fine">

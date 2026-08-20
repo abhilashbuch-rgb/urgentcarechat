@@ -232,11 +232,21 @@ grant select on staff.off_site_filings to staff_app;
 -- day one instead of a column of nulls. Only fills a null — never
 -- overwrites a coordinate an administrator has set by hand, which would
 -- undo a correction on every deploy.
-update staff.orgs o
-   set latitude  = c.lat,
-       longitude = c.lng
-  from public.clinics c
- where c.tenant_slug = o.slug
-   and o.latitude is null
-   and c.lat is not null
-   and c.lng is not null;
+-- GUARDED, BECAUSE THE STAFF SCHEMA MUST NOT REQUIRE THE PATIENT ONE.
+-- public.clinics belongs to the patient-facing side. On a project that
+-- has it this fills real coordinates; on one that does not, an
+-- unguarded reference aborts the whole migration HALFWAY THROUGH and
+-- leaves the schema half-applied, which is far worse than starting with
+-- null coordinates.
+do $$ begin
+  if to_regclass('public.clinics') is not null then
+    update staff.orgs o
+       set latitude  = c.lat,
+           longitude = c.lng
+      from public.clinics c
+     where c.tenant_slug = o.slug
+       and o.latitude is null
+       and c.lat is not null
+       and c.lng is not null;
+  end if;
+end $$;

@@ -5712,6 +5712,34 @@ body {
   margin-top: 12px;
 }
 
+/* ---------- invitations on the Team screen ---------- */
+
+.st-invite { margin: 0 0 28px; }
+.st-invite-form {
+  display: grid;
+  grid-template-columns: minmax(220px, 2fr) minmax(150px, 1fr) minmax(150px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin: 12px 0 0;
+}
+/* One column on a phone. An administrator adding three new hires from
+   the front desk is doing it on whatever is in their hand. */
+@media (max-width: 780px) {
+  .st-invite-form { grid-template-columns: 1fr; }
+  .st-invite-go { width: 100%; }
+}
+.st-invite-pending { margin-top: 22px; }
+.st-flag-admin {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border: 1px solid var(--rule-firm);
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
 /* ---------- facility picker on /start ---------- */
 
 .tr-fac { border: 0; padding: 0; margin: 0 0 18px; }

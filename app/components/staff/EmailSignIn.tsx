@@ -31,8 +31,11 @@ const ERRORS: Record<string, string> = {
   deactivated: "That account has been deactivated.",
 };
 
-export default function EmailSignIn() {
-  const [email, setEmail] = useState("");
+export default function EmailSignIn({ initialEmail = "" }: { initialEmail?: string }) {
+  // Prefilled when arriving from an invitation link, so a new hire cannot
+  // accidentally request a code for a personal address that was never
+  // invited and be turned away without understanding why.
+  const [email, setEmail] = useState(initialEmail);
   const [code, setCode] = useState("");
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
