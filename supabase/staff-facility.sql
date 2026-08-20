@@ -514,9 +514,24 @@ grant execute on function staff.seed_facility(text) to staff_app;
 
 -- ---------- 6. Provisioning, fixed ----------
 
--- Now takes a facility type and SEEDS THE CLINIC. Same name and a
--- defaulted new argument, so the existing 4-argument call in
--- app/api/trial/route.ts keeps working and gets urgent_care.
+-- DROP THE OLD FOUR-ARGUMENT OVERLOAD FIRST.
+--
+-- `create or replace function` replaces a function with the SAME
+-- signature. Adding a defaulted argument makes a DIFFERENT signature, so
+-- this created a second function beside the first rather than replacing
+-- it — and a four-argument call then matched both and failed with
+-- "function staff.provision_trial(unknown, unknown, unknown, integer) is
+-- not unique". The comment that used to sit here claimed the opposite,
+-- and production 500ed on every signup until the duplicate was dropped.
+--
+-- Dropped rather than left in place: the old one predates facility types
+-- and seeds no logs, so a clinic that reached it would land on an empty
+-- board.
+drop function if exists staff.provision_trial(text, text, text, int);
+
+-- Now takes a facility type and SEEDS THE CLINIC. A four-argument call
+-- still works and gets urgent_care — but only because the old overload
+-- is dropped immediately above.
 create or replace function staff.provision_trial(
   p_slug text, p_name text, p_email text, p_days int default 14,
   p_facility text default 'urgent_care'
