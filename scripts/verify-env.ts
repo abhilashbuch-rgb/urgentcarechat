@@ -42,16 +42,60 @@ const CHECKS: Check[] = [
     consequence: "the whole staff module is off; pages answer 503",
     shape: (v) => {
       if (!/^postgres(ql)?:\/\//.test(v)) return "not a postgres:// URL";
-      // The single most consequential misconfiguration in this product.
-      // A superuser BYPASSES row-level security, so every clinic would
-      // read every other clinic's records and no test would notice
-      // because everything would appear to work.
-      if (/:\/\/postgres[:@]/.test(v)) {
+
+      // THE PASSWORD HAS TO BE PERCENT-ENCODED, and this is the failure
+      // that reads as "the password is wrong" when the password is
+      // perfectly correct. postgres.js runs decodeURIComponent over the
+      // password (src/index.js), so a Supabase-generated password
+      // containing #, ? or / truncates the URL, and one containing a
+      // bare % throws URIError: URI malformed before a packet is sent.
+      // Both surface as a connection failure that looks like bad
+      // credentials, which is why this check names the character.
+      const at = v.lastIndexOf("@");
+      const colon = v.indexOf(":", v.indexOf("//") + 2);
+      if (at > colon && colon !== -1) {
+        const rawPw = v.slice(colon + 1, at);
+        const bad = rawPw.match(/[#?/[\]]/);
+        if (bad) {
+          return `the password contains an unencoded "${bad[0]}" — percent-encode it (${encodeURIComponent(bad[0])}) or the URL parses wrongly and this reads as a bad password`;
+        }
+        try {
+          decodeURIComponent(rawPw);
+        } catch {
+          return 'the password contains a bare "%" — write it as %25, or postgres.js throws "URI malformed" before it connects';
+        }
+      }
+
+      // THE ROLE, READ THE WAY SUPAVISOR WRITES IT.
+      //
+      // On the pooled connection this product is documented to use, the
+      // username is not the role — it is `<role>.<project_ref>`. The
+      // earlier check looked for `staff_app` followed immediately by ":"
+      // or "@" and so REJECTED the very URL the deployment checklist
+      // asks for, with the message "does not use the staff_app role"
+      // about a URL that does. Worse, `postgres.<ref>` — the SUPERUSER
+      // on the pooler — missed the superuser branch and fell through to
+      // that same wrong message, so the one misconfiguration that
+      // silently disables every RLS policy in this product was reported
+      // as if it were a typo.
+      //
+      // So the role is parsed out properly and the ref, if present, is
+      // set aside before either comparison.
+      let role: string;
+      try {
+        role = decodeURIComponent(new URL(v).username);
+      } catch {
+        return "could not be parsed as a URL";
+      }
+      const bare = role.split(".")[0];
+      if (!bare) return "no role in the connection string";
+      if (bare === "postgres") {
         return "points at the 'postgres' superuser — RLS is BYPASSED for superusers; use the staff_app role";
       }
-      if (!/:\/\/staff_app[:@]/.test(v)) {
-        return "does not use the staff_app role; confirm the role is not a superuser";
+      if (bare !== "staff_app") {
+        return `uses the '${bare}' role, not staff_app; confirm that role is not a superuser`;
       }
+
       return null;
     },
   },

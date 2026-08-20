@@ -34,6 +34,27 @@ function client() {
   const url = process.env.STAFF_DATABASE_URL;
   if (!url) throw new Error("STAFF_DATABASE_URL is not set");
 
+  // FAIL WITH THE REASON, NOT WITH THE SYMPTOM.
+  //
+  // postgres.js runs decodeURIComponent over the password, so a password
+  // containing a bare "%" throws "URI malformed" from inside the driver,
+  // and one containing "#", "?" or "/" silently truncates the URL — both
+  // of which arrive looking like the database rejected the credentials.
+  // Somebody then re-copies a password that was right all along. Checked
+  // once, at pool construction, so the message is the first thing in the
+  // log rather than the fourth thing tried.
+  try {
+    const parsed = new URL(url);
+    decodeURIComponent(parsed.password);
+  } catch {
+    throw new Error(
+      "STAFF_DATABASE_URL could not be parsed. This is almost always an " +
+        "unencoded password: percent-encode #, ?, / and % (%23 %3F %2F %25). " +
+        "The credentials are probably correct — the URL is not. " +
+        "Run `npm run verify-env` for the exact character."
+    );
+  }
+
   const sql = postgres(url, {
     // Supabase's pooler multiplexes connections, so server-side prepared
     // statements don't survive between queries.
