@@ -1563,17 +1563,54 @@ body {
 .lp-nav-links {
   display: flex;
   align-items: center;
-  gap: 22px;
+  gap: 12px;
   font-size: 14px;
 }
 
+/* BOTH NAV ITEMS ARE BUTTONS, AND THEY ARE NOT EQUAL.
+   As plain text these read as footer links and the demo — the one thing
+   a stranger should press first — was the quietest element above the
+   fold. Fully rounded so they read as controls at a glance rather than
+   as boxed text.
+   The demo is filled and the sign-in is outlined, because they serve
+   opposite people: a visitor evaluating the product, and a member of
+   staff who already knows where they are going and does not need
+   persuading. Two filled buttons side by side make neither one a
+   choice. */
 .lp-nav-links a {
-  color: var(--l-ink-soft);
+  display: inline-flex;
+  align-items: center;
+  /* Fully rounded: any radius at or beyond half the height is a pill,
+     and 999px stays one at every font size. */
+  border-radius: 999px;
+  padding: 9px 20px;
+  font-weight: 500;
   text-decoration: none;
-  transition: color .15s;
+  white-space: nowrap;
+  /* 44px is the smallest reliable touch target; the nav is the first
+     thing a thumb reaches for on a phone. */
+  min-height: 44px;
+  transition: background .15s, color .15s, border-color .15s;
 }
 
-.lp-nav-links a:hover { color: var(--l-navy); }
+/* The demo leads. */
+.lp-nav-links a[href="/demo"] {
+  background: var(--l-navy);
+  color: #fff;
+  border: 1px solid var(--l-navy);
+}
+.lp-nav-links a[href="/demo"]:hover { background: var(--blue-600); border-color: var(--blue-600); }
+
+/* Sign-in follows. */
+.lp-nav-links a[href="/staff/signin"] {
+  background: transparent;
+  color: var(--l-navy);
+  border: 1px solid var(--rule-firm);
+}
+.lp-nav-links a[href="/staff/signin"]:hover {
+  border-color: var(--l-navy);
+  background: var(--volt-wash);
+}
 
 .lp-nav-cta {
   background: var(--l-navy);
