@@ -48,7 +48,13 @@ export default async function RecordsPage() {
         left join staff.form_instances i on i.template_id = t.id
         left join staff.form_responses r on r.instance_id = i.id
        where t.active and t.frequency = 'on_event'
-       group by t.slug, t.name, t.description, t.category, t.schema_json
+       -- Grouped by the primary key, not by the columns being selected.
+       -- Postgres treats the other columns of the same table as
+       -- functionally dependent on it, which is both shorter and the
+       -- only version that lets ORDER BY reach sort_order: listing the
+       -- selected columns individually left sort_order ungrouped and the
+       -- page answered 500.
+       group by t.id
        order by t.sort_order, t.name
     `
   );
