@@ -18,5 +18,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // hour a crawler revalidates them is a MedlinePlus and a CDC fetch
     // paid for by nobody.
     { url: `${SITE_URL}/security`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
+    // Higher priority than the legal pages: somebody searching for a way
+    // to reach this company is much further along than somebody reading
+    // the terms.
+    { url: `${SITE_URL}/contact`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${SITE_URL}/enterprise`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${SITE_URL}/start`, lastModified: now, changeFrequency: "monthly", priority: 0.9 },
   ];
 }

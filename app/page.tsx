@@ -207,6 +207,7 @@ export default function LandingPage() {
             <Link href="/terms">Terms</Link>
             <Link href="/privacy">Privacy</Link>
             <Link href="/security">Security</Link>
+            <Link href="/contact">Contact</Link>
             <a href="/staff/signin">Staff sign-in</a>
           </span>
         </div>
