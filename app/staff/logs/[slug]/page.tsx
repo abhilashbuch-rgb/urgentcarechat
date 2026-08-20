@@ -16,14 +16,41 @@ export default async function LogPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ slot?: string }>;
+  searchParams: Promise<{ slot?: string; amend?: string }>;
 }) {
   const { session } = await requireStaff();
   const { slug } = await params;
-  const { slot: requestedSlot } = await searchParams;
+  const { slot: requestedSlot, amend: amendId } = await searchParams;
 
   const data = await withSession(session, async (sql) => ({
     template: await loadTemplate(sql, slug),
+    // The entry being corrected, when the URL names one. Read through
+    // the same session as everything else, so RLS decides whether this
+    // person may see it — a response id in a URL must not be a way to
+    // read another clinic's record.
+    amending: amendId
+      ? (
+          await sql<
+            {
+              id: string;
+              answers_json: Record<string, unknown>;
+              submitted_at: string;
+              filed_by: string | null;
+            }[]
+          >`
+            select r.id, r.answers_json,
+                   r.submitted_at::text as submitted_at,
+                   u.legal_name as filed_by
+              from staff.form_responses r
+              left join staff.users u on u.id = r.submitted_by
+             where r.id = ${amendId}
+               and not exists (
+                 select 1 from staff.form_responses newer
+                  where newer.supersedes_id = r.id
+               )
+          `
+        )[0] ?? null
+      : null,
     profile: await getProfile(sql, session.uid),
     // Where the clinic is, so the form can tell the person whether they
     // are at it before they file rather than after. The radius and mode
@@ -101,6 +128,27 @@ export default async function LogPage({
         todayLabel={todayLabel}
         slotLabel={SLOT_LABELS[slot] ?? "Today"}
         geofence={geofence}
+        amend={
+          data.amending
+            ? {
+                responseId: data.amending.id,
+                answers: data.amending.answers_json as Record<
+                  string,
+                  string | number | boolean | null
+                >,
+                filedAtLabel: new Date(
+                  data.amending.submitted_at
+                ).toLocaleString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                  timeZone: "America/New_York",
+                }),
+                filedByName: data.amending.filed_by ?? "a colleague",
+              }
+            : undefined
+        }
       />
     </div>
   );

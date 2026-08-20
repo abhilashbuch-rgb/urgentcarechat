@@ -8855,6 +8855,515 @@ revoke all on function staff.log_chain_head(text) from public;
 grant execute on function staff.log_chain_head(text) to staff_app;
 
 
+-- ========== staff-immutability.sql ==========
+
+-- ============================================================
+-- APPEND-ONLY, ENFORCED — and a hash chain over the result
+--
+-- The schema always said corrections create a new row pointing at the
+-- one it supersedes. The database never enforced it: line 299 of
+-- staff-schema.sql grants select, insert, update, delete on every table
+-- in the schema to staff_app, sixteen tables take DELETE back, and the
+-- two that matter most — the shift logs and the signatures — took back
+-- nothing. So "nothing can be backdated or deleted", which this product
+-- says on its homepage, was a property of the application code rather
+-- than of the database. That is exactly the assurance an auditor
+-- discounts, and rightly.
+--
+-- Three layers here, weakest to strongest:
+--   1. Grants     — staff_app loses UPDATE and DELETE.
+--   2. Triggers   — refused even if a later migration re-grants.
+--   3. Hash chain — tampering by someone who can bypass both is still
+--                   DETECTABLE, which is the only property that
+--                   survives an attacker with database access.
+--
+-- WHAT LAYER 3 DOES AND DOES NOT BUY. A superuser can disable a trigger
+-- and rewrite rows. What they cannot do cheaply is rewrite them
+-- consistently: every row commits to the one before it, so changing an
+-- entry from March means recomputing every row since. And because the
+-- daily report already emails the chain head to the owner, breaking it
+-- silently means also reaching into a mailbox outside this database.
+-- That is the difference between "trust us" and "here is something you
+-- can check".
+-- ============================================================
+
+-- ---------- 1. Corrections have to say why ----------
+alter table staff.form_responses
+  add column if not exists correction_reason text;
+
+do $$ begin
+  alter table staff.form_responses
+    add constraint staff_response_correction_has_a_reason
+    -- `correction_reason is not null` is not redundant with the length
+    -- test. A CHECK passes when it evaluates to NULL, and
+    -- length(btrim(NULL)) >= 20 is NULL, not false — so without this the
+    -- one case the constraint exists to forbid, a correction filed with
+    -- no reason at all, was accepted silently. Caught by testing it.
+    check (
+      (supersedes_id is null and correction_reason is null)
+      or
+      (supersedes_id is not null
+       and correction_reason is not null
+       and length(btrim(correction_reason)) >= 20)
+    );
+exception when duplicate_object then null;
+end $$;
+
+comment on column staff.form_responses.correction_reason is
+  'Why this entry supersedes another. Twenty characters minimum, for the '
+  'same reason corrective_action has a floor: "typo" is not a reason a '
+  'surveyor can evaluate three years later.';
+
+-- ---------- 2. The hash chain ----------
+alter table staff.form_responses
+  add column if not exists prev_hash text,
+  add column if not exists row_hash  text;
+
+do $$ begin
+  alter table staff.form_responses
+    add constraint staff_response_hash_shape
+    check (row_hash is null or row_hash ~ '^[0-9a-f]{64}$');
+exception when duplicate_object then null;
+end $$;
+
+-- ONE CHAIN PER CLINIC, not one global chain. A shared chain would make
+-- every clinic's verification depend on every other clinic's writes, and
+-- would leak the fact of one org's activity into another's records.
+create index if not exists staff_responses_chain
+  on staff.form_responses (org_slug, submitted_at, id);
+
+create or replace function staff.chain_form_response()
+returns trigger
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+declare
+  prev text;
+begin
+  -- SERIALIZE PER ORG. Two concurrent inserts reading the same head
+  -- would both commit to it and the chain would fork — a fork is
+  -- indistinguishable from a deletion when you walk it later. The lock
+  -- is transaction-scoped and per-org, so one clinic's morning rush
+  -- never waits on another's.
+  perform pg_advisory_xact_lock(hashtext('staff.chain:' || new.org_slug));
+
+  select row_hash into prev
+    from staff.form_responses
+   where org_slug = new.org_slug and row_hash is not null
+   order by submitted_at desc, id desc
+   limit 1;
+
+  new.prev_hash := prev;
+
+  -- Everything that would matter to a surveyor goes into the digest.
+  -- coalesce throughout: in Postgres, concatenating a NULL yields NULL,
+  -- and a NULL digest input would silently produce the same hash for
+  -- every row that has one empty field.
+  new.row_hash := encode(
+    sha256(convert_to(
+      coalesce(prev, '')                             || '|' ||
+      new.id::text                                   || '|' ||
+      new.org_slug                                   || '|' ||
+      new.instance_id::text                          || '|' ||
+      new.submitted_by::text                         || '|' ||
+      to_char(new.submitted_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.USOF') || '|' ||
+      new.answers_json::text                         || '|' ||
+      coalesce(new.status, '')                       || '|' ||
+      coalesce(new.corrective_action, '')            || '|' ||
+      coalesce(new.supersedes_id::text, '')          || '|' ||
+      coalesce(new.correction_reason, '')            || '|' ||
+      coalesce(new.location_status, '')              || '|' ||
+      coalesce(new.filed_distance_m::text, '')       || '|' ||
+      coalesce(new.location_note, '')
+    , 'UTF8')),
+  'hex');
+
+  return new;
+end $$;
+
+drop trigger if exists staff_form_responses_chain on staff.form_responses;
+create trigger staff_form_responses_chain
+  before insert on staff.form_responses
+  for each row execute function staff.chain_form_response();
+
+-- ---------- 3. Refuse UPDATE and DELETE outright ----------
+create or replace function staff.refuse_mutation()
+returns trigger
+language plpgsql
+as $$
+begin
+  raise exception
+    'staff.% is append-only: % is refused. Corrections insert a new row '
+    'with supersedes_id and correction_reason set.',
+    tg_table_name, tg_op
+    using errcode = 'restrict_violation';
+end $$;
+
+drop trigger if exists staff_form_responses_append_only on staff.form_responses;
+create trigger staff_form_responses_append_only
+  before update or delete on staff.form_responses
+  for each row execute function staff.refuse_mutation();
+
+drop trigger if exists staff_attestations_append_only on staff.attestations;
+create trigger staff_attestations_append_only
+  before update or delete on staff.attestations
+  for each row execute function staff.refuse_mutation();
+
+-- The grants, so the refusal happens before a statement is even planned.
+revoke update, delete on staff.form_responses from staff_app;
+revoke update, delete on staff.attestations   from staff_app;
+
+-- ---------- 4. Walking the chain ----------
+-- Returns nothing when the chain is intact. Any row it returns is a row
+-- whose stored hash disagrees with its contents, or whose link to the
+-- previous row is broken — which is what tampering looks like after the
+-- fact.
+create or replace function staff.verify_log_chain(p_org text)
+returns table (
+  response_id  uuid,
+  submitted_at timestamptz,
+  problem      text
+)
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+declare
+  r        record;
+  expected text;
+  prev     text := null;
+begin
+  for r in
+    select * from staff.form_responses
+     where org_slug = p_org and row_hash is not null
+     order by submitted_at, id
+  loop
+    expected := encode(sha256(convert_to(
+      coalesce(prev, '')                          || '|' ||
+      r.id::text                                  || '|' ||
+      r.org_slug                                  || '|' ||
+      r.instance_id::text                         || '|' ||
+      r.submitted_by::text                        || '|' ||
+      to_char(r.submitted_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.USOF') || '|' ||
+      r.answers_json::text                        || '|' ||
+      coalesce(r.status, '')                      || '|' ||
+      coalesce(r.corrective_action, '')           || '|' ||
+      coalesce(r.supersedes_id::text, '')         || '|' ||
+      coalesce(r.correction_reason, '')           || '|' ||
+      coalesce(r.location_status, '')             || '|' ||
+      coalesce(r.filed_distance_m::text, '')      || '|' ||
+      coalesce(r.location_note, '')
+    , 'UTF8')), 'hex');
+
+    if r.prev_hash is distinct from prev then
+      response_id := r.id; submitted_at := r.submitted_at;
+      problem := 'link broken: a row before this one was altered or removed';
+      return next;
+    elsif r.row_hash <> expected then
+      response_id := r.id; submitted_at := r.submitted_at;
+      problem := 'contents altered after filing';
+      return next;
+    end if;
+
+    prev := r.row_hash;
+  end loop;
+end $$;
+
+revoke all on function staff.verify_log_chain(text) from public;
+grant execute on function staff.verify_log_chain(text) to staff_app;
+
+-- The current head, for the daily report to carry into somebody's inbox.
+create or replace function staff.log_chain_head(p_org text)
+returns text
+language sql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  select row_hash from staff.form_responses
+   where org_slug = p_org and row_hash is not null
+   order by submitted_at desc, id desc limit 1;
+$$;
+
+revoke all on function staff.log_chain_head(text) from public;
+grant execute on function staff.log_chain_head(text) to staff_app;
+
+
+-- ========== staff-amend.sql ==========
+
+-- ============================================================
+-- AMENDMENTS, AND A THREE-MINUTE HOLD ON THE ALARM
+--
+-- staff.form_responses has carried supersedes_id since the first
+-- migration and nothing has ever written it. Reading the code that is
+-- easy to miss: lib/staff/logs.ts filters on `supersedes_id is null` to
+-- find the head of the chain, which looks like a correction path is in
+-- use. It is not. Nothing inserts a superseding row, and the partial
+-- unique index on (instance_id) where supersedes_id is null means a
+-- second filing for the same instance is simply rejected. So a medical
+-- assistant who typed 55 instead of 38.5 had no way to fix it at all.
+--
+-- WHAT IS NOT BUILT HERE, DELIBERATELY: a draft state. "Let them edit
+-- until they send it" is an unrecorded editing window, which is the
+-- exact hole staff-immutability.sql just closed. A fridge that reads 55
+-- and becomes 38.5 before anybody else sees it leaves no evidence that
+-- 55 was ever observed, and that evidence is the product.
+--
+-- So: amending is always allowed and always recorded. The only thing
+-- with a clock on it is the ALARM. Three minutes, chosen because a
+-- transposed digit is noticed in the same breath while a genuinely warm
+-- fridge is still savable; ten minutes of silence on a real excursion
+-- costs a vaccine lot and a letter to every patient dosed from it.
+-- ============================================================
+
+-- ---------- 1. The hold ----------
+alter table staff.alert_queue
+  add column if not exists hold_until  timestamptz,
+  add column if not exists cancelled_at timestamptz,
+  add column if not exists cancelled_reason text;
+
+comment on column staff.alert_queue.hold_until is
+  'The sweep will not send before this instant. Null means send now, '
+  'which is every alert that is not an amendable excursion.';
+
+-- A cancelled alert is kept, never deleted. "We nearly texted you about
+-- a fridge at 55 and then the reading was corrected" is itself
+-- information an administrator may want, and the row is the only place
+-- it exists.
+create index if not exists staff_alert_queue_held
+  on staff.alert_queue (org_slug, hold_until)
+  where cancelled_at is null and hold_until is not null;
+
+-- ---------- 2. Amending, as one indivisible act ----------
+-- SECURITY DEFINER and one function rather than three statements in the
+-- route, because the insert and the alert cancellation must not be able
+-- to half-happen. A superseding row with the original's alarm still
+-- armed texts the director about a value nobody believes any more.
+create or replace function staff.amend_response(
+  p_org       text,
+  p_response  uuid,
+  p_user      uuid,
+  p_answers   jsonb,
+  p_reason    text,
+  p_flagged   boolean,
+  -- text[], matching the column. Declared as jsonb in the first draft,
+  -- which the type checker caught only because this was run against a
+  -- real Postgres rather than reasoned about.
+  p_out_of_range text[],
+  p_corrective   text,
+  -- The amendment's OWN location. Passing the original's would assert
+  -- that the correction happened where the filing did, which is the kind
+  -- of small untruth that discredits a whole record when a surveyor
+  -- finds it. Null when the browser would not say.
+  p_lat        double precision default null,
+  p_lng        double precision default null,
+  p_accuracy_m double precision default null,
+  p_distance_m double precision default null,
+  p_loc_status text default 'not_asked',
+  p_loc_note   text default null
+) returns table (new_id uuid, alarm_cancelled boolean)
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+declare
+  orig     staff.form_responses;
+  fresh_id uuid;
+  killed   boolean := false;
+begin
+  if length(btrim(coalesce(p_reason, ''))) < 20 then
+    raise exception 'an amendment needs a reason of at least 20 characters'
+      using errcode = 'check_violation';
+  end if;
+
+  select * into orig from staff.form_responses
+   where id = p_response and org_slug = p_org;
+  if not found then
+    raise exception 'no such response in this organization'
+      using errcode = 'no_data_found';
+  end if;
+
+  -- ONLY THE HEAD MAY BE AMENDED. Amending a row that something already
+  -- supersedes would fork the chain, and a fork reads exactly like a
+  -- deletion when somebody walks it two years later.
+  if exists (select 1 from staff.form_responses
+              where supersedes_id = p_response) then
+    raise exception 'that entry has already been amended; amend the current one'
+      using errcode = 'restrict_violation';
+  end if;
+
+  insert into staff.form_responses
+    (instance_id, org_slug, submitted_by, answers_json, status,
+     has_out_of_range, out_of_range_fields, corrective_action,
+     filed_lat, filed_lng, filed_accuracy_m, filed_distance_m,
+     location_status, location_note,
+     supersedes_id, correction_reason)
+  values
+    (orig.instance_id, p_org, p_user, p_answers,
+     case when p_flagged then 'flagged' else 'pending' end,
+     p_flagged, p_out_of_range,
+     case when p_flagged then p_corrective else null end,
+     p_lat, p_lng, p_accuracy_m, p_distance_m,
+     coalesce(p_loc_status, 'not_asked'), p_loc_note,
+     p_response, btrim(p_reason))
+  returning id into fresh_id;
+
+  -- Cancel the original's alarm only while it is still held. Past the
+  -- hold the message has gone; marking it cancelled would claim
+  -- something false about a mail that is already in somebody's pocket.
+  update staff.alert_queue
+     set cancelled_at = now(),
+         cancelled_reason = 'superseded within the hold: ' || btrim(p_reason)
+   where org_slug = p_org
+     and source_kind = 'form_response'
+     and source_id = p_response
+     and cancelled_at is null
+     and hold_until is not null
+     and hold_until > now()
+     and owner_sent_at is null
+     and director_sent_at is null;
+
+  killed := found;
+
+  new_id := fresh_id;
+  alarm_cancelled := killed;
+  return next;
+end $$;
+
+-- The old four-and-four signature is dropped, not left beside the new
+-- one: a defaulted argument makes a DIFFERENT function, and two
+-- overloads of the same name is how provision_trial 500ed every signup.
+drop function if exists staff.amend_response(text, uuid, uuid, jsonb, text, boolean, jsonb, text);
+revoke all on function staff.amend_response(text, uuid, uuid, jsonb, text, boolean, text[], text, double precision, double precision, double precision, double precision, text, text) from public;
+grant execute on function staff.amend_response(text, uuid, uuid, jsonb, text, boolean, text[], text, double precision, double precision, double precision, double precision, text, text) to staff_app;
+
+-- ---------- 3. The live board ----------
+-- Everything filed today, newest first, amendments included and marked
+-- as such. One query rather than a join the page has to assemble, so the
+-- board can poll cheaply.
+drop view if exists staff.activity_today cascade;
+create view staff.activity_today
+with (security_invoker = true) as
+select r.id,
+       r.org_slug,
+       t.name                     as form_name,
+       i.slot,
+       r.submitted_at,
+       u.name                     as filed_by,
+       r.status,
+       r.has_out_of_range,
+       r.corrective_action,
+       r.location_status,
+       r.filed_distance_m,
+       r.location_note,
+       r.supersedes_id is not null as is_amendment,
+       r.correction_reason,
+       -- Null on the head of every chain; set on a row that something
+       -- newer has replaced, which is how the board greys it out.
+       (select x.id from staff.form_responses x
+         where x.supersedes_id = r.id limit 1) as superseded_by
+  from staff.form_responses r
+  join staff.form_instances i on i.id = r.instance_id
+  join staff.form_templates t on t.id = i.template_id
+  left join staff.users u on u.id = r.submitted_by
+ where r.submitted_at >= now() - interval '36 hours'
+ order by r.submitted_at desc;
+
+grant select on staff.activity_today to staff_app;
+
+-- ---------- 4. "The current version" was selecting the ORIGINAL ----------
+--
+-- This is the bug that would have made every amendment invisible, and it
+-- was latent only because nothing ever wrote supersedes_id.
+--
+-- A correction inserts a row whose supersedes_id points BACKWARDS at the
+-- entry it replaces. So the newest row in a chain is the one carrying a
+-- supersedes_id, and the oldest — the mistake — is the one with null.
+-- Every read path tested `supersedes_id is null`, which selects the
+-- ORIGINAL. Switch amendments on without this and the board, the
+-- surveyor vault and today's log all keep showing 55°F forever while the
+-- correction sits in the table unread.
+--
+-- The head of a chain is the row that nothing supersedes. That cannot be
+-- a partial index, so it is a NOT EXISTS — and staff.amend_response
+-- refuses to amend an already-amended row, which keeps every chain
+-- linear and this test single-valued.
+--
+-- The unique index staff_responses_one_live is deliberately left alone:
+-- read correctly it says "one ORIGINAL per instance", which is still
+-- exactly the double-filing guard it was written to be. Amendments carry
+-- a supersedes_id and fall outside it.
+
+drop view if exists staff.todays_logs cascade;
+create view staff.todays_logs
+with (security_invoker = true) as
+select
+  t.org_slug,
+  t.id            as template_id,
+  t.slug,
+  t.name,
+  t.description,
+  t.category,
+  t.frequency,
+  t.sort_order,
+  t.job_roles,
+  s.slot,
+  r.id            as response_id,
+  r.submitted_at,
+  r.submitted_by,
+  r.has_out_of_range,
+  r.supersedes_id is not null as is_amendment,
+  u.legal_name    as submitted_by_name,
+  u.email         as submitted_by_email
+from staff.form_templates t
+cross join lateral unnest(
+  case when cardinality(t.slots) = 0 then array[''] else t.slots end
+) as s(slot)
+left join staff.form_instances i
+  on i.template_id = t.id and i.due_date = current_date and i.slot = s.slot
+left join staff.form_responses r
+  on r.instance_id = i.id
+ and not exists (
+       select 1 from staff.form_responses newer
+        where newer.supersedes_id = r.id
+     )
+left join staff.users u on u.id = r.submitted_by
+where t.active;
+
+grant select on staff.todays_logs to staff_app;
+
+-- ---------- 5. Put back what the cascade took ----------
+--
+-- `drop view staff.todays_logs cascade` also drops staff.overdue_today,
+-- which is built on it and drives the missed-task alerts. The cascade is
+-- necessary — the view's column list changes, and Postgres will not
+-- replace a view whose columns move — but a migration that silently
+-- removes the late-task detector and leaves it removed is worse than one
+-- that fails. Recreated verbatim from staff-alerts.sql.
+create or replace view staff.overdue_today
+with (security_invoker = true) as
+select
+  l.org_slug,
+  l.template_id,
+  l.slug,
+  l.name,
+  l.slot,
+  l.job_roles,
+  (now() at time zone o.timezone)::time as local_now,
+  o.timezone
+from staff.todays_logs l
+join staff.orgs o on o.slug = l.org_slug
+where l.response_id is null
+  and (
+    (l.slot = 'am' and (now() at time zone o.timezone)::time > time '11:00')
+    or (l.slot = 'pm' and (now() at time zone o.timezone)::time
+          > (o.operating_hours_end - interval '1 hour'))
+  );
+
+grant select on staff.overdue_today to staff_app;
+
+
 -- ========== staff-credential-matrix.sql ==========
 
 -- ============================================================
