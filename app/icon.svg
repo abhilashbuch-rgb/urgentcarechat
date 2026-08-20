@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="medicin.">
+  <title>medicin.</title>
+  <rect width="48" height="48" rx="10" fill="#0b1220"/>
+  <path d="M6 27 H12 L18 13 L24 31 L30 13 L36 27 H42" fill="none" stroke="#22d3ee"
+        stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

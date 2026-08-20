@@ -10,7 +10,7 @@
 -- manually-added Vercel domain PER CUSTOMER, which makes self-serve
 -- signup impossible.
 --
--- Now everyone signs in at urgentcare.chat/staff and the org comes from
+-- Now everyone signs in at medicin.io/staff and the org comes from
 -- the person's own row, re-read on every request. Tenant subdomains stay
 -- for white-label PATIENT portals, where branding is the point.
 --

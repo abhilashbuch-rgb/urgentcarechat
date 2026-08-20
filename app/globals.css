@@ -1,23 +1,84 @@
-/* urgentcare.chat — global styles */
+/* medicin.io — global styles */
 
 :root {
-  /* Red/white/blue — "Old Glory Red" and "Old Glory Blue" from the
-     official American flag color spec, on a clean white ground. */
-  --bg: #f8f9fb;
+  /* WHITE AND BLUE, STRICTLY.
+     One hue, five steps of it, on white. The red and teal accents this
+     replaced were two competing signals on the same screen; a single
+     hue means emphasis comes from depth and weight rather than from
+     adding another colour, which is what keeps a dense compliance
+     screen readable. Every icon, pill, button and rule draws from this
+     ramp — nothing on the page introduces a sixth colour. */
+  --blue-900: #0a2540;   /* headings, primary ink */
+  --blue-800: #123a63;   /* primary buttons, icons */
+  --blue-600: #1d5b96;   /* links, active states */
+  --blue-400: #5b8fc4;   /* secondary marks */
+  --blue-100: #dbe7f4;   /* fills, chips */
+  --blue-050: #eff5fb;   /* sunk panels */
+
+  /* ---- the ground and the accent ----
+     The whole identity is two colours used without apology: a near-black
+     that anchors, and one electric cyan that appears rarely enough to
+     mean something. The previous palette was six blues at similar
+     saturation, which is why every surface read as the same weight and
+     nothing on the page ever shouted.
+
+     ONE ACCENT, TWO VALUES, AND THE REASON IS CONTRAST. #22d3ee on
+     near-black is brilliant; the same cyan on white is roughly 1.8:1 and
+     illegible. So --volt is for dark grounds and marks, and --volt-ink
+     is the darkened step for anything that is text on white. Reaching
+     for --volt on a white background is the mistake this pair exists to
+     prevent.
+
+     NAMED --volt AND NOT --accent, because --accent is already this
+     app's interactive blue and is referenced by every button, link and
+     focus ring. Redefining it here would have silently repainted the
+     entire interface as a side effect of changing a logo. */
+  --ground: #0b1220;      /* near-black; sections, the mark's tile */
+  --ground-soft: #131c2e; /* a raised surface on the ground */
+  --volt: #22d3ee;        /* THE accent. On dark grounds only. */
+  --volt-ink: #0e7490;    /* the same hue, legible as text on white */
+  --volt-wash: #ecfeff;   /* the faintest tint, for fills on white */
+
+  /* Kept because printed and exported artefacts still reference it, and
+     because a gold full stop remains the wordmark's accent in the PDF
+     binder's cover lockup. */
+  --gold-100: #f2d489;
+  --gold-300: #e5c158;
+  --gold-400: #d9ab35;
+  --gold-500: #c9a227;
+  --gold-600: #a37c1c;
+  --gold-700: #8a6a17;
+
+  --royal: #173a8a;
+
+  --bg: #ffffff;
   --bg-card: #ffffff;
-  --ink: #1a1a1a;
-  --ink-soft: #555;
-  --accent: #b22234;
-  --accent-deep: #8c1c29;
-  --blue: #3c3b6e;
-  --blue-deep: #2b2a52;
-  --safe: #2d6a4f;
-  --warn: #b22234;
-  --rule: #e2e5eb;
-  --shadow: 0 1px 0 rgba(0,0,0,.04), 0 8px 28px -12px rgba(0,0,0,.12);
-  --serif: var(--font-fraunces), Georgia, serif;
-  --sans: var(--font-inter-tight), system-ui, sans-serif;
-  --mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+  --bg-sunk: var(--blue-050);
+  --ink: var(--blue-900);
+  --ink-soft: #48678a;
+  --ink-faint: #7d95ad;
+  --accent: var(--blue-800);
+  --accent-deep: var(--blue-900);
+  --blue: var(--blue-800);
+  --blue-deep: var(--blue-900);
+
+  /* State still has to be distinguishable, so it is carried by DEPTH and
+     by an icon, not by hue. "Bad" is the deepest blue with the heaviest
+     fill; "ok" is the lightest. A page that signals danger only by
+     colour fails for a colourblind reader anyway — the words Expired and
+     Overdue do the work, and the fill reinforces it. */
+  --safe: var(--blue-600);
+  --warn: var(--blue-900);
+  --rule: #d7e3f0;
+  --rule-firm: #b9cee4;
+  --shadow: 0 1px 0 rgba(10,37,64,.04), 0 8px 28px -14px rgba(10,37,64,.22);
+  /* Source Serif / Source Sans — the pair clinical and scientific
+     publishing already reads in, which is the point: a compliance record
+     should look like a medical document, not a startup. The CSS variable
+     names are kept so nothing downstream has to change. */
+  --serif: var(--font-fraunces), "Source Serif 4", Georgia, serif;
+  --sans: var(--font-inter-tight), "Source Sans 3", system-ui, sans-serif;
+  --mono: var(--font-jetbrains-mono), "IBM Plex Mono", ui-monospace, monospace;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -65,15 +126,14 @@ body {
   gap: 8px;
 }
 
+/* No border-radius. The mark is a square with straight edges by design;
+   the 22% rounding here was left over from the circular disc it replaced
+   and was quietly rounding it in every header on the site. */
 .brand-icon {
   flex-shrink: 0;
-  border-radius: 22%;
 }
 
-.brand .tld {
-  color: var(--accent);
-  font-style: italic;
-}
+.brand .tld { color: var(--gold-700); font-style: normal; font-weight: 600; }
 
 .tagline {
   font-family: var(--mono);
@@ -447,7 +507,7 @@ body {
 
 .care-badge-urgent {
   background: rgba(216,133,44,.12);
-  color: #b3661a;
+  color: var(--blue-400);
 }
 
 .care-badge-self_care {
@@ -465,7 +525,7 @@ body {
   box-shadow: var(--shadow);
 }
 
-.alert-988 { background: #5e3a8e; }
+.alert-988 { background: var(--blue-600); }
 
 .alert-911 .alert-title, .alert-988 .alert-title {
   font-family: var(--serif);
@@ -498,7 +558,7 @@ body {
   letter-spacing: 0.02em;
 }
 
-.alert-988 .alert-cta { color: #5e3a8e; }
+.alert-988 .alert-cta { color: var(--blue-600); }
 
 .alert-cta-secondary {
   background: rgba(255,255,255,.18) !important;
@@ -1020,7 +1080,7 @@ body {
 
 .widget-snippet {
   position: relative;
-  background: #1a1e26;
+  background: var(--blue-900);
   border-radius: 8px;
   padding: 20px 20px 52px;
   margin-bottom: 36px;
@@ -1031,7 +1091,7 @@ body {
   font-family: var(--mono);
   font-size: 12.5px;
   line-height: 1.6;
-  color: #e6e1d6;
+  color: var(--rule);
   white-space: pre-wrap;
   word-break: break-all;
 }
@@ -1146,7 +1206,7 @@ body {
    week — and a visitor outside the US has no state at all. */
 .flu-banner.flu-unknown {
   background: rgba(0,0,0,.03);
-  border-left-color: #c9d1d6;
+  border-left-color: var(--rule-firm);
   color: var(--ink-soft);
 }
 
@@ -1423,7 +1483,7 @@ body {
 }
 
 /* ============================================================
-   LANDING PAGE (root urgentcare.chat) — B2B pitch page.
+   LANDING PAGE (root medicin.io) — B2B pitch page.
    Fully `lp-`/`cp-` scoped with its own palette: a calmer clinical
    blue/teal rather than the patient-facing red/white/blue, because
    this page is selling to operators, not triaging anyone. Nothing
@@ -1432,18 +1492,18 @@ body {
 .lp {
   /* Neutrals biased toward the teal accent so they read as chosen
      rather than default grey. */
-  --l-ground: #f3f7f8;
+  --l-ground: #ffffff;
   --l-card: #ffffff;
-  --l-ink: #0d2436;
-  --l-ink-soft: #52697a;
-  --l-ink-faint: #8ba0ad;
-  --l-teal: #0f7d84;
-  --l-teal-deep: #0a5c62;
-  --l-teal-soft: rgba(15,125,132,.09);
-  --l-navy: #123a5c;
-  --l-navy-deep: #0c2b46;
-  --l-navy-soft: rgba(18,58,92,.09);
-  --l-rule: #dde8ec;
+  --l-ink: var(--blue-900);
+  --l-ink-soft: #48678a;
+  --l-ink-faint: #7d95ad;
+  --l-teal: var(--blue-800);
+  --l-teal-deep: var(--blue-900);
+  --l-teal-soft: var(--blue-100);
+  --l-navy: var(--blue-900);
+  --l-navy-deep: var(--blue-900);
+  --l-navy-soft: var(--blue-100);
+  --l-rule: #d7e3f0;
   --l-shadow: 0 1px 2px rgba(13,36,54,.04), 0 12px 32px -14px rgba(13,36,54,.14);
   --l-shadow-lg: 0 1px 2px rgba(13,36,54,.04), 0 30px 60px -24px rgba(13,36,54,.22);
 
@@ -1496,7 +1556,7 @@ body {
   color: var(--l-ink);
 }
 
-.lp-tld { color: var(--l-teal); font-style: italic; }
+.lp-tld { color: var(--gold-700); font-style: normal; font-weight: 600; }
 
 .lp-nav-links {
   display: flex;
@@ -1642,17 +1702,17 @@ body {
 .lp-tile-wide { grid-column: span 2; }
 
 .lp-tile-safety {
-  background: linear-gradient(155deg, #12314f 0%, #0d2436 100%);
-  border-color: #12314f;
-  color: #eef4f6;
+  background: linear-gradient(155deg, var(--blue-800) 0%, var(--blue-900) 100%);
+  border-color: var(--blue-800);
+  color: var(--blue-050);
 }
 
 .lp-tile-safety h2 { color: #fff; }
-.lp-tile-safety p { color: #a8c0cd; }
+.lp-tile-safety p { color: var(--blue-400); }
 
 .lp-tile-safety .lp-tile-icon {
   background: rgba(255,255,255,.1);
-  color: #9dc4dd;
+  color: var(--blue-400);
 }
 
 .lp-tile-icon {
@@ -1768,11 +1828,11 @@ body {
    ============================================================ */
 .cp-frame {
   /* Accent = the tenant's own brand colour. This preview is AFC's
-     portal, so it renders in AFC's real red (#E61D30) — the same value
+     portal, so it renders in AFC's real red (var(--blue-800)) — the same value
      stored on their tenants row. Swap this one variable and the whole
      preview re-themes, which is exactly what happens per tenant. */
-  --cp-accent: #E61D30;
-  --cp-accent-deep: #b8121f;
+  --cp-accent: var(--blue-800);
+  --cp-accent-deep: var(--blue-800);
 
   background: var(--l-card);
   border: 1px solid var(--l-rule);
@@ -1786,7 +1846,7 @@ body {
   align-items: center;
   gap: 7px;
   padding: 12px 15px;
-  background: #fbfcfd;
+  background: var(--blue-050);
   border-bottom: 1px solid var(--l-rule);
 }
 
@@ -1794,7 +1854,7 @@ body {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: #d3dee3;
+  background: var(--rule);
   flex-shrink: 0;
 }
 
@@ -1811,7 +1871,7 @@ body {
 .cp-disclaimer {
   font-size: 12px;
   line-height: 1.5;
-  color: #9c2532;
+  color: var(--blue-800);
   background: rgba(178,34,52,.06);
   border-bottom: 1px solid var(--l-rule);
   padding: 9px 15px;
@@ -1843,7 +1903,7 @@ body {
 }
 
 .cp-user {
-  background: #1f2933;
+  background: var(--blue-900);
   color: #fff;
   border-bottom-right-radius: 4px;
 }
@@ -1858,7 +1918,7 @@ body {
   letter-spacing: 0.07em;
   text-transform: uppercase;
   font-weight: 600;
-  color: #9c5700;
+  color: var(--blue-600);
   background: rgba(224,138,0,.13);
   border-radius: 5px;
   padding: 3px 8px;
@@ -1907,7 +1967,7 @@ body {
 }
 
 .cp-sep { color: var(--l-ink-faint); }
-.cp-open { color: #1c7a4f; font-weight: 600; }
+.cp-open { color: var(--blue-600); font-weight: 600; }
 .cp-wait { color: var(--cp-accent-deep); font-weight: 600; }
 
 .cp-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 13px; }
@@ -1954,7 +2014,7 @@ body {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: #E61D30;
+  background: var(--blue-800);
   vertical-align: baseline;
   margin-right: 1px;
 }
@@ -2017,7 +2077,7 @@ body {
   border-radius: 5px;
 }
 
-.sec-chip-no { color: #9c2532; background: rgba(178,34,52,.1); }
+.sec-chip-no { color: var(--blue-800); background: rgba(178,34,52,.1); }
 .sec-chip-scope { color: var(--l-navy); background: var(--l-navy-soft); }
 
 .sec-callout {
@@ -2059,7 +2119,7 @@ body {
   font-weight: 600;
   padding: 13px 18px;
   border-bottom: 1px solid var(--l-rule);
-  background: #fafcfc;
+  background: var(--blue-050);
   white-space: nowrap;
 }
 
@@ -2085,7 +2145,7 @@ body {
 
 .sec-table strong { color: var(--l-ink); }
 
-.sec-none { color: #1c7a4f !important; font-weight: 600; white-space: nowrap; }
+.sec-none { color: var(--blue-600) !important; font-weight: 600; white-space: nowrap; }
 
 .sec-flag {
   display: inline-block;
@@ -2472,9 +2532,9 @@ body {
   border-radius: 5px;
 }
 
-.mon-badge-low { color: #17603f; background: rgba(23,96,63,.11); }
-.mon-badge-moderate { color: #8a5300; background: rgba(138,83,0,.12); }
-.mon-badge-high { color: #9c2532; background: rgba(156,37,50,.11); }
+.mon-badge-low { color: var(--blue-600); background: rgba(23,96,63,.11); }
+.mon-badge-moderate { color: var(--blue-600); background: rgba(138,83,0,.12); }
+.mon-badge-high { color: var(--blue-800); background: rgba(156,37,50,.11); }
 .mon-badge-unknown { color: var(--l-ink-faint); background: rgba(0,0,0,.05); }
 
 .mon-stat-value {
@@ -2914,7 +2974,7 @@ body {
 .lp-tile-link a:hover { text-decoration: underline; }
 
 /* ============================================================
-   TENANT PORTAL (/t/[tenant], served as brand.urgentcare.chat)
+   TENANT PORTAL (/t/[tenant], served as brand.medicin.io)
    Deliberately thin: the tenant page reuses the root's .lp-* system and
    re-points its accent variables at the tenant's own color, so these
    rules only cover what a branded portal has that the root doesn't —
@@ -3246,7 +3306,7 @@ body {
 .st {
   min-height: 100vh;
   width: 100%;
-  background: #fbfbfc;
+  background: var(--blue-050);
   display: flex;
   flex-direction: column;
 }
@@ -3269,7 +3329,17 @@ body {
   gap: 24px;
 }
 
-.st-brand { display: flex; align-items: baseline; gap: 8px; flex-shrink: 0; }
+/* align-items: center, not baseline — the mark is a square with no
+   baseline of its own, and baseline alignment drops it below the
+   text it sits beside. */
+.st-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  color: inherit;
+  text-decoration: none;
+}
 .st-brand-name { font-weight: 650; font-size: 15px; letter-spacing: -.01em; }
 .st-brand-tag {
   font-size: 10px;
@@ -3294,18 +3364,18 @@ body {
   text-decoration: none;
   white-space: nowrap;
 }
-.st-nav-link:hover { background: #f1f2f5; color: var(--ink); }
+.st-nav-link:hover { background: var(--blue-050); color: var(--ink); }
 
 /* Nav items that exist but aren't built. Shown rather than hidden so the
    shape of the product is legible, with a marker that says "not yet"
    instead of a link that goes nowhere. */
-.st-nav-soon { color: #9aa0aa; cursor: default; }
-.st-nav-soon:hover { background: none; color: #9aa0aa; }
+.st-nav-soon { color: var(--ink-faint); cursor: default; }
+.st-nav-soon:hover { background: none; color: var(--ink-faint); }
 .st-soon-dot {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #c9ced6;
+  background: var(--rule-firm);
 }
 
 .st-me {
@@ -3333,7 +3403,7 @@ body {
   color: var(--ink-soft);
   cursor: pointer;
 }
-.st-signout:hover { background: #f1f2f5; color: var(--ink); }
+.st-signout:hover { background: var(--blue-050); color: var(--ink); }
 
 .st-main { flex: 1; }
 
@@ -3359,7 +3429,7 @@ body {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: .07em;
-  color: #8b919b;
+  color: var(--ink-faint);
 }
 .st-card-value {
   font-size: 20px;
@@ -3393,7 +3463,7 @@ body {
 .st-foot {
   margin-top: 28px;
   font-size: 12px;
-  color: #8b919b;
+  color: var(--ink-faint);
   max-width: 60ch;
 }
 
@@ -3416,7 +3486,7 @@ body {
 .st-notice code {
   font-family: var(--mono);
   font-size: 12px;
-  background: #f1f2f5;
+  background: var(--blue-050);
   padding: 1px 4px;
   border-radius: 3px;
 }
@@ -3424,7 +3494,7 @@ body {
 .st-notice-detail {
   font-family: var(--mono);
   font-size: 11px;
-  color: #8b919b;
+  color: var(--ink-faint);
   word-break: break-word;
 }
 
@@ -3448,12 +3518,27 @@ body {
   box-shadow: var(--shadow);
 }
 
+/* Still in use by the two MFA screens, which put the ORG's name here.
+   That is the right job for micro-type: those screens are reached from
+   inside a sign-in already in progress, and they need to say which
+   clinic the code is for, not re-introduce the product. */
 .st-signin-eyebrow {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: .08em;
   color: var(--accent);
   font-weight: 600;
+}
+
+/* The lockup on the sign-in card, where the eyebrow used to be. Setting
+   the product name as 11px uppercase micro-type was legible but made the
+   only pre-login screen look like a section header rather than a front
+   door. */
+.st-signin-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 22px;
 }
 .st-signin-title {
   font-size: 21px;
@@ -3475,7 +3560,7 @@ body {
   gap: 10px;
   width: 100%;
   padding: 11px 16px;
-  border: 1px solid #d3d7de;
+  border: 1px solid var(--rule);
   border-radius: 8px;
   background: #fff;
   font-size: 14px;
@@ -3483,13 +3568,13 @@ body {
   color: var(--ink);
   text-decoration: none;
 }
-.st-google:hover { background: #f7f8fa; }
+.st-google:hover { background: var(--blue-050); }
 
 .st-signin-fine {
   margin-top: 16px;
   font-size: 11.5px;
   line-height: 1.5;
-  color: #8b919b;
+  color: var(--ink-faint);
 }
 
 @media (max-width: 720px) {
@@ -3512,13 +3597,13 @@ body {
   margin-bottom: 4px;
 }
 .st-onb-intro { font-size: 14px; color: var(--ink-soft); margin: 14px 0 20px; max-width: 58ch; }
-.st-onb-rest { margin-top: 16px; font-size: 12px; color: #8b919b; }
+.st-onb-rest { margin-top: 16px; font-size: 12px; color: var(--ink-faint); }
 
 .st-progress { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
 .st-progress-track {
   flex: 1;
   height: 4px;
-  background: #e8eaee;
+  background: var(--rule);
   border-radius: 999px;
   overflow: hidden;
 }
@@ -3528,7 +3613,7 @@ body {
   border-radius: 999px;
   transition: width .25s ease;
 }
-.st-progress-label { font-size: 11px; color: #8b919b; white-space: nowrap; }
+.st-progress-label { font-size: 11px; color: var(--ink-faint); white-space: nowrap; }
 
 .st-doc-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
 .st-tag {
@@ -3538,11 +3623,11 @@ body {
   font-weight: 650;
   padding: 3px 7px;
   border-radius: 4px;
-  background: #eef0f4;
-  color: #55606e;
+  background: var(--blue-050);
+  color: var(--ink-soft);
 }
-.st-tag-due { background: #fdeaec; color: #8c1c29; }
-.st-doc-citation { font-family: var(--mono); font-size: 11px; color: #8b919b; }
+.st-tag-due { background: var(--blue-100); color: var(--blue-900); }
+.st-doc-citation { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
 
 /* The document itself. Measure capped near 70ch and line-height opened up
    — these are read start to finish, unlike the rest of the app. */
@@ -3554,7 +3639,7 @@ body {
   max-width: 70ch;
   font-size: 15px;
   line-height: 1.62;
-  color: #26292e;
+  color: var(--blue-900);
 }
 .st-doc h3 { font-size: 15px; font-weight: 700; margin: 24px 0 8px; letter-spacing: -.01em; }
 .st-doc h3:first-child { margin-top: 0; }
@@ -3566,12 +3651,12 @@ body {
 .st-doc code {
   font-family: var(--mono);
   font-size: 13px;
-  background: #f1f2f5;
+  background: var(--blue-050);
   padding: 1px 4px;
   border-radius: 3px;
 }
 .st-doc-callout {
-  background: #fdf6f7;
+  background: var(--blue-050);
   border-left: 3px solid var(--accent);
   border-radius: 0 6px 6px 0;
   padding: 12px 14px;
@@ -3605,16 +3690,16 @@ body {
   justify-content: space-between;
   font-size: 12px;
   font-weight: 600;
-  color: #55606e;
+  color: var(--ink-soft);
   margin-bottom: 5px;
 }
-.st-field-hint { display: block; font-size: 11.5px; color: #8b919b; margin-top: 5px; line-height: 1.45; }
+.st-field-hint { display: block; font-size: 11.5px; color: var(--ink-faint); margin-top: 5px; line-height: 1.45; }
 .st-input {
   width: 100%;
   padding: 9px 11px;
   font: inherit;
   font-size: 15px;
-  border: 1px solid #d3d7de;
+  border: 1px solid var(--rule);
   border-radius: 7px;
   background: #fff;
   color: var(--ink);
@@ -3628,7 +3713,7 @@ body {
   align-items: flex-start;
   font-size: 13.5px;
   line-height: 1.5;
-  color: #33383f;
+  color: var(--ink-soft);
   margin-bottom: 16px;
   cursor: pointer;
 }
@@ -3648,16 +3733,16 @@ body {
 .st-pad {
   width: 100%;
   height: 150px;
-  border: 1px solid #d3d7de;
+  border: 1px solid var(--rule);
   border-radius: 8px;
-  background: #fcfcfd;
+  background: var(--blue-050);
   touch-action: none;   /* the finger draws; it must not scroll the page */
   cursor: crosshair;
   display: block;
 }
-.st-pad-rule { stroke: #d8dce2; stroke-width: 1; }
-.st-pad-ink { fill: none; stroke: #16181c; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-.st-pad-hint { font-size: 11.5px; color: #8b919b; margin-top: 6px; }
+.st-pad-rule { stroke: var(--rule); stroke-width: 1; }
+.st-pad-ink { fill: none; stroke: var(--blue-900); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.st-pad-hint { font-size: 11.5px; color: var(--ink-faint); margin-top: 6px; }
 
 .st-primary {
   width: 100%;
@@ -3672,20 +3757,20 @@ body {
   cursor: pointer;
 }
 .st-primary:hover:not(:disabled) { background: var(--accent-deep); }
-.st-primary:disabled { background: #c9ced6; cursor: not-allowed; }
+.st-primary:disabled { background: var(--rule-firm); cursor: not-allowed; }
 
 .st-sign-error {
   font-size: 13px;
-  color: #8c1c29;
-  background: #fdeaec;
+  color: var(--blue-900);
+  background: var(--blue-100);
   border-radius: 6px;
   padding: 9px 11px;
   margin-bottom: 12px;
 }
-.st-sign-fine { font-size: 11.5px; color: #8b919b; margin-top: 12px; line-height: 1.5; }
+.st-sign-fine { font-size: 11.5px; color: var(--ink-faint); margin-top: 12px; line-height: 1.5; }
 
 .st-consent {
-  background: #f7f8fa;
+  background: var(--blue-050);
   border: 1px solid var(--rule);
   border-radius: 8px;
   padding: 14px 16px;
@@ -3697,15 +3782,15 @@ body {
 
 .st-callout {
   display: block;
-  background: #fdf6f7;
-  border: 1px solid #f2d6da;
+  background: var(--blue-050);
+  border: 1px solid var(--rule-firm);
   border-left: 3px solid var(--accent);
   border-radius: 8px;
   padding: 13px 16px;
   margin-bottom: 16px;
   text-decoration: none;
 }
-.st-callout:hover { background: #fcf0f2; }
+.st-callout:hover { background: var(--blue-100); }
 .st-callout-title { display: block; font-size: 14px; font-weight: 600; color: var(--ink); }
 .st-callout-sub { display: block; font-size: 12.5px; color: var(--accent); margin-top: 2px; }
 
@@ -3722,9 +3807,9 @@ body {
   cursor: pointer;
   flex-shrink: 0;
 }
-.st-print:hover { background: #f1f2f5; }
+.st-print:hover { background: var(--blue-050); }
 
-.st-card-due { border-color: #f2d6da; background: #fefafa; }
+.st-card-due { border-color: var(--rule-firm); background: var(--blue-050); }
 .st-card-value-sm { font-size: 14px; font-weight: 600; }
 .st-card-note a { color: var(--accent); }
 
@@ -3745,7 +3830,7 @@ body {
   border-top: 1px solid var(--rule);
 }
 .st-record-row:first-child { border-top: none; }
-.st-record-row-due { background: #fefafa; }
+.st-record-row-due { background: var(--blue-050); }
 
 .st-record-main { min-width: 0; flex: 1; }
 .st-record-title {
@@ -3756,12 +3841,12 @@ body {
   font-size: 14px;
   font-weight: 600;
 }
-.st-record-version { font-size: 11px; font-weight: 500; color: #8b919b; }
+.st-record-version { font-size: 11px; font-weight: 500; color: var(--ink-faint); }
 .st-record-citation, .st-record-hash {
   display: block;
   font-family: var(--mono);
   font-size: 11px;
-  color: #8b919b;
+  color: var(--ink-faint);
   margin-top: 4px;
 }
 .st-record-statement {
@@ -3776,8 +3861,575 @@ body {
 .st-record-sig-mark { width: 150px; height: 44px; display: block; margin-left: auto; }
 .st-record-sig-mark .st-pad-ink { stroke-width: 3.4; }
 .st-record-signer { display: block; font-size: 13px; font-weight: 550; }
-.st-record-when { display: block; font-size: 11.5px; color: #8b919b; white-space: nowrap; }
-.st-empty { font-size: 13px; color: #8b919b; }
+.st-record-when { display: block; font-size: 11.5px; color: var(--ink-faint); white-space: nowrap; }
+.st-empty { font-size: 13px; color: var(--ink-faint); }
+
+/* ---------- standing rules & scope of practice ---------- */
+
+.st-section { margin-top: 28px; }
+
+/* Two columns side by side, because scope is read as a comparison. They
+   stack on narrow screens rather than shrinking — a half-width column of
+   this text on a phone is unreadable, and the right-hand column is the
+   one that matters most. */
+.st-scope {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+@media (max-width: 760px) { .st-scope { grid-template-columns: 1fr; } }
+
+.st-scope-col {
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+/* The distinction is carried by border weight and fill, not by hue —
+   green/red would fail for a colourblind reader, and the headings
+   already say which column is which. */
+.st-scope-yes { border-left: 3px solid var(--safe); }
+.st-scope-no  { border-left: 3px solid var(--warn); background: var(--blue-050); }
+
+.st-scope-col .st-h2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.st-scope-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-faint);
+}
+
+.st-scope-list { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+.st-scope-item { display: flex; flex-direction: column; gap: 5px; }
+.st-scope-text { font-size: 13.5px; line-height: 1.45; font-weight: 550; }
+
+/* The sanctioned alternative. Indented under the prohibition it belongs
+   to and set in the body weight, because it is meant to be read and in
+   some cases said out loud, not skimmed. */
+.st-scope-instead {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  border-left: 2px solid var(--rule-firm);
+  padding-left: 10px;
+}
+.st-scope-cite { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+
+.st-rule-list { display: flex; flex-direction: column; gap: 10px; }
+.st-rule {
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.st-rule-critical { border-left: 3px solid var(--warn); }
+.st-rule-title {
+  font-size: 14px;
+  font-weight: 650;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.st-rule-tag {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--accent);
+  background: var(--blue-100);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.st-rule-body { font-size: 13.5px; line-height: 1.5; margin-top: 6px; }
+.st-rule-why {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  margin-top: 8px;
+  border-left: 2px solid var(--rule);
+  padding-left: 10px;
+}
+.st-rule-cite { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin-top: 8px; }
+
+/* ---------- rounds ---------- */
+
+.st-round-list { display: flex; flex-direction: column; gap: 10px; }
+
+.st-round {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 14px 16px;
+  color: inherit;
+  text-decoration: none;
+}
+.st-round:hover { border-color: var(--rule-firm); box-shadow: var(--shadow); }
+.st-round-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.st-round-title { font-size: 14.5px; font-weight: 650; }
+.st-round-purpose { font-size: 13px; color: var(--ink-soft); line-height: 1.45; }
+.st-round-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  text-align: right;
+  flex-shrink: 0;
+}
+@media (max-width: 620px) {
+  .st-round-meta { align-items: flex-start; text-align: left; }
+}
+.st-round-steps { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+.st-round-last { font-size: 12px; color: var(--ink-soft); }
+.st-round-flag {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--warn);
+  background: var(--blue-100);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.st-round-crumb { font-size: 12px; color: var(--ink-soft); margin-bottom: 6px; }
+.st-round-crumb a { color: var(--accent); }
+
+/* ---------- the runner: one step, big, and nothing else ----------
+   Deliberately oversized type and a lot of empty space. This is read at
+   arm's length while walking, often one-handed, sometimes in a restroom
+   doorway — the constraint is legibility at a glance, not density. The
+   card holds exactly one instruction because the moment two fit on
+   screen, people start reading ahead and stop walking. */
+
+.st-run {
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 26px 24px 22px;
+  box-shadow: var(--shadow);
+  margin-top: 18px;
+}
+
+.st-run-progress {
+  height: 3px;
+  background: var(--blue-100);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 18px;
+}
+.st-run-progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width .18s ease-out;
+}
+
+.st-run-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 10px;
+}
+
+.st-run-instruction {
+  font-family: var(--serif);
+  font-size: 25px;
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -.01em;
+}
+@media (max-width: 620px) { .st-run-instruction { font-size: 22px; } }
+
+.st-run-detail {
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  margin-top: 12px;
+}
+
+/* The attestation. Set at body size but boxed, so it reads as a thing
+   being signed rather than as more instructions. */
+.st-run-attest {
+  font-size: 15px;
+  line-height: 1.55;
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: var(--blue-050);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+}
+
+.st-run-flagged {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--warn);
+  margin-top: 14px;
+}
+
+.st-run-reported { margin-top: 16px; font-size: 13px; }
+.st-run-reported-head {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--ink-faint);
+  margin-bottom: 8px;
+}
+.st-run-reported ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.st-run-reported li {
+  line-height: 1.5;
+  border-left: 2px solid var(--rule-firm);
+  padding-left: 10px;
+}
+.st-run-reported-step {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+.st-run-note { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+.st-label { font-size: 13px; font-weight: 600; }
+
+.st-run-error {
+  font-size: 13px;
+  color: var(--blue-900);
+  background: var(--blue-100);
+  border-radius: 6px;
+  padding: 9px 11px;
+  margin-top: 14px;
+}
+
+/* Actions sit in a row and wrap rather than shrink, so the primary
+   button never ends up too narrow to hit with a thumb. */
+.st-run-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.st-btn {
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 11px 20px;
+  min-height: 44px;
+  border-radius: 8px;
+  border: 1px solid var(--rule-firm);
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.st-btn:hover:not(:disabled) { border-color: var(--accent); }
+.st-btn:disabled { color: var(--ink-faint); border-color: var(--rule); cursor: not-allowed; }
+
+/* Primary is last in the row and is the only filled control, so the
+   forward action is unmistakable without reading the labels. */
+.st-btn-primary {
+  margin-left: auto;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.st-btn-primary:hover:not(:disabled) { background: var(--accent-deep); border-color: var(--accent-deep); }
+.st-btn-primary:disabled { background: var(--rule-firm); border-color: var(--rule-firm); color: #fff; }
+
+.st-btn-quiet { border-color: transparent; color: var(--ink-soft); }
+.st-btn-quiet:hover:not(:disabled) { border-color: var(--rule-firm); color: var(--ink); }
+
+@media (max-width: 480px) {
+  /* Stacked, full width, primary on top — one thumb, no mis-taps. */
+  .st-run-actions { flex-direction: column-reverse; }
+  .st-btn { width: 100%; }
+  .st-btn-primary { margin-left: 0; }
+}
+
+.st-run-done { border-left: 3px solid var(--safe); }
+.st-run-finished {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--safe);
+  margin-bottom: 10px;
+}
+
+/* ---------- onboarding: the job step ---------- */
+
+/* The job stated once, large, on its own. It is the single fact the
+   screen exists to have read, and burying it in a paragraph is how it
+   gets confirmed without being read. */
+.st-job-card {
+  background: var(--blue-050);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 10px 10px 0;
+  padding: 16px 18px;
+}
+.st-job-eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--ink-soft);
+}
+.st-job-name {
+  font-family: var(--serif);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  margin-top: 5px;
+}
+
+.st-job-scope {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 18px;
+  align-items: start;
+}
+@media (max-width: 620px) { .st-job-scope { grid-template-columns: 1fr; } }
+.st-job-scope-head {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--ink-faint);
+  margin-bottom: 8px;
+}
+.st-job-scope ul { list-style: none; display: flex; flex-direction: column; gap: 7px; }
+.st-job-scope li {
+  font-size: 13px;
+  line-height: 1.45;
+  border-left: 2px solid var(--rule-firm);
+  padding-left: 10px;
+}
+
+.st-field-optional {
+  font-weight: 400;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--ink-faint);
+  margin-left: 8px;
+}
+
+/* ---------- the document shelf ---------- */
+
+.st-doc-shelf { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+
+.st-shelf-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+/* State by depth and a word, never by hue alone — the label already
+   says Expired, and a red border would be the only signal for a
+   colourblind reader. */
+.st-shelf-expired  { border-left: 3px solid var(--warn); background: var(--blue-050); }
+.st-shelf-expiring { border-left: 3px solid var(--blue-600); }
+.st-shelf-no_date  { border-left: 3px solid var(--rule-firm); }
+
+.st-shelf-main { min-width: 0; }
+.st-shelf-title { font-size: 14px; font-weight: 650; }
+.st-shelf-type { font-size: 12.5px; color: var(--ink-soft); margin-top: 3px; }
+.st-shelf-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+  text-align: right;
+}
+@media (max-width: 620px) {
+  .st-shelf-meta { align-items: flex-start; text-align: left; }
+}
+.st-shelf-date { font-size: 12px; color: var(--ink-soft); }
+.st-shelf-verify { font-size: 11.5px; color: var(--ink-faint); }
+.st-shelf-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.st-shelf-actions .st-btn { font-size: 13px; padding: 7px 12px; min-height: 36px; }
+
+.st-tag-expired  { background: var(--blue-900); color: #fff; }
+.st-tag-expiring { background: var(--blue-100); color: var(--blue-900); }
+.st-tag-no_date  { background: var(--bg-sunk); color: var(--ink-soft); }
+.st-tag-current  { background: var(--blue-050); color: var(--blue-600); }
+
+/* ---------- protocol search ---------- */
+
+.st-protocol-search {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.st-protocol-search .st-input { flex: 1; min-width: 0; }
+@media (max-width: 480px) {
+  .st-protocol-search { flex-direction: column; }
+  .st-protocol-search .st-btn { width: 100%; margin-left: 0; }
+}
+
+.st-protocol-hits { display: flex; flex-direction: column; gap: 12px; margin-top: 18px; }
+
+.st-protocol-hit {
+  background: #fff;
+  /* Two pixels, not one. This is the one screen where the boundary
+     between "the document says this" and "the app is telling you this"
+     has to be unmistakable, and a hairline is not enough of a frame to
+     make a passage read as quoted. */
+  border: 2px solid var(--rule-firm);
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+.st-protocol-heading { font-size: 15px; font-weight: 650; letter-spacing: -.01em; }
+.st-protocol-body {
+  font-size: 14.5px;
+  line-height: 1.6;
+  margin-top: 8px;
+}
+.st-protocol-cite {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+.st-protocol-reviewed { color: var(--safe); }
+/* Not styled as an error: an unreviewed protocol is normal and is still
+   the right answer. It just has to be visible that nobody local has
+   signed it off. */
+.st-protocol-unreviewed { color: var(--ink-soft); font-weight: 600; }
+
+/* ---------- emergency guides ----------
+   Sized to be read at arm's length by somebody who is not calm. Bigger
+   type than anywhere else in the app, generous line height, numbers you
+   can find your place with after looking away — because the reader WILL
+   look away, at the patient, between every step. */
+
+.st-emg {
+  background: #fff;
+  border: 2px solid var(--rule-firm);
+  border-left: 4px solid var(--warn);
+  border-radius: 10px;
+  padding: 20px 22px;
+  margin-top: 16px;
+}
+.st-emg-head { margin-bottom: 14px; }
+.st-emg-title {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+.st-emg-purpose { font-size: 14px; color: var(--ink-soft); margin-top: 4px; }
+
+.st-emg-steps { list-style: none; display: flex; flex-direction: column; gap: 14px; }
+.st-emg-step { display: flex; gap: 12px; align-items: flex-start; }
+
+/* The number is the anchor: after looking at the patient, this is how
+   you find your place again. Fixed width so the text edge stays put. */
+.st-emg-no {
+  flex: 0 0 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--blue-900);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.st-emg-instruction { font-size: 16px; font-weight: 600; line-height: 1.4; }
+.st-emg-detail {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  margin-top: 5px;
+}
+.st-emg-review {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+}
+
+/* ---------- staff photos ----------
+   Three layers, none of them in the file: the face, a ring in the
+   clinic's colour, an optional badge. See supabase/staff-avatars.sql —
+   burning the frame into the image would mean re-processing every photo
+   in every clinic on every rebrand. */
+
+.st-avatar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--blue-100);
+  color: var(--blue-900);
+  font-weight: 650;
+  line-height: 1;
+  /* The ring is an inset shadow, not a border, so the box stays exactly
+     the size asked for and avatars line up down a list whatever the ring
+     width is. */
+}
+.st-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.st-avatar-initials { user-select: none; }
+
+/* The badge sits over the ring at the lower right, with a ground of its
+   own so a dark logo stays visible against a dark photo. */
+.st-avatar-badge {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 1.5px #fff;
+  object-fit: contain;
+}
+
+.st-avatar-upload { display: flex; flex-direction: column; gap: 14px; }
+.st-avatar-stage { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.st-avatar-lg { width: 132px; height: 132px; }
+.st-avatar-lg .st-avatar-img { transition: transform .1s linear; }
+.st-avatar-empty { font-size: 12px; color: var(--ink-faint); }
+.st-avatar-stage .st-field { flex: 1; min-width: 180px; }
+
+/* An avatar beside a name, the shape used in lists. */
+.st-who { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.st-who-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
 /* ---------- team roster ---------- */
 
@@ -3793,7 +4445,7 @@ body {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: .06em;
-  color: #8b919b;
+  color: var(--ink-faint);
   font-weight: 600;
   padding: 10px 16px;
   border-bottom: 1px solid var(--rule);
@@ -3803,7 +4455,7 @@ body {
 .st-table tbody tr:first-child td { border-top: none; }
 .st-num { text-align: right; font-variant-numeric: tabular-nums; }
 .st-cell-name { display: block; font-weight: 600; }
-.st-cell-sub { display: block; font-size: 11.5px; color: #8b919b; margin-top: 2px; }
+.st-cell-sub { display: block; font-size: 11.5px; color: var(--ink-faint); margin-top: 2px; }
 .st-cell-when { color: var(--ink-soft); white-space: nowrap; }
 
 .st-pill {
@@ -3814,9 +4466,9 @@ body {
   border-radius: 999px;
   white-space: nowrap;
 }
-.st-pill-ok  { background: #e3f1ea; color: #1e5740; }
-.st-pill-due { background: #fdeaec; color: #8c1c29; }
-.st-pill-new { background: #eef0f4; color: #55606e; }
+.st-pill-ok  { background: var(--blue-050); color: var(--blue-600); }
+.st-pill-due { background: var(--blue-100); color: var(--blue-900); }
+.st-pill-new { background: var(--blue-050); color: var(--ink-soft); }
 
 @media (max-width: 720px) {
   .st-doc { padding: 20px 18px; font-size: 14.5px; }
@@ -3849,8 +4501,8 @@ body {
   border-top: 1px solid var(--rule);
 }
 .st-board-row:first-child { border-top: none; }
-.st-board-done { background: #fcfdfc; }
-.st-board-flag { background: #fefafa; }
+.st-board-done { background: var(--blue-050); }
+.st-board-flag { background: var(--blue-050); }
 .st-board-main { min-width: 0; }
 .st-board-name { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
 .st-board-slot {
@@ -3858,8 +4510,8 @@ body {
   text-transform: uppercase;
   letter-spacing: .06em;
   font-weight: 650;
-  color: #55606e;
-  background: #eef0f4;
+  color: var(--ink-soft);
+  background: var(--blue-050);
   padding: 2px 6px;
   border-radius: 4px;
 }
@@ -3878,7 +4530,7 @@ body {
 }
 .st-board-btn:hover { background: var(--accent-deep); }
 .st-board-btn-later { background: #fff; color: var(--ink-soft); border: 1px solid var(--rule); }
-.st-board-btn-later:hover { background: #f1f2f5; color: var(--ink); }
+.st-board-btn-later:hover { background: var(--blue-050); color: var(--ink); }
 
 .st-log { background: #fff; border: 1px solid var(--rule); border-radius: 10px; padding: 20px 22px; }
 
@@ -3910,7 +4562,7 @@ body {
   font-size: 12.5px;
   line-height: 1.5;
   color: var(--ink-soft);
-  background: #f7f8fa;
+  background: var(--blue-050);
   border-left: 3px solid var(--blue);
   border-radius: 0 6px 6px 0;
   padding: 9px 12px;
@@ -3929,8 +4581,8 @@ body {
   border-top: 1px solid var(--rule);
 }
 .st-log-row:first-child { border-top: none; }
-.st-log-row-flag { background: #fefafa; box-shadow: inset 3px 0 0 var(--accent); }
-.st-log-row-missing { background: #fbfbfc; box-shadow: inset 3px 0 0 #c9ced6; }
+.st-log-row-flag { background: var(--blue-050); box-shadow: inset 3px 0 0 var(--accent); }
+.st-log-row-missing { background: var(--blue-050); box-shadow: inset 3px 0 0 var(--rule-firm); }
 
 .st-log-label { font-size: 14px; font-weight: 550; padding-top: 8px; }
 .st-log-range {
@@ -3938,11 +4590,11 @@ body {
   font-family: var(--mono);
   font-size: 11px;
   font-weight: 400;
-  color: #8b919b;
+  color: var(--ink-faint);
   margin-top: 2px;
 }
 .st-log-input { min-width: 0; }
-.st-log-help { font-size: 11.5px; line-height: 1.45; color: #8b919b; margin-top: 5px; }
+.st-log-help { font-size: 11.5px; line-height: 1.45; color: var(--ink-faint); margin-top: 5px; }
 
 .st-num-wrap { position: relative; display: flex; align-items: center; }
 .st-input-num { font-variant-numeric: tabular-nums; padding-right: 46px; }
@@ -3950,10 +4602,38 @@ body {
   position: absolute;
   right: 11px;
   font-size: 12.5px;
-  color: #8b919b;
+  color: var(--ink-faint);
   pointer-events: none;
 }
 .st-select { appearance: auto; }
+
+.st-num-field { display: flex; flex-direction: column; gap: 8px; }
+
+/* One-tap presets for a reading that lands on the same few numbers shift
+   after shift. Selected state uses the app's one accent rather than a
+   second "confirmed" green — this brand pass already spent a session
+   collapsing six competing blues into one committed hue, and a second
+   color meaning "picked" would undo that for the sake of one control. */
+.st-preset-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.st-preset-chip {
+  padding: 7px 11px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: #fff;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.st-preset-chip:hover { background: var(--blue-050); }
+.st-preset-on {
+  background: var(--volt-ink);
+  border-color: var(--volt-ink);
+  color: #fff;
+}
+.st-preset-on:hover { background: var(--volt-ink); }
 
 /* Yes/No and short option sets as buttons: one tap, no menu to open. */
 .st-toggle { display: flex; gap: 6px; }
@@ -3962,7 +4642,7 @@ body {
   flex: 1;
   min-width: 62px;
   padding: 9px 12px;
-  border: 1px solid #d3d7de;
+  border: 1px solid var(--rule);
   border-radius: 7px;
   background: #fff;
   font: inherit;
@@ -3971,7 +4651,7 @@ body {
   color: var(--ink-soft);
   cursor: pointer;
 }
-.st-toggle-btn:hover { background: #f7f8fa; }
+.st-toggle-btn:hover { background: var(--blue-050); }
 .st-toggle-on {
   background: var(--blue);
   border-color: var(--blue);
@@ -3985,7 +4665,7 @@ body {
   font: inherit;
   font-size: 14px;
   line-height: 1.45;
-  border: 1px solid #d3d7de;
+  border: 1px solid var(--rule);
   border-radius: 7px;
   resize: vertical;
   margin-top: 8px;
@@ -3993,20 +4673,20 @@ body {
 .st-textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 .st-log-alert {
-  background: #fdf6f7;
-  border: 1px solid #f2d6da;
+  background: var(--blue-050);
+  border: 1px solid var(--rule-firm);
   border-left: 3px solid var(--accent);
   border-radius: 0 8px 8px 0;
   padding: 13px 15px;
   margin: 18px 0 14px;
 }
-.st-log-alert strong { display: block; font-size: 14px; color: #8c1c29; }
+.st-log-alert strong { display: block; font-size: 14px; color: var(--blue-900); }
 .st-log-alert p { font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); margin-top: 4px; }
 
-.st-log-missing { font-size: 13px; color: #55606e; margin: 12px 0; }
-.st-log-hint { font-size: 12px; color: #8b919b; margin-top: 8px; text-align: center; }
-.st-primary-warn { background: #8c1c29; }
-.st-primary-warn:hover:not(:disabled) { background: #741620; }
+.st-log-missing { font-size: 13px; color: var(--ink-soft); margin: 12px 0; }
+.st-log-hint { font-size: 12px; color: var(--ink-faint); margin-top: 8px; text-align: center; }
+.st-primary-warn { background: var(--blue-900); }
+.st-primary-warn:hover:not(:disabled) { background: var(--blue-900); }
 
 .st-log form, .st-log { margin-top: 16px; }
 
@@ -4046,7 +4726,7 @@ body {
   font-family: var(--mono);
   font-size: 13px;
   letter-spacing: .04em;
-  background: #f1f2f5;
+  background: var(--blue-050);
   padding: 9px 11px;
   border-radius: 6px;
   word-break: break-all;
@@ -4063,7 +4743,7 @@ body {
   padding: 12px;
   font-variant-numeric: tabular-nums;
 }
-.st-mfa-busy { font-size: 12.5px; color: #8b919b; text-align: center; }
+.st-mfa-busy { font-size: 12.5px; color: var(--ink-faint); text-align: center; }
 
 /* ---------- team administration ---------- */
 
@@ -4078,10 +4758,10 @@ body {
   cursor: pointer;
   white-space: nowrap;
 }
-.st-danger { border-color: #e8c3c8; color: #8c1c29; }
-.st-danger:hover { background: #fdeaec; }
+.st-danger { border-color: var(--rule-firm); color: var(--blue-900); }
+.st-danger:hover { background: var(--blue-100); }
 .st-quiet { color: var(--ink-soft); }
-.st-quiet:hover { background: #f1f2f5; color: var(--ink); }
+.st-quiet:hover { background: var(--blue-050); color: var(--ink); }
 
 .st-row-off { opacity: .55; }
 .st-row-off .st-cell-name { text-decoration: line-through; }
@@ -4155,7 +4835,7 @@ body {
   text-transform: uppercase;
   letter-spacing: .1em;
   font-weight: 650;
-  color: #9aa0aa;
+  color: var(--ink-faint);
   margin-bottom: 7px;
 }
 .lp-sample-card {
@@ -4193,22 +4873,22 @@ body {
   align-items: center;
   font-size: 13.5px;
   padding: 8px 0;
-  border-top: 1px solid #f1f2f5;
+  border-top: 1px solid var(--blue-050);
 }
 .lp-sample-val {
   font-family: var(--mono);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
-  border: 1px solid #d3d7de;
+  border: 1px solid var(--rule);
   border-radius: 6px;
   padding: 5px 10px;
   min-width: 88px;
   text-align: right;
 }
-.lp-sample-bad { border-color: #e8c3c8; background: #fdf6f7; color: #8c1c29; font-weight: 650; }
+.lp-sample-bad { border-color: var(--rule-firm); background: var(--blue-050); color: var(--blue-900); font-weight: 650; }
 
 .lp-sample-alert {
-  background: #fdf6f7;
+  background: var(--blue-050);
   border-left: 3px solid var(--accent);
   border-radius: 0 7px 7px 0;
   padding: 11px 13px;
@@ -4217,11 +4897,11 @@ body {
   flex-direction: column;
   gap: 4px;
 }
-.lp-sample-alert strong { font-size: 13px; color: #8c1c29; }
+.lp-sample-alert strong { font-size: 13px; color: var(--blue-900); }
 .lp-sample-alert span { font-size: 12px; line-height: 1.45; color: var(--ink-soft); }
 
 .lp-sample-btn {
-  background: #8c1c29;
+  background: var(--blue-900);
   color: #fff;
   text-align: center;
   border-radius: 8px;
@@ -4254,48 +4934,130 @@ body {
 .lp-min .lp-main > section { min-width: 0; max-width: 100%; padding-left: 0; padding-right: 0; }
 .lp-min .mh-h1 { overflow-wrap: break-word; }
 
-.mh-hero { text-align: center; padding: 96px 0 72px; }
+/* ---------- the hero, on the ground ----------
+   THE TYPE SCALE IS THE POINT. It used to run 60px down to 19px — a
+   1.5x step that reads as cautious. It now runs to 88px against a 17px
+   lede, and that gap is most of what "confident" means visually. Nothing
+   else about the layout changed.
+
+   Left-aligned, not centred. Centred hero text is the default every
+   template ships with; a hard left edge with the rule above it gives the
+   block something to sit against. */
+
+.mh-hero {
+  position: relative;
+  /* Bottom padding carries the trace, so it is deliberate space rather
+     than the 100px of dead air the first version left under the CTA. */
+  padding: 78px 34px 104px;
+  border-radius: 20px;
+  margin-top: 26px;
+  overflow: hidden;
+}
+.mh-dark { background: var(--ground); color: #fff; }
+
+/* THE TRACE RUNS ALONG THE FLOOR, not above the headline.
+   Placed at the top it was clipped by the panel edge and read as a
+   scribble; along the bottom it becomes the line the whole block stands
+   on, which is both better-looking and closer to what it means — a
+   continuous recording underneath everything.
+   Taller and brighter than the first attempt, because at 26px and .5
+   opacity it was invisible at arm's length. */
+.mh-rule {
+  position: absolute;
+  left: 0;
+  bottom: 26px;
+  width: 100%;
+  height: 54px;
+  opacity: .85;
+}
+
 .mh-h1 {
   font-family: var(--serif);
-  font-size: clamp(34px, 6.2vw, 60px);
+  font-size: clamp(38px, 8vw, 88px);
   font-weight: 600;
-  line-height: 1.08;
-  letter-spacing: -.025em;
+  line-height: 1.02;
+  letter-spacing: -.035em;
+  max-width: 15ch;
 }
+/* The accent appears exactly twice on this page: this line, and the
+   trace. Used more often it stops meaning anything. */
+.mh-h1-accent { color: var(--volt); }
+
 .mh-lede {
-  font-size: clamp(16px, 2.2vw, 19px);
-  line-height: 1.6;
-  color: var(--ink-soft);
-  max-width: 46ch;
-  margin: 20px auto 32px;
+  font-size: clamp(15px, 1.8vw, 17px);
+  line-height: 1.65;
+  color: rgba(255, 255, 255, .72);
+  max-width: 48ch;
+  margin: 26px 0 34px;
 }
+
+.mh-cta-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .mh-cta {
   display: inline-block;
-  background: var(--accent);
+  background: var(--volt);
+  /* Dark text on the bright accent, not white. #22d3ee is a light
+     colour; white on it is about 1.8:1 and fails badly. */
+  color: var(--ground);
+  font-size: 16px;
+  font-weight: 700;
+  padding: 15px 30px;
+  border-radius: 10px;
+  text-decoration: none;
+  letter-spacing: -.01em;
+}
+.mh-cta:hover { background: #67e8f9; }
+/* The secondary path on the one dark section of the page, so it has to
+   read as "the other option" rather than "the real button" — an
+   outline against the near-black ground, not a second fill competing
+   with --volt for the one accent this hero spends on purpose. */
+.mh-cta-secondary {
+  display: inline-block;
+  padding: 15px 30px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, .35);
   color: #fff;
   font-size: 16px;
   font-weight: 600;
-  padding: 14px 30px;
-  border-radius: 10px;
+  letter-spacing: -.01em;
   text-decoration: none;
 }
-.mh-cta:hover { background: var(--accent-deep); }
-.mh-cta-block { display: block; text-align: center; margin-top: 22px; }
-.mh-cta-note { font-size: 13px; color: #8b919b; margin-top: 10px; }
+.mh-cta-secondary:hover { border-color: rgba(255, 255, 255, .6); }
+.mh-cta-block {
+  display: block;
+  text-align: center;
+  margin-top: 22px;
+  background: var(--accent);
+  color: #fff;
+}
+.mh-cta-block:hover { background: var(--accent-deep); }
+.mh-cta-note { display: block; margin-top: 14px; font-size: 13px; color: rgba(255, 255, 255, .5); }
+
+@media (max-width: 620px) {
+  .mh-hero { padding: 54px 22px 78px; border-radius: 16px; margin-top: 14px; }
+  .mh-rule { height: 40px; bottom: 20px; }
+}
 
 .mh-features {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 28px;
-  padding: 40px 0 72px;
-  border-top: 1px solid var(--rule);
+  gap: 32px;
+  padding: 56px 0 72px;
 }
-.mh-feature h2 { font-size: 16px; font-weight: 650; letter-spacing: -.01em; margin-bottom: 6px; }
-.mh-feature p { font-size: 14px; line-height: 1.55; color: var(--ink-soft); }
+/* Numbered by the accent rather than boxed. A card for every idea is
+   what made the old page read as a template; a short rule in the one
+   accent colour does the same job with none of the furniture. */
+.mh-feature { border-top: 2px solid var(--volt-ink); padding-top: 16px; }
+.mh-feature h2 {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  margin-bottom: 8px;
+}
+.mh-feature p { font-size: 14.5px; line-height: 1.6; color: var(--ink-soft); }
 
 .mh-h2 {
   font-family: var(--serif);
-  font-size: 26px;
+  font-size: clamp(24px, 3.4vw, 38px);
   font-weight: 600;
   letter-spacing: -.02em;
   text-align: center;
@@ -4331,7 +5093,7 @@ body {
 .mh-plan-list li {
   font-size: 14px;
   line-height: 1.5;
-  color: #33383f;
+  color: var(--ink-soft);
   padding: 7px 0 7px 24px;
   position: relative;
 }
@@ -4369,7 +5131,7 @@ body {
 .tr-h1 { font-family: var(--serif); font-size: 27px; font-weight: 600; letter-spacing: -.02em; }
 .tr-lede { font-size: 14.5px; line-height: 1.55; color: var(--ink-soft); margin: 8px 0 24px; }
 .tr-form .st-primary { margin-top: 6px; }
-.tr-fine { font-size: 12px; color: #8b919b; text-align: center; margin-top: 12px; line-height: 1.5; }
+.tr-fine { font-size: 12px; color: var(--ink-faint); text-align: center; margin-top: 12px; line-height: 1.5; }
 .tr-done h2 { font-family: var(--serif); font-size: 22px; font-weight: 600; margin-bottom: 10px; }
 .tr-done p { font-size: 14.5px; line-height: 1.6; color: var(--ink-soft); margin-bottom: 20px; }
 .tr-done .lp-btn-primary { display: block; text-align: center; }
@@ -4389,8 +5151,8 @@ body {
 /* Overdue is the one state on the dashboard that is already a finding
    rather than a task, so it gets the warm border rather than the same
    treatment as an unsigned document. */
-.st-callout-warn { background: #fdeaec; border-color: #eec2c8; }
-.st-callout-warn:hover { background: #fce2e5; }
+.st-callout-warn { background: var(--blue-100); border-color: var(--rule-firm); }
+.st-callout-warn:hover { background: var(--blue-100); }
 
 .st-ob-add { margin-bottom: 18px; }
 .st-ob-group { margin-bottom: 26px; }
@@ -4399,8 +5161,8 @@ body {
   font-family: var(--mono);
   font-size: 11px;
   font-weight: 600;
-  color: #55606e;
-  background: #eef0f4;
+  color: var(--ink-soft);
+  background: var(--blue-050);
   padding: 2px 7px;
   border-radius: 999px;
 }
@@ -4424,7 +5186,7 @@ body {
   text-transform: uppercase;
   letter-spacing: .06em;
   font-weight: 600;
-  color: #8b919b;
+  color: var(--ink-faint);
   margin-bottom: 3px;
 }
 .st-ob-fact-value { display: block; font-size: 13.5px; }
@@ -4443,7 +5205,7 @@ body {
   padding: 18px 20px;
   margin-bottom: 16px;
 }
-.st-ob-done { background: #fcfdfc; border-color: #d7e8de; }
+.st-ob-done { background: var(--blue-050); border-color: var(--rule-firm); }
 .st-ob-evidence {
   font-size: 14.5px;
   line-height: 1.6;
@@ -4505,4 +5267,632 @@ body {
 @media (max-width: 720px) {
   .st-nav-soon { display: none; }
   .st-nav-link { padding: 6px 8px; font-size: 13.5px; }
+}
+
+/* ---------- roster: credentials and exclusion screening ---------- */
+
+/* Four numbers above the detail, because the question "is anything
+   wrong" should be answerable without reading a list. Severity is
+   carried by fill depth rather than by hue — the palette is one colour,
+   so the word and the weight do the work a red would otherwise do. */
+.st-stats{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:12px;margin-bottom:20px;
+}
+.st-stat{
+  background:var(--bg-card);border:1px solid var(--rule);border-radius:10px;
+  padding:14px 16px;display:flex;flex-direction:column;gap:2px;
+}
+.st-stat-n{font-size:28px;font-weight:650;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--blue-900)}
+.st-stat-l{font-size:12px;color:var(--ink-soft)}
+.st-stat-bad{background:var(--blue-100);border-color:var(--rule-firm)}
+.st-stat-bad .st-stat-n{color:var(--blue-900)}
+.st-stat-warn{background:var(--blue-050);border-color:var(--rule-firm)}
+.st-stat-ok .st-stat-n{color:var(--blue-400)}
+
+.st-rec{
+  display:flex;flex-direction:column;gap:8px;background:var(--blue-050);
+  border:1px solid var(--rule-firm);border-radius:10px;padding:12px;min-width:260px;
+}
+.st-rec-who{font-size:12.5px;font-weight:600;color:var(--blue-900)}
+.st-rec-row{display:flex;flex-wrap:wrap;gap:6px}
+
+@media (max-width:720px){
+  .st-stats{grid-template-columns:repeat(2,1fr)}
+  .st-rec{min-width:0;width:100%}
+}
+
+/* The mark sits on whatever ground it lands on; nothing here should be
+   clipped by a flex parent. */
+/* No border-radius: the mark is a square by design, and rounding it
+   here would quietly undo that everywhere it appears. */
+.brand-icon{flex:0 0 auto}
+
+/* ---------- the stacked wordmark ---------- */
+
+.wordmark{display:flex;flex-direction:column;line-height:1;min-width:0}
+.wordmark-1{
+  font-family:var(--serif);
+  font-weight:700;
+  font-size:19px;
+  /* Tighter than before. The old -.01em left the word looking spaced
+     out beside a mark this compact. */
+  letter-spacing:-.03em;
+  color:var(--ground);
+}
+/* Letterspaced gold caps: at this size it reads as a descriptor rather
+   than a second name, which is the job. The tracking is what does that —
+   without it the two lines read as a first and last name. */
+.wordmark-2{
+  font-family:var(--sans);
+  font-weight:700;
+  font-size:10px;
+  letter-spacing:.24em;
+  text-transform:uppercase;
+  /* Recessive, not gold. The second line is a descriptor and should
+     read as one; competing with the first line for attention is what
+     made the old lockup feel like two brands stacked. */
+  color:var(--ink-faint);
+  margin-top:5px;
+}
+/* The full stop, in gold. Not letterspaced away from the word: it has
+   to sit tight against the "n" to read as "medicin." rather than as a
+   stray dot, so it inherits the line's tracking and nothing else. */
+/* The full stop, in the accent. Was gold, which belonged to the folded
+   M; the identity is now one electric hue and the dot is where it lands
+   in the wordmark. --volt-ink rather than --volt because this sits on
+   white, where the bright cyan is illegible. */
+.wordmark-dot{color:var(--volt-ink)}
+.wordmark-lg .wordmark-1{font-size:27px}
+.wordmark-lg .wordmark-2{font-size:15px;letter-spacing:.26em;margin-top:5px}
+
+/* ---------- the shift sound toggle ---------- */
+
+.st-chime {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  min-height: 32px;
+  border: 1px solid var(--rule-firm);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--ink-soft);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.st-chime:hover { border-color: var(--accent); }
+/* On is the recommended state, so it is the one that looks deliberate
+   rather than the one that looks alarming. */
+.st-chime-on { color: var(--accent); border-color: var(--blue-400); background: var(--blue-050); }
+.st-chime-hint { font-weight: 500; color: var(--ink-faint); }
+@media (max-width: 720px) {
+  /* The label goes, the bell stays. A phone header has no room for
+     three words, and the icon plus its title attribute still says
+     which state it is in. */
+  .st-chime-label, .st-chime-hint { display: none; }
+}
+
+/* ---------- the inspector's view ----------
+   A separate, deliberately plain document. It is read on somebody else's
+   iPad, once, by a person who has never seen this product — so it looks
+   like a printed record rather than an application, and there is not a
+   single control on it. */
+
+.sv { min-height: 100%; background: var(--bg-sunk); color: var(--ink); }
+.sv-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 20px;
+  background: #fff;
+  border-bottom: 1px solid var(--rule);
+}
+.sv-brand { display: flex; align-items: center; gap: 10px; }
+.sv-badge {
+  font-size: 11px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--accent);
+  background: var(--blue-100);
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.sv-main { max-width: 940px; margin: 0 auto; padding: 28px 20px 64px; }
+.sv-h1 { font-family: var(--serif); font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+.sv-sub { font-size: 13.5px; color: var(--ink-soft); margin-top: 6px; }
+.sv-h2 { font-size: 15px; font-weight: 650; margin-bottom: 10px; }
+.sv-section { margin-top: 30px; }
+.sv-empty { font-size: 13px; color: var(--ink-faint); }
+
+.sv-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-top: 22px;
+}
+.sv-stat {
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sv-stat-value { font-family: var(--serif); font-size: 24px; font-weight: 700; }
+.sv-stat-label { font-size: 11.5px; color: var(--ink-soft); }
+
+/* Tables scroll inside their own box rather than pushing the page
+   sideways — this is read on a tablet held in one hand. */
+.sv-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  overflow: hidden;
+  font-size: 13.5px;
+}
+.sv-section { overflow-x: auto; }
+.sv-table th, .sv-table td {
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+.sv-table th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--ink-faint);
+  font-weight: 600;
+  background: var(--blue-050);
+}
+.sv-table tr:last-child td { border-bottom: none; }
+
+.sv-flag {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 10.5px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: #fff;
+  background: var(--blue-900);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.sv-state { font-size: 12px; font-weight: 600; text-transform: capitalize; }
+.sv-state-expired, .sv-state-critical, .sv-state-overdue { color: var(--blue-900); font-weight: 700; }
+.sv-state-expiring, .sv-state-due_soon { color: var(--blue-600); }
+.sv-state-current, .sv-state-scheduled { color: var(--ink-soft); font-weight: 500; }
+
+.sv-foot {
+  font-size: 12px;
+  color: var(--ink-faint);
+  margin-top: 34px;
+  padding-top: 16px;
+  border-top: 1px solid var(--rule);
+  line-height: 1.5;
+}
+
+.sv-gone { display: flex; align-items: center; justify-content: center; padding: 40px 20px; }
+.sv-gone-card {
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 30px 28px;
+  max-width: 460px;
+  box-shadow: var(--shadow);
+}
+.sv-gone-card .sv-h1 { font-size: 21px; margin-top: 20px; }
+
+/* The issued link, shown once. Monospace and breakable so a long token
+   wraps instead of overflowing on a phone. */
+.st-sv-link {
+  background: var(--blue-050);
+  border: 1px solid var(--rule-firm);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-top: 14px;
+}
+.st-sv-link code {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+.st-tag-active, .st-tag-unopened { background: var(--blue-100); color: var(--blue-900); }
+.st-tag-revoked { background: var(--blue-900); color: #fff; }
+
+/* ---------- photo proof on a log ---------- */
+
+.st-proof {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 18px;
+  padding: 14px 16px;
+  background: var(--blue-050);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+}
+/* Stated every time the control is used, not once at onboarding. The
+   risk is not that somebody never knew — it is that they are in a hurry
+   and the chart is in shot. */
+.st-proof-warn {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  border-left: 2px solid var(--warn);
+  padding-left: 10px;
+}
+.st-proof-shot { display: flex; flex-direction: column; gap: 8px; }
+.st-proof-img {
+  max-width: 100%;
+  max-height: 240px;
+  width: auto;
+  border-radius: 8px;
+  border: 1px solid var(--rule-firm);
+  align-self: flex-start;
+}
+.st-proof-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.st-proof-actions .st-btn { font-size: 13px; padding: 7px 12px; min-height: 36px; }
+.st-proof-size { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin-right: auto; }
+
+/* On a dark ground the mark's tile would disappear into the page, so the
+   tile lightens by one step instead of vanishing. Set on the container,
+   not the icon, so any lockup inside a dark panel gets it. */
+.mh-dark .brand-icon rect,
+.sv-top .brand-icon rect { fill: var(--ground-soft); }
+.mh-dark .wordmark-1 { color: #fff; }
+.mh-dark .wordmark-dot { color: var(--volt); }
+.mh-dark .wordmark-2 { color: rgba(255,255,255,.45); }
+
+/* ---------- email sign-in ---------- */
+
+.st-email-auth { display: flex; flex-direction: column; gap: 4px; }
+.st-email-auth .st-primary { margin-top: 6px; }
+.st-email-again { margin-top: 8px; align-self: center; }
+
+/* Six digits, spaced and large. This is typed from a phone notification
+   with a glance, so the characters have to be unmistakable and the
+   tracking wide enough that a transposition is visible. */
+.st-code {
+  font-family: var(--mono);
+  font-size: 24px;
+  letter-spacing: .38em;
+  text-align: center;
+  padding-left: .38em; /* offsets the trailing letter-space, so it centres */
+}
+
+.st-or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0 14px;
+  color: var(--ink-faint);
+  font-size: 12px;
+}
+.st-or::before, .st-or::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--rule);
+}
+
+.st-link-back { display: block; text-align: center; margin-top: 18px; }
+
+/* ---------- read-only buyer demo (/demo) ---------- */
+
+.demo-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--volt-wash);
+  border: 1px solid var(--volt-ink);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-bottom: 20px;
+}
+.demo-banner-tag {
+  flex: 0 0 auto;
+  background: var(--volt-ink);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  border-radius: 5px;
+  padding: 3px 8px;
+}
+.demo-banner strong { color: var(--ink); }
+.demo-banner-switch { margin-left: auto; font-weight: 600; color: var(--accent); white-space: nowrap; }
+
+.demo-index-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.demo-index-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.demo-index-cta {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.demo-role-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 24px;
+}
+@media (max-width: 620px) {
+  .demo-role-grid { grid-template-columns: 1fr; }
+}
+.demo-role-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 18px 20px;
+  text-decoration: none;
+  color: var(--ink);
+  transition: border-color .15s ease;
+}
+.demo-role-card:hover { border-color: var(--volt-ink); }
+.demo-role-emoji { font-size: 22px; }
+.demo-role-title { font-size: 15px; font-weight: 650; }
+.demo-role-body { font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); }
+
+.demo-log-done {
+  text-align: center;
+  padding: 32px 22px;
+}
+.demo-log-done strong { display: block; font-size: 15px; margin-bottom: 8px; }
+.demo-log-done p { font-size: 13px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 18px; }
+
+.demo-surveyor-back { margin-top: 16px; }
+.demo-surveyor-back a { color: var(--volt-ink); font-size: 13px; font-weight: 600; }
+
+/* ---------- the location stamp on a shift log ---------- */
+
+/* State by depth and a word, never by hue alone — the line already says
+   where you are, and colour is the confirmation rather than the signal. */
+.st-geo {
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--rule-firm);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  background: var(--bg-sunk);
+}
+.st-geo-ok   { border-left-color: var(--volt-ink); background: var(--volt-wash); }
+.st-geo-warn { border-left-color: var(--warn);     background: var(--blue-050); }
+.st-geo-line strong { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.st-geo-note {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  margin-top: 3px;
+}
+
+/* Who the signup screen is for, said above the heading. */
+.tr-eyebrow {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+/* The way out for somebody who should be signing in instead. */
+.tr-lede-alt {
+  font-size: 13px;
+  color: var(--ink-soft);
+  border-top: 1px solid var(--rule);
+  padding-top: 12px;
+  margin-top: 12px;
+}
+
+/* ---------- invitations on the Team screen ---------- */
+
+.st-invite { margin: 0 0 28px; }
+.st-invite-form {
+  display: grid;
+  grid-template-columns: minmax(220px, 2fr) minmax(150px, 1fr) minmax(150px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin: 12px 0 0;
+}
+/* One column on a phone. An administrator adding three new hires from
+   the front desk is doing it on whatever is in their hand. */
+@media (max-width: 780px) {
+  .st-invite-form { grid-template-columns: 1fr; }
+  .st-invite-go { width: 100%; }
+}
+.st-invite-pending { margin-top: 22px; }
+.st-flag-admin {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border: 1px solid var(--rule-firm);
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+/* ---------- facility picker on /start ---------- */
+
+.tr-fac { border: 0; padding: 0; margin: 0 0 18px; }
+.tr-fac-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+  margin: 8px 0 6px;
+}
+.tr-fac-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: left;
+  padding: 11px 13px;
+  border: 1px solid var(--rule);
+  border-radius: 9px;
+  background: #fff;
+  cursor: pointer;
+  min-height: 44px;
+}
+.tr-fac-card:hover { border-color: var(--rule-firm); }
+/* Selected by weight and a filled edge, not hue alone. */
+.tr-fac-on {
+  border-color: var(--volt-ink);
+  box-shadow: inset 3px 0 0 var(--volt-ink);
+  background: var(--volt-wash);
+}
+.tr-fac-label { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.tr-fac-hint { font-size: 11.5px; line-height: 1.4; color: var(--ink-soft); }
+
+/* The health-system door. Deliberately NOT a sixth card in the grid —
+   it leaves the page rather than setting a value, and a link that looks
+   identical to a radio is how somebody ends up in a sales enquiry when
+   they meant to pick a clinic type. Full width, below the grid, its own
+   edge. */
+.tr-fac-more {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 10px;
+  padding: 11px 13px;
+  border: 1px dashed var(--rule-firm);
+  border-radius: 9px;
+  text-decoration: none;
+  background: transparent;
+}
+.tr-fac-more:hover { border-style: solid; background: var(--volt-wash); }
+
+/* An action inside a notice. Sits below the text on its own line so it
+   is never mistaken for part of the sentence. */
+.st-notice-action { align-self: flex-start; margin-top: 10px; text-decoration: none; }
+
+/* ---------- enterprise enquiry page ---------- */
+
+.ent-card { max-width: 620px; }
+.ent-h2 {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -.01em;
+  margin: 26px 0 8px;
+  color: var(--ink);
+}
+.ent-list { margin: 0 0 4px; padding-left: 18px; }
+.ent-list li {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  margin-bottom: 5px;
+}
+.ent-note { font-size: 12.5px; color: var(--ink-faint); margin-bottom: 8px; }
+.ent-cta { display: block; text-align: center; margin: 26px 0 18px; }
+.ent-prompts-intro { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 6px; }
+.ent-prompts { margin: 0 0 20px; padding-left: 18px; list-style: none; }
+.ent-prompts li {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+  margin-bottom: 3px;
+}
+
+/* ---------- add-to-home-screen banner ---------- */
+
+.st-install {
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: auto;
+  padding: 12px 18px;
+  background: var(--ground, #0b1220);
+  color: #fff;
+  border-top: 2px solid var(--volt);
+}
+.st-install-body strong { display: block; font-size: 13.5px; font-weight: 650; }
+.st-install-body p {
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, .68);
+  margin-top: 2px;
+  max-width: 46ch;
+}
+/* The Share and Add to Home Screen labels are things to LOOK FOR on the
+   device, so they read as keys rather than as emphasis. */
+.st-install-key {
+  color: #fff;
+  font-weight: 600;
+  border-bottom: 1px solid var(--volt);
+}
+.st-install-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.st-install .st-btn {
+  background: transparent;
+  color: rgba(255, 255, 255, .8);
+  border-color: rgba(255, 255, 255, .3);
+  min-height: 38px;
+}
+.st-install .st-btn:hover { border-color: rgba(255, 255, 255, .6); color: #fff; }
+.st-install-go {
+  background: var(--volt) !important;
+  color: var(--ground) !important;
+  border-color: var(--volt) !important;
+  font-weight: 650;
+}
+@media (max-width: 560px) {
+  .st-install { padding: 11px 14px; }
+  .st-install-actions { width: 100%; }
+  .st-install-actions .st-btn { flex: 1; }
+}
+
+/* ---------- the one lockup ---------- */
+
+/* The mark and the wordmark are one unit and wrap as one. Without this
+   the two halves could break across lines independently in a flex
+   header, which is the one way a lockup can still look wrong after
+   being made a single component. */
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* Divides the product's identity from the clinic's in the staff header.
+   A rule rather than a bullet or a slash: it separates without adding a
+   character somebody has to read. */
+.st-brand-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 4px 2px;
+  background: var(--rule);
+  flex-shrink: 0;
 }

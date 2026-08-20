@@ -4,6 +4,7 @@ import { getProfile, outstandingFor, signedBy } from "@/lib/staff/compliance";
 import { ROLE_LABELS } from "@/lib/staff/roles";
 import { formatSignedAt, formatDate } from "@/lib/staff/labels";
 import { getTenantBySlug } from "@/lib/tenants";
+import AvatarUpload from "@/app/components/staff/AvatarUpload";
 
 // One employee's complete compliance record — the artifact the whole
 // module exists to produce.
@@ -23,7 +24,13 @@ export default async function MyRecord() {
     profile: await getProfile(sql, session.uid),
     outstanding: await outstandingFor(sql, session.uid),
     signed: await signedBy(sql, session.uid),
+    theme: (
+      await sql<{ brand_color: string }[]>`
+        select brand_color from staff.org_theme where slug = ${org}
+      `
+    )[0] ?? { brand_color: "#173a8a" },
   }));
+  const theme = data.theme;
 
   const displayName =
     data.profile?.legal_name ?? data.profile?.name ?? session.email;
@@ -44,6 +51,23 @@ export default async function MyRecord() {
           Print
         </button>
       </header>
+
+      {/* The photo lives on the record rather than in a settings page.
+          This is the screen a person already opens to check their own
+          standing, and a profile picture nobody can find is a profile
+          picture nobody sets. Excluded from print — a signed compliance
+          record does not need a headshot on it. */}
+      <section className="st-section st-no-print">
+        <h2 className="st-h2">Your photo</h2>
+        <AvatarUpload
+          currentSrc={
+            data.profile?.avatar_path
+              ? `/api/staff/avatar/view?u=${session.uid}`
+              : null
+          }
+          brandColor={theme.brand_color}
+        />
+      </section>
 
       <section className="st-cards">
         <article className="st-card">

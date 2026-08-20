@@ -249,7 +249,13 @@ revoke delete on staff.obligations from staff_app;
 -- returns every org's rows. See the same note in staff-onboarding.sql.
 -- ============================================================
 
-create or replace view staff.obligation_register
+-- Dropped first rather than CREATE OR REPLACE: replace can only APPEND
+-- columns to a view, so once a later migration extends this one, the
+-- combined setup file's second run fails here with "cannot drop
+-- columns from view" while its first run was clean. Drop-first makes
+-- every view definition rerunnable regardless of what extends it.
+drop view if exists staff.obligation_register cascade;
+create view staff.obligation_register
 with (security_invoker = true) as
 select
   o.id,
@@ -290,7 +296,13 @@ grant select on staff.obligation_register to staff_app;
 
 -- One number for the dashboard, so the landing screen doesn't pull the
 -- whole register to count two things.
-create or replace view staff.obligation_summary
+-- Dropped first rather than CREATE OR REPLACE: replace can only APPEND
+-- columns to a view, so once a later migration extends this one, the
+-- combined setup file's second run fails here with "cannot drop
+-- columns from view" while its first run was clean. Drop-first makes
+-- every view definition rerunnable regardless of what extends it.
+drop view if exists staff.obligation_summary cascade;
+create view staff.obligation_summary
 with (security_invoker = true) as
 select
   org_slug,

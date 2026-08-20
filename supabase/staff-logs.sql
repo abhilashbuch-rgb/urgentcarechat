@@ -88,7 +88,13 @@ create index if not exists staff_responses_flagged
 -- about views otherwise running as their owner and bypassing RLS.
 -- ============================================================
 
-create or replace view staff.todays_logs
+-- Dropped first so this file can be re-run after a later migration has
+-- added a column to this view. CREATE OR REPLACE cannot drop a column,
+-- so replacing the extended view with this original definition fails
+-- with "cannot drop columns from view" — which broke the combined
+-- setup file's second run while the first run was clean.
+drop view if exists staff.todays_logs cascade;
+create view staff.todays_logs
 with (security_invoker = true) as
 select
   t.org_slug,

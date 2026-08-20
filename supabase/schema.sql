@@ -1,5 +1,5 @@
 -- ============================================================
--- urgentcare.chat — Complete Database Setup
+-- medicin.io — Complete Database Setup
 -- Run this ONCE in Supabase SQL Editor:
 --   Dashboard > SQL Editor > New query > Paste all > Run
 -- ============================================================
@@ -54,7 +54,7 @@ alter table clinics add column if not exists analytics_token uuid not null defau
 -- write-scoped wait_token (see /api/clinics/wait): (1) staff update it
 -- themselves from /clinics/wait/[token] on their phone between patients
 -- (wait_source='manual'), or (2) a real-time queue vendor the clinic
--- already uses (Solv, Experity, ClockWise.MD, etc.) pushes to the same
+-- already uses pushes to the same
 -- endpoint once they set up a webhook (wait_source='feed'). Treated as
 -- stale and hidden after WAIT_STALE_MINUTES (see lib/wait-time.ts) so a
 -- forgotten update doesn't show a confidently wrong number for days.
@@ -66,7 +66,7 @@ alter table clinics add column if not exists wait_updated_at timestamptz;
 alter table clinics add column if not exists wait_source text;
 alter table clinics add column if not exists wait_token uuid not null default gen_random_uuid() unique;
 
--- TENANTS — branded white-label subdomains (e.g. afc.urgentcare.chat).
+-- TENANTS — branded white-label subdomains (e.g. afc.medicin.io).
 -- Deliberately separate from the `brand` column above: `brand` groups
 -- real-world chains for the network-boost ranking feature ("AFC Urgent
 -- Care" as a name), while `tenant_slug` below is ours — which of OUR
@@ -353,7 +353,7 @@ on conflict (google_place_id) do update set
   updated_at = now();
 
 -- ============================================================
--- 5. TENANTS — first branded subdomain: afc.urgentcare.chat
+-- 5. TENANTS — first branded subdomain: afc.medicin.io
 -- primary_color is AFC's real brand red, sampled directly from their
 -- logo artwork (public/tenants/afc-logo.png — their real mark, supplied
 -- by the user for this exact purpose, not something we generated).

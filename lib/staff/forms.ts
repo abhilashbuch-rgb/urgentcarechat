@@ -25,6 +25,16 @@ export const fieldSchema = z.discriminatedUnion("type", [
     min: z.number().optional(),
     max: z.number().optional(),
     step: z.number().optional(),
+    /** One-tap values for the readings that land on the same few numbers
+     *  shift after shift — a fridge that holds 38.0-38.4°F, an O2
+     *  cylinder read in 500 PSI bands. Tapping one fills the input with
+     *  that exact value; it is still the value stored and still runs
+     *  through the same min/max check as if it had been typed, so a chip
+     *  for 38.4°F still flags if `max` is 38. The raw input stays visible
+     *  and editable beside the chips — there is no separate "custom"
+     *  mode, because hiding the real input behind a toggle is what turns
+     *  a shortcut into the only way to enter an unusual number. */
+    presets: z.array(z.number()).max(6).optional(),
   }),
   z.object({ ...baseField, type: z.literal("text"), placeholder: z.string().max(80).optional() }),
   z.object({ ...baseField, type: z.literal("date") }),

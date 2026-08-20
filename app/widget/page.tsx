@@ -1,9 +1,8 @@
 "use client";
 
+import BrandLockup from "@/app/components/BrandLockup";
 import { useEffect, useState } from "react";
 import TriageApp from "@/app/components/TriageApp";
-import BrandIcon from "@/app/components/BrandIcon";
-import Wordmark from "@/app/components/Wordmark";
 import { ROOT_URL, PRODUCT_NAME } from "@/lib/site";
 
 const SNIPPET = `<iframe
@@ -29,8 +28,7 @@ function EmbedDocs() {
     <div className="widget-docs">
       <header className="site-header">
         <div className="brand">
-          <BrandIcon />
-          <Wordmark />
+          <BrandLockup />
         </div>
         <div className="tagline">Embed this widget</div>
       </header>

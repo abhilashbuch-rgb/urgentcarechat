@@ -1,19 +1,18 @@
 "use client";
 
+import BrandLockup from "@/app/components/BrandLockup";
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { STRINGS, getStoredLanguage, type Language } from "@/lib/i18n";
 import FollowUpOptIn from "./FollowUpOptIn";
 import ClaimListing from "./ClaimListing";
 import { checkRedFlags } from "@/lib/red-flags";
-import BrandIcon from "@/app/components/BrandIcon";
 import type { Tenant } from "@/lib/tenants";
 import { serviceLabel, insuranceLabel } from "@/lib/service-labels";
 
 // Quiet, optional footer link — never shown during 911/988 alerts.
 const TIP_JAR_URL = "https://ko-fi.com/urgentcarechat";
 import { ROOT_URL, PRODUCT_NAME } from "@/lib/site";
-import Wordmark from "@/app/components/Wordmark";
 
 // ============================================================
 // Types
@@ -271,7 +270,7 @@ export default function TriageApp({
   //
   // On a branded SUBDOMAIN, proxy.ts tags every request — pages and API
   // alike — with x-tenant-slug, so this would work without help. But the
-  // same portal is also served at urgentcare.chat/<slug>, and there
+  // same portal is also served at medicin.io/<slug>, and there
   // /api/clinics is a reserved root path that proxy.ts deliberately passes
   // through untouched. The browser's fetch therefore arrived with no
   // tenant at all, and AFC's branded portal listed their competitors.
@@ -617,8 +616,7 @@ export default function TriageApp({
               )
             ) : (
               <>
-                <BrandIcon />
-                <Wordmark />
+                <BrandLockup />
               </>
             )}
           </div>

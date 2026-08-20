@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolve } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
+import { enqueue } from "@/lib/staff/alerts";
 import { loadTemplate, ensureInstance } from "@/lib/staff/logs";
 import { coerce, evaluate, type Answers } from "@/lib/staff/forms";
+import {
+  classify,
+  isPlausible,
+  type GeofenceMode,
+  type OrgGeofence,
+} from "@/lib/staff/geo";
 
 // POST /api/staff/logs/submit
 //
@@ -16,6 +23,10 @@ import { coerce, evaluate, type Answers } from "@/lib/staff/forms";
 export const runtime = "nodejs";
 
 const MAX_CORRECTIVE = 2000;
+/** Enough room for what was actually done. Matches the CHECK in
+ *  supabase/staff-corrective-action.sql — the constraint is what makes
+ *  it true of every row however it arrived. */
+const MIN_CORRECTIVE = 20;
 
 export async function POST(req: NextRequest) {
   const auth = await resolve();
@@ -27,6 +38,13 @@ export async function POST(req: NextRequest) {
     slot?: string;
     answers?: Record<string, unknown>;
     correctiveAction?: string;
+    location?: {
+      lat?: unknown;
+      lng?: unknown;
+      accuracy?: unknown;
+      denied?: unknown;
+      note?: unknown;
+    } | null;
   };
   try {
     body = await req.json();
@@ -40,8 +58,62 @@ export async function POST(req: NextRequest) {
 
   try {
     const result = await withSession(session, async (sql) => {
+      // The name that goes in the alert. An owner reading "out of range"
+      // on their phone needs to know who filed it without opening the
+      // app, and an email address is not the name they know people by.
+      const [who] = await sql<{ legal_name: string | null }[]>`
+        select legal_name from staff.users where id = ${session.uid}
+      `;
+      const profileName = who?.legal_name ?? null;
+
       const template = await loadTemplate(sql, slug);
       if (!template) return { error: "no_such_form" as const, status: 404 };
+
+      // THE CLINIC'S OWN COORDINATES AND RULES, READ HERE. A client that
+      // announced it was on site does not get to decide that — same
+      // principle as re-running the range check server-side. The distance
+      // stored is the one computed from this row.
+      const [geoRow] = await sql<
+        {
+          latitude: number | null;
+          longitude: number | null;
+          geofence_radius_m: number;
+          geofence_mode: GeofenceMode;
+        }[]
+      >`
+        select latitude, longitude, geofence_radius_m, geofence_mode
+          from staff.orgs where slug = ${org}
+      `;
+      const geofence: OrgGeofence = {
+        lat: geoRow?.latitude ?? null,
+        lng: geoRow?.longitude ?? null,
+        radiusM: geoRow?.geofence_radius_m ?? 150,
+        mode: geoRow?.geofence_mode ?? "off",
+      };
+
+      const rawLoc = body.location ?? null;
+      const fix =
+        rawLoc && isPlausible(rawLoc.lat, rawLoc.lng)
+          ? {
+              lat: rawLoc.lat as number,
+              lng: rawLoc.lng as number,
+              accuracy:
+                typeof rawLoc.accuracy === "number" &&
+                Number.isFinite(rawLoc.accuracy)
+                  ? rawLoc.accuracy
+                  : null,
+            }
+          : null;
+      const place = classify(geofence, fix, rawLoc?.denied === true);
+
+      const locNote =
+        typeof rawLoc?.note === "string" ? rawLoc.note.trim().slice(0, 2000) : "";
+
+      // Enforced here as well as in the browser, because a request that
+      // skips the form skips the form's validation with it.
+      if (place.needsNote && locNote.length < MIN_CORRECTIVE) {
+        return { error: "location_note_required" as const, status: 400 };
+      }
 
       // A twice-daily form filed with no slot, or a once-a-day form filed
       // as "pm", would silently become a different record than the board
@@ -65,7 +137,16 @@ export async function POST(req: NextRequest) {
       // Mirrors the CHECK constraint on the table. Reaching the constraint
       // would also stop it, but a 400 with a reason is a better answer
       // than a 500 from a violated constraint.
-      if (flagged && corrective.length < 3) {
+      //
+      // TWENTY, not three. Three characters stopped an empty field and
+      // nothing else: a vaccine fridge at 52 degF with "n/a" in this
+      // box was accepted, flagged and filed. That is worse than a
+      // missing corrective action, because a missing one reads as an
+      // incomplete record and gets chased, while "n/a" reads as a
+      // complete one and gets filed — and is what a surveyor finds next
+      // to a 52-degree reading three years later. See
+      // supabase/staff-corrective-action.sql.
+      if (flagged && corrective.length < MIN_CORRECTIVE) {
         return { error: "corrective_action_required" as const, status: 400 };
       }
 
@@ -74,11 +155,16 @@ export async function POST(req: NextRequest) {
       const inserted = await sql<{ id: string }[]>`
         insert into staff.form_responses
           (instance_id, org_slug, submitted_by, answers_json, status,
-           has_out_of_range, out_of_range_fields, corrective_action)
+           has_out_of_range, out_of_range_fields, corrective_action,
+           filed_lat, filed_lng, filed_accuracy_m, filed_distance_m,
+           location_status, location_note)
         values
           (${instanceId}, ${org}, ${session.uid}, ${sql.json(answers)},
            ${flagged ? "flagged" : "pending"}, ${flagged},
-           ${check.outOfRange}, ${flagged ? corrective : null})
+           ${check.outOfRange}, ${flagged ? corrective : null},
+           ${fix?.lat ?? null}, ${fix?.lng ?? null}, ${fix?.accuracy ?? null},
+           ${place.distanceM}, ${place.status},
+           ${locNote.length >= MIN_CORRECTIVE ? locNote : null})
         returning id
       `;
 
@@ -93,8 +179,45 @@ export async function POST(req: NextRequest) {
         values (${org}, ${session.uid},
                 ${flagged ? "log_submitted_out_of_range" : "log_submitted"},
                 'form_response', ${inserted[0].id},
-                ${sql.json({ slug, slot, out_of_range: check.outOfRangeLabels })})
+                ${sql.json({
+                  slug,
+                  slot,
+                  out_of_range: check.outOfRangeLabels,
+                  // Rounded to the metre. The audit trail is a record of
+                  // what happened, not a coordinate log — the exact fix
+                  // lives on the response row and nowhere else.
+                  location: place.status,
+                  distance_m:
+                    place.distanceM === null ? null : Math.round(place.distanceM),
+                })})
       `;
+
+      // The alert is enqueued INSIDE this transaction, so an excursion
+      // and the record of having raised it either both exist or neither
+      // does. Sending happens later, from the cron sweep — emailing here
+      // would make the mail provider's slow afternoon into this person's
+      // slow submit button, and a provider outage into either a 500 on
+      // an already-filed log or a silently lost excursion.
+      await enqueue(sql, {
+        org,
+        kind: flagged ? "excursion" : "log",
+        subject: flagged
+          ? `${org}: ${template.name} out of range`
+          : `${org}: ${template.name} logged`,
+        body: flagged
+          ? [
+              `${template.name} (${slot.toUpperCase()}) is out of range.`,
+              `Out of range: ${check.outOfRangeLabels.join(", ")}`,
+              `Filed by ${profileName ?? session.email} at ${new Date().toISOString()}`,
+              "",
+              `Corrective action recorded: ${corrective}`,
+            ].join("\n")
+          : `${template.name} (${slot.toUpperCase()}) logged by ${profileName ?? session.email}. Within range.`,
+        sourceKind: "form_response",
+        sourceId: inserted[0].id,
+        submittedBy: session.uid,
+        payload: { slug, slot, out_of_range: check.outOfRangeLabels },
+      });
 
       return { id: inserted[0].id, flagged, outOfRange: check.outOfRangeLabels };
     });

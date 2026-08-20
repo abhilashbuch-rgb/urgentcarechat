@@ -2,9 +2,15 @@ import type { Metadata } from "next";
 import { resolve } from "@/lib/staff/auth";
 import { getTenantBySlug } from "@/lib/tenants";
 import { navFor, ROLE_LABELS } from "@/lib/staff/roles";
+import { withSession } from "@/lib/staff/db";
+import { getProfile } from "@/lib/staff/compliance";
+import Avatar from "@/app/components/staff/Avatar";
+import ShiftChime from "@/app/components/staff/ShiftChime";
+import InstallPrompt from "@/app/components/staff/InstallPrompt";
+import BrandLockup from "@/app/components/BrandLockup";
 
 // The staff shell. Lives at /staff on an org's own hostname
-// (afc.urgentcare.chat/staff) — see the passthrough in proxy.ts, which
+// (afc.medicin.io/staff) — see the passthrough in proxy.ts, which
 // keeps this path out of the /t/<slug> rewrite that serves the patient
 // portal.
 
@@ -31,16 +37,50 @@ export default async function StaffLayout({
   const { session, org } = result.ctx;
   const tenant = await getTenantBySlug(org);
   const orgName = tenant?.displayName ?? org;
-  const nav = navFor(session.role);
+  // Nav is filtered by ROLE and by JOB. Most providers hold the plain
+  // "staff" role, so a clinical link gated on role alone would be hidden
+  // from the people it exists for.
+  const { me, theme, audio, openNow } = await withSession(session, async (sql) => ({
+    me: await getProfile(sql, session.uid),
+    audio: (
+      await sql<{ audio_alerts_enabled: boolean }[]>`
+        select audio_alerts_enabled from staff.users where id = ${session.uid}
+      `
+    )[0]?.audio_alerts_enabled ?? true,
+    // Whether the clinic is open right now, in ITS timezone. Decided in
+    // SQL by the same function the alert sweep uses, so the badge and the
+    // sweep can never disagree about whether it is clinic hours.
+    openNow: (
+      await sql<{ within: boolean }[]>`
+        select staff.within_operating_hours(${session.org}) as within
+      `
+    )[0]?.within ?? false,
+    theme: (
+      await sql<{ brand_color: string; logo_url: string | null }[]>`
+        select brand_color, logo_url from staff.org_theme where slug = ${org}
+      `
+    )[0] ?? { brand_color: "#173a8a", logo_url: null },
+  }));
+  const nav = navFor(session.role, me?.job_role ?? null);
 
   return (
     <div className="st">
       <header className="st-top">
         <div className="st-top-inner">
-          <div className="st-brand">
+          {/* THE SAME LOCKUP AS THE PUBLIC SITE, then the clinic's name.
+              This header used to carry the mark ALONE with the clinic's
+              name where the wordmark belongs — reasonable in isolation,
+              and wrong in aggregate: the product looked like one brand
+              on the marketing site and a different one the moment you
+              signed in. The clinic's name still matters more to somebody
+              at 7am than the product's does, so it stays — after the
+              lockup and a divider, rather than instead of it. */}
+          <a className="st-brand" href="/staff">
+            <BrandLockup />
+            <span className="st-brand-sep" aria-hidden="true" />
             <span className="st-brand-name">{orgName}</span>
             <span className="st-brand-tag">Staff</span>
-          </div>
+          </a>
 
           <nav className="st-nav">
             {nav.map((item) =>
@@ -63,6 +103,18 @@ export default async function StaffLayout({
           </nav>
 
           <div className="st-me">
+            <ShiftChime audioEnabled={audio} openNow={openNow} />
+            {/* The photo is fetched through a signed-link route rather
+                than being a public URL — the bucket also holds licences.
+                No photo renders initials on the same ring, so the empty
+                state is a state and not a broken image. */}
+            <Avatar
+              name={me?.legal_name ?? me?.name ?? session.email}
+              src={me?.avatar_path ? `/api/staff/avatar/view?u=${session.uid}` : null}
+              brandColor={theme.brand_color}
+              badgeUrl={theme.logo_url}
+              size={30}
+            />
             <span className="st-me-email">{session.email}</span>
             <span className="st-me-role">{ROLE_LABELS[session.role]}</span>
             <form method="POST" action="/api/staff/auth/signout">
@@ -75,6 +127,12 @@ export default async function StaffLayout({
       </header>
 
       <main className="st-main">{children}</main>
+
+      {/* Sits at the bottom of the signed-in shell, so it only ever
+          reaches staff — and renders nothing at all when the app is
+          already installed, when it has been dismissed, or on a browser
+          where the instruction would not be true. */}
+      <InstallPrompt />
     </div>
   );
 }

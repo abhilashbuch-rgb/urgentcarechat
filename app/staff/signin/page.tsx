@@ -1,7 +1,8 @@
+import BrandLockup from "@/app/components/BrandLockup";
 import { redirect } from "next/navigation";
 import { resolve } from "@/lib/staff/auth";
 import { isConfigured } from "@/lib/staff/google";
-import { PRODUCT_NAME } from "@/lib/site";
+import EmailSignIn from "@/app/components/staff/EmailSignIn";
 
 // Sign-in, and every way sign-in can fail.
 //
@@ -68,15 +69,20 @@ const MESSAGES: Record<string, { title: string; body: string }> = {
 export default async function StaffSignIn({
   searchParams,
 }: {
-  searchParams: Promise<{ e?: string }>;
+  searchParams: Promise<{ e?: string; invited?: string }>;
 }) {
   // Already signed in and in the right place — the sign-in page has
   // nothing to offer.
   const existing = await resolve();
   if (existing.ok) redirect("/staff");
 
-  const { e } = await searchParams;
+  const { e, invited } = await searchParams;
   const message = e ? MESSAGES[e] : undefined;
+
+  // Arrived from an invitation link. Only used to prefill a form field —
+  // it grants nothing, so a hand-typed value costs an attacker a
+  // pre-filled box and no more.
+  const invitedEmail = (invited ?? "").trim().slice(0, 160);
 
   // One staff door for every clinic, so the only thing that can stop the
   // button appearing is the server missing its OAuth credentials — which
@@ -86,11 +92,30 @@ export default async function StaffSignIn({
   return (
     <div className="st-signin">
       <div className="st-signin-card">
-        <p className="st-signin-eyebrow">{PRODUCT_NAME}</p>
+        {/* The lockup, not the name set as an eyebrow. This is the one
+            screen a new hire sees before they are inside anything, so
+            it is the screen that has to look like the product rather
+            than describe it. */}
+        <div className="st-signin-brand">
+          <BrandLockup tagline />
+        </div>
         <h1 className="st-signin-title">Staff sign-in</h1>
+        {/* Says what this is, not what it isn't. The previous line
+            explained that patients don't need an account — true, but it
+            described a symptom checker that is no longer what this
+            product is for. The people reading this screen are clinical
+            staff about to file a log. */}
         <p className="st-signin-sub">
-          For clinic staff only. Patients don&rsquo;t need an account &mdash; the
-          symptom checker never asks for one.
+          Clinical and operational records for your clinic. Access is by
+          invitation from your administrator.
+        </p>
+        {/* THE OTHER SIDE OF THE SAME BOUNDARY. Small, and below the
+            fold of attention on purpose: nearly everybody on this screen
+            is staff who belong here, and the one owner a month who
+            landed in the wrong place still needs a way out. */}
+        <p className="st-signin-fine">
+          Setting up a clinic for the first time?{" "}
+          <a href="/start">Start here instead</a>.
         </p>
 
         {message && (
@@ -100,23 +125,41 @@ export default async function StaffSignIn({
           </div>
         )}
 
-        {canSignIn ? (
-          <a className="st-google" href="/api/staff/auth/start">
-            <GoogleMark />
-            Continue with Google
-          </a>
-        ) : (
-          !message && (
-            <div className="st-notice" role="status">
-              <strong>{MESSAGES.unconfigured.title}</strong>
-              <span>{MESSAGES.unconfigured.body}</span>
+        {/* TWO DOORS INTO ONE CORRIDOR.
+            Google where the clinic has Workspace — it brings their own
+            hardware keys, device policy and session revocation for free
+            and there is nothing for us to store.
+            An emailed code for everyone else. A great many urgent cares
+            run Microsoft 365, and for those clinics a Google-only screen
+            was not a login, it was a wall.
+            NEITHER GRANTS ACCESS. Both prove you hold an address; the
+            invite decides whether that address may come in. */}
+        {canSignIn && (
+          <>
+            <a className="st-google" href="/api/staff/auth/start">
+              <GoogleMark />
+              Continue with Google
+            </a>
+            <div className="st-or">
+              <span>or</span>
             </div>
-          )
+          </>
+        )}
+
+        <EmailSignIn initialEmail={invitedEmail} />
+
+        {!canSignIn && !message && (
+          <p className="st-signin-fine">
+            Google sign-in isn&rsquo;t configured on this deployment, so the
+            emailed code is the way in. It works with any work address &mdash;
+            Microsoft, Google or anything else.
+          </p>
         )}
 
         <p className="st-signin-fine">
-          Access is by invitation. Signing in with Google proves who you are;
-          it doesn&rsquo;t grant access on its own.
+          Access is by invitation. Proving you hold the address doesn&rsquo;t
+          grant access on its own &mdash; your administrator has to have
+          invited it.
         </p>
       </div>
     </div>

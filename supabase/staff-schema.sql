@@ -14,7 +14,7 @@
 --
 -- ORG REGISTRY — read before changing.
 -- The public schema already has a `tenants` table (slug, display_name,
--- active) which is what resolves afc.urgentcare.chat to a brand today.
+-- active) which is what resolves afc.medicin.io to a brand today.
 -- staff.orgs deliberately does NOT foreign-key to it, but DOES use the
 -- same slug as its primary key. So there is one shared vocabulary for
 -- "which org is this" and no cross-schema dependency: a staff org exists
@@ -306,7 +306,7 @@ on conflict (slug) do nothing;
 --        GOOGLE_OAUTH_CLIENT_ID
 --        GOOGLE_OAUTH_CLIENT_SECRET
 --   3. In the Google Cloud console, add
---        https://afc.urgentcare.chat/api/staff/auth/callback
+--        https://afc.medicin.io/api/staff/auth/callback
 --      as an authorized redirect URI (one per staff hostname).
 --   4. Add the first invite —
 --

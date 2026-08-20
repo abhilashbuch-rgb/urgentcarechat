@@ -18,14 +18,28 @@ export interface BoardRow {
   has_out_of_range: boolean | null;
   submitted_by_name: string | null;
   submitted_by_email: string | null;
+  /** True when this task has no job attached, i.e. it is everyone's. */
+  everyone?: boolean;
 }
 
-export async function todaysBoard(sql: StaffSql): Promise<BoardRow[]> {
+/** Today's board, scoped to one person's clinic job.
+ *
+ *  The filter is staff.brief_matches(), the same function the database
+ *  uses — so what a medical assistant sees here and what the database
+ *  says they should see cannot drift apart. Separation is strict: only a
+ *  template with no job_roles at all is universal, and a person with no
+ *  job assigned sees only those. */
+export async function todaysBoard(
+  sql: StaffSql,
+  jobRole: string | null
+): Promise<BoardRow[]> {
   return sql<BoardRow[]>`
     select template_id, slug, name, description, category, frequency, slot,
            response_id, submitted_at::text as submitted_at, has_out_of_range,
-           submitted_by_name, submitted_by_email
+           submitted_by_name, submitted_by_email,
+           cardinality(job_roles) = 0 as everyone
       from staff.todays_logs
+     where staff.brief_matches(job_roles, ${jobRole}::staff.job_role)
      order by sort_order, slot
   `;
 }

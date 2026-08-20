@@ -1,13 +1,31 @@
 "use client";
 
 import { useState } from "react";
+import { contactMailto } from "@/lib/site";
+import InstallPrompt from "@/app/components/staff/InstallPrompt";
 
-// Two fields, because two is what it takes. Asking for a phone number or
-// a clinic size here would cost more signups than the data is worth.
+// Two fields and one choice, because that is what it takes. Asking for a
+// phone number or a clinic size here would cost more signups than the
+// data is worth.
+//
+// THE TYPE IS ASKED BECAUSE IT CHANGES THE PRODUCT, not because it is
+// useful to know. It decides which logs the clinic opens with — a med
+// spa has no narcotics count, a primary care has no lead aprons — and
+// the alternative is every clinic starting with an urgent care's board
+// and deleting what does not apply. Defaulted, so somebody who ignores
+// it still gets a working workspace.
+const FACILITIES: { id: string; label: string; hint: string }[] = [
+  { id: "urgent_care", label: "Urgent care", hint: "Crash cart, X-ray, POCT, narcotics" },
+  { id: "primary_care", label: "Primary care or pediatrics", hint: "VFC vaccine storage, POCT" },
+  { id: "med_spa", label: "Medical spa", hint: "Injectable lots, laser safety, autoclave" },
+  { id: "ambulatory_surgery", label: "Surgery center", hint: "MH cart, sterile processing, narcotics" },
+  { id: "dental", label: "Dental or oral surgery", hint: "Spore testing, sedation, amalgam" },
+];
 
 export default function TrialForm() {
   const [clinic, setClinic] = useState("");
   const [email, setEmail] = useState("");
+  const [facility, setFacility] = useState("urgent_care");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -21,15 +39,36 @@ export default function TrialForm() {
     const res = await fetch("/api/trial", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ clinic: clinic.trim(), email: email.trim() }),
+      body: JSON.stringify({
+        clinic: clinic.trim(),
+        email: email.trim(),
+        facility,
+      }),
     }).catch(() => null);
 
     if (!res?.ok) {
       setBusy(false);
+      // Already onboarded. The clinic name comes back so the message can
+      // say which one, because "ask your administrator" is useless to
+      // somebody who does not yet know a workspace exists.
+      if (res?.status === 409) {
+        const body = await res.json().catch(() => null);
+        setError(
+          body?.clinic
+            ? `taken:${body.clinic}`
+            : "taken:your clinic"
+        );
+        return;
+      }
       setError(
         res?.status === 400
           ? "Check the clinic name and email address."
-          : "That didn't go through. Try again."
+          : res?.status === 503
+            // Not the visitor's fault, and saying "try again" would send
+            // them round a loop that cannot succeed. Name the situation
+            // and give them a way to reach a person.
+            ? "notopen"
+            : "That didn't go through. Try again."
       );
       return;
     }
@@ -41,9 +80,10 @@ export default function TrialForm() {
       <div className="tr-done">
         <h2>Your workspace is ready.</h2>
         <p>
-          Sign in with Google using <strong>{done}</strong>{" "}
-          &mdash; that address is the administrator. Any other account will be
-          turned away.
+          Sign in as <strong>{done}</strong> &mdash; with Google if that
+          address is on Google Workspace, or with the emailed six-digit code
+          otherwise. That address is the administrator; any other account
+          will be turned away.
         </p>
         <a className="lp-btn-primary" href="/staff/signin">
           Sign in and set it up
@@ -52,6 +92,15 @@ export default function TrialForm() {
           14 days, no card. When it ends nothing is deleted — the workspace
           goes read-only and everything stays exportable.
         </p>
+        {/* OFFERED HERE AND NOWHERE ELSE ON THE MARKETING SITE.
+            A prospect reading pricing on a laptop has no use for a
+            home-screen icon. The person on this screen has just created
+            a clinic and is the account's first user — very often on the
+            phone they will file from every morning — so this is the one
+            moment before sign-in where the suggestion is earned. It is
+            still a dismissible banner, and still silent on any platform
+            where the instruction would not be true. */}
+        <InstallPrompt />
       </div>
     );
   }
@@ -68,6 +117,45 @@ export default function TrialForm() {
           autoFocus
         />
       </label>
+      <fieldset className="tr-fac">
+        <legend className="st-field-label">What kind of clinic</legend>
+        <div className="tr-fac-grid">
+          {FACILITIES.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              className={`tr-fac-card${facility === f.id ? " tr-fac-on" : ""}`}
+              aria-pressed={facility === f.id}
+              onClick={() => setFacility(f.id)}
+            >
+              <span className="tr-fac-label">{f.label}</span>
+              <span className="tr-fac-hint">{f.hint}</span>
+            </button>
+          ))}
+        </div>
+        <span className="st-field-hint">
+          This picks the logs you start with. You can add or remove any of
+          them afterwards, and add more clinics of other kinds later.
+        </span>
+        {/* THE SIXTH DOOR IS A LINK, NOT A SIXTH CHOICE.
+            A hospital or a multi-site system cannot be served by this
+            form: it needs a BAA negotiated against their template, a
+            security review, SSO against their directory, and a contract
+            that is not $149 on a card. Putting it in the picker would
+            take their card details and hand them a single-clinic
+            workspace they cannot legally put staff into. So it is
+            labelled as what it is and it goes somewhere a person
+            answers. */}
+        <a className="tr-fac-more" href="/enterprise">
+          <span className="tr-fac-label">Hospital or health system?</span>
+          <span className="tr-fac-hint">
+            Several sites on one contract, with a BAA and your own SSO
+            &mdash; that is a conversation, not a signup form. Talk to us
+            about enterprise terms &rarr;
+          </span>
+        </a>
+      </fieldset>
+
       <label className="st-field">
         <span className="st-field-label">Your work email</span>
         <input
@@ -79,15 +167,34 @@ export default function TrialForm() {
           autoComplete="email"
         />
         <span className="st-field-hint">
-          You&rsquo;ll sign in with Google using this address, so use the one
-          your Google account is on.
+          You&rsquo;ll sign in as this address afterward &mdash; with Google
+          if it&rsquo;s on Google Workspace, or with an emailed code if not.
+          Microsoft 365 and any other mailbox work.
         </span>
       </label>
 
-      {error && (
+      {error?.startsWith("taken:") ? (
         <p className="st-sign-error" role="alert">
-          {error}
+          <strong>{error.slice(6)} already has a workspace.</strong>{" "}
+          Staff don&rsquo;t sign up here &mdash; an administrator adds you,
+          and then you sign in. Ask whoever runs your clinic to invite this
+          address, then use{" "}
+          <a href="/staff/signin">the staff sign-in</a>.
         </p>
+      ) : error === "notopen" ? (
+        <p className="st-sign-error" role="alert">
+          Self-serve signup isn&rsquo;t switched on yet &mdash; that&rsquo;s on
+          us, not you.{" "}
+          <a href={contactMailto("Set up my clinic")}>
+            Email us and we&rsquo;ll set your clinic up by hand.
+          </a>
+        </p>
+      ) : (
+        error && (
+          <p className="st-sign-error" role="alert">
+            {error}
+          </p>
+        )
       )}
 
       <button className="st-primary" type="submit" disabled={busy}>

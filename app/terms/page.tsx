@@ -1,6 +1,5 @@
+import BrandLockup from "@/app/components/BrandLockup";
 import Link from "next/link";
-import BrandIcon from "@/app/components/BrandIcon";
-import Wordmark from "@/app/components/Wordmark";
 import { PRODUCT_NAME, OPERATOR } from "@/lib/site";
 
 export const metadata = {
@@ -12,8 +11,7 @@ export default function TermsPage() {
     <div className="legal-page">
       <header className="site-header">
         <div className="brand">
-          <BrandIcon />
-          <Wordmark />
+          <BrandLockup />
         </div>
       </header>
 

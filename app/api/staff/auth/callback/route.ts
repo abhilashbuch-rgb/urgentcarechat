@@ -38,6 +38,11 @@ interface UserRow {
 
 interface InviteRow {
   role: StaffRole;
+  /** The clinic job the inviter assigned. Null on an older invite, and
+   *  on a domain-wide one where the inviter cannot know who will use it. */
+  job_role: string | null;
+  /** Optional pre-fill, confirmed in the wizard before it is signed with. */
+  legal_name: string | null;
 }
 
 function deny(reason: string) {
@@ -156,7 +161,7 @@ export async function GET(req: NextRequest) {
       // from the invite rather than the resolver, so an invite revoked
       // between the two reads correctly denies here.
       const invite = await sql<InviteRow[]>`
-        select role
+        select role, job_role::text as job_role, legal_name
           from staff.org_invites
          where org_slug = ${org}
            and revoked_at is null
@@ -180,10 +185,23 @@ export async function GET(req: NextRequest) {
         return { denied: "no_invite" as const };
       }
 
+      // The clinic job comes off the invite too, so a new hire lands on
+      // a board that already has their work on it. Without this,
+      // job_role stayed null until an administrator set it by hand and
+      // the first screen a new person saw was an almost-empty board —
+      // strict separation working correctly and looking broken.
+      //
+      // legal_name is pre-filled only if the inviter supplied one. It is
+      // still confirmed in the wizard before anything is signed with it:
+      // Google's display name is frequently not the name that belongs on
+      // a signed record.
       const created = await sql<UserRow[]>`
-        insert into staff.users (google_sub, email, name, org_slug, role)
+        insert into staff.users
+          (google_sub, email, name, org_slug, role, job_role, legal_name)
         values (${identity.sub}, ${identity.email}, ${identity.name},
-                ${org}, ${invite[0].role}::staff.user_role)
+                ${org}, ${invite[0].role}::staff.user_role,
+                ${invite[0].job_role ?? null}::staff.job_role,
+                ${invite[0].legal_name ?? null})
         returning id, role, active, name, session_epoch,
                   (totp_confirmed_at is not null) as mfa_enrolled
       `;

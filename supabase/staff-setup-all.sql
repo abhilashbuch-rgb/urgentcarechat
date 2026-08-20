@@ -35,7 +35,7 @@
 --
 -- ORG REGISTRY — read before changing.
 -- The public schema already has a `tenants` table (slug, display_name,
--- active) which is what resolves afc.urgentcare.chat to a brand today.
+-- active) which is what resolves afc.medicin.io to a brand today.
 -- staff.orgs deliberately does NOT foreign-key to it, but DOES use the
 -- same slug as its primary key. So there is one shared vocabulary for
 -- "which org is this" and no cross-schema dependency: a staff org exists
@@ -327,7 +327,7 @@ on conflict (slug) do nothing;
 --        GOOGLE_OAUTH_CLIENT_ID
 --        GOOGLE_OAUTH_CLIENT_SECRET
 --   3. In the Google Cloud console, add
---        https://afc.urgentcare.chat/api/staff/auth/callback
+--        https://afc.medicin.io/api/staff/auth/callback
 --      as an authorized redirect URI (one per staff hostname).
 --   4. Add the first invite —
 --
@@ -540,7 +540,19 @@ grant select, insert on staff.attestations to staff_app;
 -- aged past the document's renewal window.
 -- ============================================================
 
-create or replace view staff.outstanding_docs
+-- Dropped first rather than CREATE OR REPLACE: replace can only APPEND
+-- columns to a view, so once a later migration extends this one, the
+-- combined setup file's second run fails here with "cannot drop
+-- columns from view" while its first run was clean. Drop-first makes
+-- every view definition rerunnable regardless of what extends it.
+--
+-- CASCADE is safe here and is not a shrug: views in this schema are
+-- defined in dependency order within the combined setup file, so a
+-- cascade only ever drops a view that is recreated further down the
+-- same file. compliance_status builds on outstanding_docs, which is
+-- why a bare drop failed.
+drop view if exists staff.outstanding_docs cascade;
+create view staff.outstanding_docs
 with (security_invoker = true) as
 select
   u.id                          as user_id,
@@ -580,7 +592,13 @@ grant select on staff.outstanding_docs to staff_app;
 
 -- Completion per person, for the admin roster: how many documents apply
 -- to them and how many they have live signatures for.
-create or replace view staff.compliance_status
+-- Dropped first rather than CREATE OR REPLACE: replace can only APPEND
+-- columns to a view, so once a later migration extends this one, the
+-- combined setup file's second run fails here with "cannot drop
+-- columns from view" while its first run was clean. Drop-first makes
+-- every view definition rerunnable regardless of what extends it.
+drop view if exists staff.compliance_status cascade;
+create view staff.compliance_status
 with (security_invoker = true) as
 select
   u.id            as user_id,
@@ -1201,7 +1219,13 @@ create index if not exists staff_responses_flagged
 -- about views otherwise running as their owner and bypassing RLS.
 -- ============================================================
 
-create or replace view staff.todays_logs
+-- Dropped first so this file can be re-run after a later migration has
+-- added a column to this view. CREATE OR REPLACE cannot drop a column,
+-- so replacing the extended view with this original definition fails
+-- with "cannot drop columns from view" — which broke the combined
+-- setup file's second run while the first run was clean.
+drop view if exists staff.todays_logs cascade;
+create view staff.todays_logs
 with (security_invoker = true) as
 select
   t.org_slug,
@@ -1553,7 +1577,13 @@ create trigger staff_users_revoke_on_deactivate
 -- rather than something cached: the entire value of a kill switch is that
 -- it takes effect on the next request, and a 60-second cache would mean a
 -- 60-second window in which a just-fired employee still has access.
-create or replace view staff.session_checks
+-- Dropped first rather than CREATE OR REPLACE: replace can only APPEND
+-- columns to a view, so once a later migration extends this one, the
+-- combined setup file's second run fails here with "cannot drop
+-- columns from view" while its first run was clean. Drop-first makes
+-- every view definition rerunnable regardless of what extends it.
+drop view if exists staff.session_checks cascade;
+create view staff.session_checks
 with (security_invoker = true) as
 select id, org_slug, role, active, session_epoch,
        (totp_confirmed_at is not null) as mfa_enrolled
@@ -1576,7 +1606,7 @@ grant select on staff.session_checks to staff_app;
 -- manually-added Vercel domain PER CUSTOMER, which makes self-serve
 -- signup impossible.
 --
--- Now everyone signs in at urgentcare.chat/staff and the org comes from
+-- Now everyone signs in at medicin.io/staff and the org comes from
 -- the person's own row, re-read on every request. Tenant subdomains stay
 -- for white-label PATIENT portals, where branding is the point.
 --
@@ -1707,7 +1737,13 @@ alter table staff.users add column if not exists arrt_expires_on    date;
 
 -- What is expiring, and when, for everyone in an org. security_invoker so
 -- it reads under the caller's RLS — see the note in staff-onboarding.sql.
-create or replace view staff.credential_status
+-- Dropped first rather than CREATE OR REPLACE: replace can only APPEND
+-- columns to a view, so once a later migration extends this one, the
+-- combined setup file's second run fails here with "cannot drop
+-- columns from view" while its first run was clean. Drop-first makes
+-- every view definition rerunnable regardless of what extends it.
+drop view if exists staff.credential_status cascade;
+create view staff.credential_status
 with (security_invoker = true) as
 select
   u.id as user_id, u.org_slug, u.email, u.legal_name, u.role,
@@ -2155,7 +2191,13 @@ revoke delete on staff.obligations from staff_app;
 -- returns every org's rows. See the same note in staff-onboarding.sql.
 -- ============================================================
 
-create or replace view staff.obligation_register
+-- Dropped first rather than CREATE OR REPLACE: replace can only APPEND
+-- columns to a view, so once a later migration extends this one, the
+-- combined setup file's second run fails here with "cannot drop
+-- columns from view" while its first run was clean. Drop-first makes
+-- every view definition rerunnable regardless of what extends it.
+drop view if exists staff.obligation_register cascade;
+create view staff.obligation_register
 with (security_invoker = true) as
 select
   o.id,
@@ -2196,7 +2238,13 @@ grant select on staff.obligation_register to staff_app;
 
 -- One number for the dashboard, so the landing screen doesn't pull the
 -- whole register to count two things.
-create or replace view staff.obligation_summary
+-- Dropped first rather than CREATE OR REPLACE: replace can only APPEND
+-- columns to a view, so once a later migration extends this one, the
+-- combined setup file's second run fails here with "cannot drop
+-- columns from view" while its first run was clean. Drop-first makes
+-- every view definition rerunnable regardless of what extends it.
+drop view if exists staff.obligation_summary cascade;
+create view staff.obligation_summary
 with (security_invoker = true) as
 select
   org_slug,
@@ -2393,3 +2441,6178 @@ begin
     perform staff.seed_obligations(o.slug);
   end loop;
 end $$;
+
+
+-- ========== staff-job-roles.sql ==========
+
+-- ============================================================
+-- JOB ROLES AND THE SHIFT BRIEF
+--
+-- Run AFTER supabase/staff-obligations-seed.sql. Idempotent.
+--
+-- TWO DIFFERENT THINGS CALLED "ROLE", AND THEY MUST NOT BE ONE COLUMN.
+--
+--   staff.user_role  — what you may DO in this app. org_admin can invite
+--                      people; clinical_lead can complete someone else's
+--                      obligation. This is permission, and RLS and the
+--                      route handlers read it.
+--
+--   staff.job_role   — what you DO IN THE CLINIC. A medical assistant
+--                      checks the fridge; an X-ray tech inspects lead
+--                      aprons; the front desk reconciles the drawer.
+--                      This is a work assignment, and it decides what
+--                      shows up on your screen — never what you are
+--                      allowed to reach.
+--
+-- Collapsing them would mean promoting an MA to org_admin to let them
+-- manage the roster, and thereby silently handing them the X-ray tech's
+-- task list; or worse, giving someone the fridge log by making them a
+-- "clinical_lead" and handing them completion rights over everybody.
+-- They are orthogonal, so they are two columns.
+--
+-- job_role is NULLABLE on purpose. "Nobody has said what this person
+-- does" is a real state on day one, and the brief says so out loud
+-- rather than guessing and showing a receptionist the narcotics count.
+-- ============================================================
+
+do $$ begin
+  create type staff.job_role as enum (
+    'front_desk',
+    'medical_assistant',
+    'xray_tech',
+    'provider',
+    'center_admin'
+  );
+exception when duplicate_object then null;
+end $$;
+
+alter table staff.users add column if not exists job_role staff.job_role;
+
+-- Which jobs a task belongs to. EMPTY MEANS EVERYONE — that is the safe
+-- default for a column added to rows that already exist, because the
+-- alternative (empty means nobody) would silently empty every clinic's
+-- board the moment this migration ran.
+alter table staff.form_templates
+  add column if not exists job_roles staff.job_role[] not null default '{}';
+alter table staff.obligations
+  add column if not exists job_roles staff.job_role[] not null default '{}';
+
+create index if not exists staff_templates_job_roles
+  on staff.form_templates using gin (job_roles);
+
+-- ============================================================
+-- STANDING DIRECTIVES
+--
+-- Not every daily instruction is a form to fill in or a deadline to
+-- meet. "Never quote a price at the clinical desk — walk them to the
+-- front" is a rule that governs a shift without ever producing a row.
+-- Those had nowhere to live: the log board only shows things with a
+-- submit button, and the obligations register only shows things with a
+-- due date, so a standing rule was either invisible or filed as a fake
+-- task that could be marked done and then forgotten.
+--
+-- A directive is READ, not completed. It carries an optional
+-- acknowledgement so a clinic can prove the rule was put in front of
+-- someone, which is a weaker and more honest claim than "they did it".
+-- ============================================================
+
+create table if not exists staff.directives (
+  id         uuid primary key default gen_random_uuid(),
+  org_slug   text not null references staff.orgs(slug) on delete cascade,
+  key        text not null,
+  job_roles  staff.job_role[] not null default '{}',
+  title      text not null,
+  body       text not null,
+  -- Why this rule exists. A directive that cites its reason survives the
+  -- shift where somebody decides it is pointless.
+  rationale  text,
+  citation   text,
+  -- Shown at the top of the brief rather than in the list. Reserved for
+  -- the few rules where getting it wrong is the incident.
+  critical   boolean not null default false,
+  sort_order integer not null default 100,
+  active     boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists staff_directives_key
+  on staff.directives (org_slug, key);
+
+alter table staff.directives enable row level security;
+alter table staff.directives force row level security;
+drop policy if exists staff_org_isolation on staff.directives;
+create policy staff_org_isolation on staff.directives
+  for all
+  using (staff.is_super_admin() or org_slug = staff.current_org())
+  with check (staff.is_super_admin() or org_slug = staff.current_org());
+grant select, insert, update on staff.directives to staff_app;
+revoke delete on staff.directives from staff_app;
+
+-- ============================================================
+-- THE SHIFT BRIEF
+--
+-- Today's board, filtered to one person's job. The filter is
+-- "unassigned tasks are everyone's" — a template with no job_roles
+-- shows for all staff — so adding this column cannot make work vanish
+-- from a clinic that has not categorised anything yet.
+--
+-- SEPARATION IS STRICT. A medical assistant does not see the front
+-- desk's drawer reconciliation and the front desk does not see the
+-- narcotics count. Only a task with NO job_roles at all is shown to
+-- everybody, and that is reserved for things which genuinely are
+-- everybody's.
+--
+-- An earlier version also let a person with no job_role see everything,
+-- on the reasoning that showing an unassigned person too much was safer
+-- than showing them nothing. That was wrong twice over: it silently
+-- broke the separation the moment anyone was left unassigned, and it
+-- hid the real problem, which is that nobody had said what this person
+-- does. Unassigned now sees only the universal tasks, and the app tells
+-- them to get a job assigned — a visible gap an administrator can fix,
+-- rather than an invisible leak.
+-- ============================================================
+
+create or replace function staff.brief_matches(
+  p_task staff.job_role[], p_person staff.job_role
+) returns boolean
+language sql immutable as $$
+  select cardinality(p_task) = 0
+      or (p_person is not null and p_person = any (p_task))
+$$;
+
+grant execute on function staff.brief_matches(staff.job_role[], staff.job_role) to staff_app;
+
+-- The board has to carry job_roles for the brief to filter on it.
+--
+-- DROPPED AND RECREATED, not CREATE OR REPLACE. Replace can only append
+-- columns to the end of a view; inserting job_roles next to the other
+-- template columns where it belongs fails with "cannot change name of
+-- view column \"slot\" to \"job_roles\"". Nothing depends on this view,
+-- so dropping it is free — but the drop has to come first or the whole
+-- migration stops here.
+drop view if exists staff.todays_logs cascade;
+create view staff.todays_logs
+with (security_invoker = true) as
+select
+  t.org_slug,
+  t.id            as template_id,
+  t.slug,
+  t.name,
+  t.description,
+  t.category,
+  t.frequency,
+  t.sort_order,
+  t.job_roles,
+  s.slot,
+  r.id            as response_id,
+  r.submitted_at,
+  r.submitted_by,
+  r.has_out_of_range,
+  u.legal_name    as submitted_by_name,
+  u.email         as submitted_by_email
+from staff.form_templates t
+cross join lateral unnest(
+  case when cardinality(t.slots) = 0 then array[''] else t.slots end
+) as s(slot)
+left join staff.form_instances i
+  on i.template_id = t.id and i.due_date = current_date and i.slot = s.slot
+left join staff.form_responses r
+  on r.instance_id = i.id and r.supersedes_id is null
+left join staff.users u on u.id = r.submitted_by
+where t.active;
+
+grant select on staff.todays_logs to staff_app;
+
+
+-- ========== staff-job-roles-seed.sql ==========
+
+-- ============================================================
+-- WHO DOES WHAT, AND THE RULES THEY WORK UNDER
+--
+-- Run AFTER supabase/staff-job-roles.sql. Idempotent.
+--
+-- Two halves:
+--   1. Assign the seven binder logs to the job that actually performs
+--      them, and add the front-desk tasks that had no log at all.
+--   2. Seed the standing directives each role works under.
+--
+-- ACCURACY NOTE. The thresholds and intervals here come from the same
+-- sources as the log seed: 36-46 degF for vaccine storage, 1000 PSI on
+-- an E-cylinder, ANSI Z358.1's weekly eyewash activation, 28-day
+-- beyond-use dating on an opened multi-dose vial. The DIRECTIVES are
+-- practice rules, not regulations, except where a citation is given —
+-- and where one is given it is exact. A directive that cites a rule it
+-- misstates is worse than one that cites nothing.
+-- ============================================================
+
+-- ---------- 1. Assign the existing logs to a job ----------
+--
+-- The narcotics count is deliberately assigned to TWO jobs. It is a
+-- dual-witness count: one person counts, another witnesses, and the
+-- pair is the control. Assigning it to one job would put the second
+-- signature outside the brief of the person being asked for it.
+
+update staff.form_templates set job_roles = array['medical_assistant']::staff.job_role[]
+  where slug in ('crash-cart', 'temp-fridge', 'poct-qc');
+
+update staff.form_templates set job_roles = array['medical_assistant','xray_tech']::staff.job_role[]
+  where slug = 'eyewash-autoclave';
+
+update staff.form_templates set job_roles = array['xray_tech']::staff.job_role[]
+  where slug = 'radiation-apron';
+
+update staff.form_templates set job_roles = array['medical_assistant','provider']::staff.job_role[]
+  where slug = 'narcotics-count';
+
+update staff.form_templates set job_roles = array['provider','center_admin']::staff.job_role[]
+  where slug = 'qi-minutes';
+
+-- ---------- 2. The front desk had no daily log at all ----------
+--
+-- Every one of the seven binder sheets is clinical, so on a role-scoped
+-- brief the front desk would have opened the app to an empty shift.
+-- That is not a filtering bug, it is a gap in the binder: the money and
+-- the privacy screen are as auditable as the fridge.
+
+insert into staff.form_templates
+  (org_slug, slug, name, description, category, frequency, slots, sort_order,
+   job_roles, schema_json)
+select o.slug, t.slug, t.name, t.description, t.category, t.frequency,
+       t.slots, t.sort_order, t.job_roles, t.schema_json::jsonb
+from staff.orgs o
+cross join (values
+  ('front-desk-open',
+   'Front desk opening',
+   'Drawer count, privacy screens, lobby walk.',
+   'operations', 'daily', array['am'], 5,
+   array['front_desk']::staff.job_role[],
+   $json$
+   {
+     "standard": "Drawer counted against yesterday's close before the first patient. Check-in screens angled away from the lobby.",
+     "fields": [
+       { "id": "drawer_open", "label": "Opening drawer count", "type": "number",
+         "unit": "USD", "step": 0.01,
+         "help": "Count it before the first patient, not after. A discrepancy found at 5pm cannot be pinned to a shift." },
+       { "id": "drawer_matches", "label": "Matches yesterday's closing count", "type": "boolean", "expected": true },
+       { "id": "screens_private", "label": "Check-in screens not visible from the lobby", "type": "boolean", "expected": true,
+         "help": "Walk out and look from a waiting-room chair. 45 CFR 164.530(c) asks for reasonable safeguards, and a screen angle is the cheapest one there is." },
+       { "id": "lobby_clear", "label": "Lobby walk done: exits clear, no PHI left out", "type": "boolean", "expected": true },
+       { "id": "shred_secured", "label": "Shred bin locked and not overflowing", "type": "boolean", "expected": true }
+     ]
+   }
+   $json$),
+  ('front-desk-close',
+   'Front desk closing',
+   'Drawer reconciliation and end-of-day PHI sweep.',
+   'operations', 'daily', array['pm'], 95,
+   array['front_desk']::staff.job_role[],
+   $json$
+   {
+     "standard": "Closing count reconciles to the day's posted payments. Nothing with a patient name left on a desk.",
+     "fields": [
+       { "id": "drawer_close", "label": "Closing drawer count", "type": "number", "unit": "USD", "step": 0.01 },
+       { "id": "posted_total", "label": "Payments posted today", "type": "number", "unit": "USD", "step": 0.01 },
+       { "id": "reconciles", "label": "Counted cash reconciles to posted payments", "type": "boolean", "expected": true,
+         "help": "If it does not, say so and write what you found. A silent shortfall is the one that becomes an investigation." },
+       { "id": "phi_cleared", "label": "No paper with patient identifiers left on any desk", "type": "boolean", "expected": true },
+       { "id": "workstations_locked", "label": "All workstations logged out", "type": "boolean", "expected": true }
+     ]
+   }
+   $json$)
+) as t(slug, name, description, category, frequency, slots, sort_order, job_roles, schema_json)
+where not exists (
+  select 1 from staff.form_templates f
+   where f.org_slug = o.slug and f.slug = t.slug
+);
+
+-- ---------- 3. Standing directives ----------
+
+create or replace function staff.seed_directives(p_slug text)
+returns integer language plpgsql as $$
+declare n integer;
+begin
+  insert into staff.directives
+    (org_slug, key, job_roles, title, body, rationale, citation, critical, sort_order)
+  select p_slug, d.key, d.job_roles, d.title, d.body, d.rationale, d.citation, d.critical, d.sort_order
+  from (values
+
+    -- Everyone
+    ('phi-in-chat', '{}'::staff.job_role[],
+     'No patient information in this app',
+     'Never type a patient name, date of birth, MRN, or anything that identifies a person into a log, a note, or a message here. Describe the room, the cart, or the reading.',
+     'This product holds no PHI, which is why it needs no BAA and why a breach here cannot expose a patient. That is true only for as long as nobody types it in.',
+     '45 CFR 164.502', true, 10),
+
+    ('escalate-emergency', '{}'::staff.job_role[],
+     'Anyone can call a code',
+     'If a patient in the lobby or a room looks like they are deteriorating, say so immediately and out loud. You do not need to be clinical to escalate, and you will never be criticised for escalating something that turned out to be nothing.',
+     'The delay that hurts people is almost never a wrong clinical judgement. It is somebody junior deciding it was not their place to speak.',
+     null, true, 20),
+
+    -- Front desk
+    ('no-clinical-advice', array['front_desk']::staff.job_role[],
+     'Never give clinical advice or triage over the desk',
+     'If a patient asks whether their symptom is serious, whether they should be seen, or what a result means, do not answer. Say: "Let me get a clinical staff member to answer that for you," and get one.',
+     'A reassuring answer from the desk is practising medicine without a licence, and it is the answer people remember when they decide to go home instead of being seen.',
+     null, true, 30),
+
+    ('billing-redirect', array['medical_assistant','xray_tech','provider']::staff.job_role[],
+     'Send every pricing question to the front desk',
+     'If a patient asks what a visit costs, what their copay is, or whether insurance covers something, do not estimate. Say: "Our front desk handles all account and payment details — I will walk you over at checkout so they can help you directly."',
+     'A number guessed in an exam room becomes a number the patient was quoted. It also puts a clinical person in the middle of a billing dispute, which is exactly where the therapeutic relationship goes to die.',
+     null, false, 40),
+
+    ('verify-identity', array['front_desk']::staff.job_role[],
+     'Two identifiers at check-in, every time',
+     'Full name and date of birth, said back by the patient rather than read to them. Never confirm a chart by asking "you are Mrs Smith, yes?"',
+     'Reading the name out and getting a nod is how one patient gets another patient''s chart, and the error is usually only found after something has been done to somebody.',
+     null, true, 50),
+
+    -- Medical assistant
+    ('fridge-excursion', array['medical_assistant']::staff.job_role[],
+     'An out-of-range fridge means quarantine first, log second',
+     'If the vaccine fridge reads outside 36-46 degF: do not discard, do not keep using it. Move stock to the backup unit, tag it DO NOT USE, then log the reading and call the manufacturer or the immunisation programme for a viability decision.',
+     'Discarding is expensive and often unnecessary; continuing to use it is the one that reaches a patient. Neither call is yours to make alone, and the manufacturer will ask for the min/max, so read it before you move anything.',
+     null, true, 60),
+
+    ('poct-control-fail', array['medical_assistant']::staff.job_role[],
+     'A failed control voids the run, not just the control',
+     'If an external control does not read as expected, no patient result from that kit and lot may be reported. Open a new lot, repeat the control, and document both the failure and the repeat.',
+     'A reported result from a kit whose control failed is an unverified result, and under a CLIA waiver the control is the entire quality system.',
+     '42 CFR 493.15', true, 70),
+
+    ('mdv-28-day', array['medical_assistant']::staff.job_role[],
+     'Date every multi-dose vial the moment it is opened',
+     'Write the beyond-use date on the vial when you first puncture it: 28 days from opening unless the manufacturer says shorter. Lidocaine, PPD tuberculin, bacteriostatic diluents.',
+     'An undated open vial has no defensible in-use date, so on inspection it is discarded and on a bad day it is used months later.',
+     null, false, 80),
+
+    -- X-ray tech
+    ('apron-defect', array['xray_tech']::staff.job_role[],
+     'A lead apron that fails inspection comes out of service that shift',
+     'Any apron or thyroid collar with a crack, tear, or radiographic defect over the recommended limit is tagged and removed the same day. Do not leave it on the rack "until the next order goes in."',
+     'A defective apron is worse than none, because the person wearing it believes they are shielded.',
+     null, true, 90),
+
+    ('repeat-image-justify', array['xray_tech']::staff.job_role[],
+     'Every repeat exposure gets a reason',
+     'If you repeat a view, record why — positioning, motion, technique. Repeats are tracked, and the number is not the point; the pattern is.',
+     'Radiation dose is cumulative and the only defensible way to reduce repeats is to know what is causing them.',
+     null, false, 100),
+
+    -- Provider
+    ('overread-discrepancy', array['provider']::staff.job_role[],
+     'Close the loop on every over-read discrepancy',
+     'When the radiologist''s read differs from the preliminary read in a way that changes management, the patient is contacted and the contact is documented — who called, when, what was said, and what was arranged.',
+     'The discrepancy itself is expected and is not the finding. The finding is a discrepancy nobody told the patient about.',
+     null, true, 110),
+
+    ('controlled-cosign', array['provider']::staff.job_role[],
+     'Waste is witnessed in real time, not reconstructed',
+     'Any partial dose of a controlled substance is wasted in front of a second person and both sign at the moment it happens. Never sign a waste you did not watch.',
+     'A co-signature added later is a signature attesting to something the signer did not see, which is the specific thing a diversion investigation looks for.',
+     null, true, 120),
+
+    -- Center admin
+    ('monthly-oversight', array['center_admin']::staff.job_role[],
+     'Sign the month, and read it before you sign',
+     'At the close of each month the Lead RN or Center Manager and the Medical Director sign the oversight block. Read the flagged entries and the corrective actions first.',
+     'The monthly signature is what turns a stack of staff entries into evidence of clinical oversight. A signature applied without reading is the one a surveyor will find the counter-example to.',
+     null, false, 130)
+
+  ) as d(key, job_roles, title, body, rationale, citation, critical, sort_order)
+  where not exists (
+    select 1 from staff.directives x
+     where x.org_slug = p_slug and x.key = d.key
+  );
+
+  get diagnostics n = row_count;
+  return n;
+end $$;
+
+grant execute on function staff.seed_directives(text) to staff_app;
+
+create or replace function staff.directives_seed_new_org()
+returns trigger language plpgsql as $$
+begin
+  perform staff.seed_directives(new.slug);
+  return null;
+end $$;
+
+drop trigger if exists staff_orgs_seed_directives on staff.orgs;
+create trigger staff_orgs_seed_directives
+  after insert on staff.orgs
+  for each row execute function staff.directives_seed_new_org();
+
+do $$
+declare o record;
+begin
+  for o in select slug from staff.orgs loop
+    perform staff.seed_directives(o.slug);
+  end loop;
+end $$;
+
+
+-- ========== staff-credentials.sql ==========
+
+-- ============================================================
+-- CREDENTIALS AND EXCLUSION SCREENING
+--
+-- Run AFTER supabase/staff-job-roles-seed.sql. Idempotent.
+--
+-- WHY THIS REPLACES THE THREE COLUMNS ON staff.users
+--
+-- Credentials were bls_expires_on, license_expires_on and arrt_expires_on
+-- — three date columns, so a clinic could track exactly three things and
+-- adding a fourth was a migration. Real rosters have a DEA registration,
+-- malpractice coverage, board certification, ACLS, PALS, a second state
+-- licence for someone who works a border site, and a collaborative
+-- practice agreement. Those are rows, not columns.
+--
+-- NO CREDENTIAL NUMBERS ARE STORED, and that is a deliberate refusal
+-- rather than an omission. A table holding DEA registration numbers
+-- against named prescribers is a prescription-fraud kit; one holding
+-- licence numbers with dates of birth is an identity-theft kit. What
+-- expiry tracking actually needs is the KIND, the ISSUER and the DATE,
+-- and none of those are sensitive. When primary source verification
+-- happens, what gets recorded here is that it happened and who did it —
+-- the verification itself lives at the source, which is the only place
+-- it is authoritative anyway.
+-- ============================================================
+
+do $$ begin
+  create type staff.credential_kind as enum (
+    'state_license',
+    'dea_registration',
+    'board_certification',
+    'bls_cpr',
+    'acls',
+    'pals',
+    'arrt',
+    'malpractice',
+    'collaborative_agreement',
+    'other'
+  );
+exception when duplicate_object then null;
+end $$;
+
+create table if not exists staff.credentials (
+  id          uuid primary key default gen_random_uuid(),
+  org_slug    text not null references staff.orgs(slug) on delete cascade,
+  user_id     uuid not null references staff.users(id) on delete cascade,
+  kind        staff.credential_kind not null,
+  -- Who issued it: a state code for a licence, a board's name for a
+  -- certification, a carrier for malpractice. Free text because the
+  -- vocabulary is genuinely open and a wrong enum blocks a real hire.
+  issuer      text,
+  -- Deliberately NOT the credential number. See the header.
+  label       text,
+  issued_on   date,
+  expires_on  date,
+  -- Primary source verification: the date somebody checked this against
+  -- the issuing authority, not the date it was typed in.
+  verified_on date,
+  verified_by uuid references staff.users(id),
+  notes       text,
+  active      boolean not null default true,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists staff_credentials_user
+  on staff.credentials (org_slug, user_id) where active;
+create index if not exists staff_credentials_expiry
+  on staff.credentials (org_slug, expires_on) where active and expires_on is not null;
+
+alter table staff.credentials enable row level security;
+alter table staff.credentials force row level security;
+drop policy if exists staff_org_isolation on staff.credentials;
+create policy staff_org_isolation on staff.credentials
+  for all
+  using (staff.is_super_admin() or org_slug = staff.current_org())
+  with check (staff.is_super_admin() or org_slug = staff.current_org());
+grant select, insert, update on staff.credentials to staff_app;
+revoke delete on staff.credentials from staff_app;
+
+-- Carry the three old columns across, once, so nobody loses a date that
+-- was already entered. Guarded on not-exists so re-running cannot create
+-- duplicates.
+insert into staff.credentials (org_slug, user_id, kind, expires_on)
+select u.org_slug, u.id, k.kind, k.d
+from staff.users u
+cross join lateral (values
+  ('bls_cpr'::staff.credential_kind,       u.bls_expires_on),
+  ('state_license'::staff.credential_kind, u.license_expires_on),
+  ('arrt'::staff.credential_kind,          u.arrt_expires_on)
+) as k(kind, d)
+where k.d is not null
+  and not exists (
+    select 1 from staff.credentials c
+     where c.user_id = u.id and c.kind = k.kind and c.expires_on = k.d
+  );
+
+-- ============================================================
+-- EXCLUSION SCREENING
+--
+-- Employing or contracting with an excluded individual means the federal
+-- health care programs will not pay for ANYTHING that person is involved
+-- in, directly or indirectly, and civil monetary penalties attach per
+-- item or service claimed. The OIG's own guidance is to screen the
+-- exclusion list on hire and MONTHLY thereafter, which is why the
+-- obligation this seeds repeats monthly rather than annually.
+--
+-- Sources worth screening:
+--   OIG LEIE        — the federal exclusion list, published monthly
+--   SAM.gov         — federal procurement/award debarment
+--   State Medicaid  — most states publish their own, and a state
+--                     exclusion is not always mirrored federally
+--
+-- WHAT THIS TABLE IS: the record that a screen happened, against whom,
+-- on what date, with what result. It is the evidence a surveyor or a
+-- payer asks for.
+--
+-- WHAT IT IS NOT, YET: an automated download. The LEIE is a published
+-- CSV and SAM.gov has an API, so screening could be run for the whole
+-- roster on a schedule — but a name-only match produces false positives
+-- on common names, and resolving one requires a date of birth or an SSN
+-- that this system deliberately does not hold. So the check stays human,
+-- and what is automated is remembering that it is due.
+-- ============================================================
+
+do $$ begin
+  create type staff.exclusion_source as enum ('oig_leie', 'sam_gov', 'state_medicaid');
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create type staff.exclusion_result as enum ('clear', 'possible_match', 'excluded');
+exception when duplicate_object then null;
+end $$;
+
+create table if not exists staff.exclusion_checks (
+  id          uuid primary key default gen_random_uuid(),
+  org_slug    text not null references staff.orgs(slug) on delete cascade,
+  user_id     uuid not null references staff.users(id) on delete cascade,
+  source      staff.exclusion_source not null,
+  checked_on  date not null default current_date,
+  result      staff.exclusion_result not null,
+  -- Required when the result is anything but clear: what was found and
+  -- what was done about it. A "possible match" with no note is the same
+  -- as no screen at all.
+  detail      text,
+  checked_by  uuid references staff.users(id),
+  created_at  timestamptz not null default now()
+);
+
+do $$ begin
+  alter table staff.exclusion_checks
+    add constraint staff_exclusion_needs_detail
+    check (result = 'clear' or (detail is not null and length(btrim(detail)) >= 3));
+exception when duplicate_object then null;
+end $$;
+
+create index if not exists staff_exclusion_recent
+  on staff.exclusion_checks (org_slug, user_id, checked_on desc);
+
+alter table staff.exclusion_checks enable row level security;
+alter table staff.exclusion_checks force row level security;
+drop policy if exists staff_org_isolation on staff.exclusion_checks;
+create policy staff_org_isolation on staff.exclusion_checks
+  for all
+  using (staff.is_super_admin() or org_slug = staff.current_org())
+  with check (staff.is_super_admin() or org_slug = staff.current_org());
+-- Append-only in practice: a screening record is evidence of what was
+-- known on a date. Correcting one means recording a new screen.
+grant select, insert on staff.exclusion_checks to staff_app;
+
+-- ============================================================
+-- THE ROSTER VIEW
+--
+-- One row per active person: what is expiring, and when they were last
+-- screened. Derived on read for the same reason overdue is — a nightly
+-- job that computes "expiring soon" is a job whose failure looks exactly
+-- like "nothing is expiring".
+-- ============================================================
+
+drop view if exists staff.credential_status cascade;
+create view staff.credential_status
+with (security_invoker = true) as
+select
+  c.id            as credential_id,
+  c.org_slug,
+  u.id            as user_id,
+  u.email,
+  u.legal_name,
+  u.role,
+  u.job_role,
+  c.kind,
+  c.issuer,
+  c.label,
+  c.issued_on,
+  c.expires_on,
+  c.verified_on,
+  (c.expires_on - current_date)                as days_left,
+  case
+    when c.expires_on is null                  then 'no_date'
+    when c.expires_on < current_date           then 'expired'
+    when c.expires_on <= current_date + 30     then 'critical'
+    when c.expires_on <= current_date + 90     then 'expiring'
+    else 'current'
+  end                                          as status
+from staff.credentials c
+join staff.users u on u.id = c.user_id
+where c.active and u.active;
+
+grant select on staff.credential_status to staff_app;
+
+-- Latest screen per person per source, and how stale it is. A person who
+-- has never been screened shows up with a null date rather than being
+-- absent, because "never screened" is the finding.
+-- Dropped first rather than CREATE OR REPLACE: replace can only APPEND
+-- columns to a view, so once a later migration extends this one, the
+-- combined setup file's second run fails here with "cannot drop
+-- columns from view" while its first run was clean. Drop-first makes
+-- every view definition rerunnable regardless of what extends it.
+drop view if exists staff.exclusion_status cascade;
+create view staff.exclusion_status
+with (security_invoker = true) as
+select
+  u.org_slug,
+  u.id as user_id,
+  u.email,
+  u.legal_name,
+  s.source,
+  x.checked_on,
+  x.result,
+  (current_date - x.checked_on)      as days_since,
+  case
+    when x.checked_on is null                   then 'never'
+    when x.result <> 'clear'                    then 'flagged'
+    when x.checked_on < current_date - 31       then 'overdue'
+    else 'current'
+  end                                as status
+from staff.users u
+cross join (values ('oig_leie'::staff.exclusion_source),
+                   ('sam_gov'::staff.exclusion_source)) as s(source)
+left join lateral (
+  select checked_on, result
+    from staff.exclusion_checks e
+   where e.user_id = u.id and e.source = s.source
+   order by checked_on desc
+   limit 1
+) x on true
+where u.active;
+
+grant select on staff.exclusion_status to staff_app;
+
+-- One number for the dashboard.
+-- Dropped first rather than CREATE OR REPLACE: replace can only APPEND
+-- columns to a view, so once a later migration extends this one, the
+-- combined setup file's second run fails here with "cannot drop
+-- columns from view" while its first run was clean. Drop-first makes
+-- every view definition rerunnable regardless of what extends it.
+drop view if exists staff.roster_risk cascade;
+create view staff.roster_risk
+with (security_invoker = true) as
+select
+  o.slug as org_slug,
+  (select count(*) from staff.credential_status c
+    where c.org_slug = o.slug and c.status = 'expired')::int   as expired,
+  (select count(*) from staff.credential_status c
+    where c.org_slug = o.slug and c.status = 'critical')::int  as expiring_30,
+  (select count(*) from staff.exclusion_status e
+    where e.org_slug = o.slug and e.status in ('never','overdue'))::int as screens_due,
+  (select count(*) from staff.exclusion_status e
+    where e.org_slug = o.slug and e.status = 'flagged')::int   as screens_flagged
+from staff.orgs o;
+
+grant select on staff.roster_risk to staff_app;
+
+
+-- ========== staff-credentials-seed.sql ==========
+
+-- ============================================================
+-- THE SCREENING OBLIGATIONS
+--
+-- Run AFTER supabase/staff-credentials.sql. Idempotent.
+--
+-- Monthly, because that is the cadence the OIG's own guidance sets for
+-- re-screening the exclusion list, and because a state exclusion can
+-- appear between two annual checks and be missed for eleven months.
+-- ============================================================
+
+create or replace function staff.seed_screening_obligations(p_slug text)
+returns integer language plpgsql as $$
+declare n integer;
+begin
+  insert into staff.obligations
+    (org_slug, key, title, detail, category, citation, source,
+     due_on, repeat_months, job_roles)
+  select p_slug, d.key, d.title, d.detail, d.category, d.citation, d.source,
+         current_date + d.offset_days, d.repeat_months, d.job_roles
+  from (values
+    ('oig-exclusion-screen',
+     'OIG exclusion screening — whole roster',
+     'Screen every employee, contractor and vendor against the OIG List of Excluded Individuals and Entities, and record the result against each name. A federal health care programme will not pay for any item or service furnished, ordered or prescribed by an excluded person — nor for anything an excluded person merely helped with — so this reaches the receptionist and the cleaner, not only the prescribers.',
+     'Employment', '42 CFR 1001.1901', 'OIG Special Advisory Bulletin on the effect of exclusion',
+     7, 1, array['center_admin']::staff.job_role[]),
+
+    ('sam-debarment-screen',
+     'SAM.gov debarment screening',
+     'Screen the roster against the federal exclusions in SAM.gov. Overlaps the LEIE but is not identical: procurement debarment and health care exclusion are separate lists with separate causes.',
+     'Employment', null, 'System for Award Management',
+     7, 1, array['center_admin']::staff.job_role[]),
+
+    ('credential-expiry-sweep',
+     'Credential and licence expiry sweep',
+     'Walk the roster: state licences, DEA registrations where applicable, BLS and ACLS cards, board certifications, malpractice coverage. Anything inside 90 days gets a renewal started, not a note.',
+     'Employment', null, 'Practice standard',
+     14, 1, array['center_admin']::staff.job_role[])
+  ) as d(key, title, detail, category, citation, source, offset_days, repeat_months, job_roles)
+  where not exists (
+    select 1 from staff.obligations o
+     where o.org_slug = p_slug and o.key = d.key
+  );
+
+  get diagnostics n = row_count;
+  return n;
+end $$;
+
+grant execute on function staff.seed_screening_obligations(text) to staff_app;
+
+create or replace function staff.screening_seed_new_org()
+returns trigger language plpgsql as $$
+begin
+  perform staff.seed_screening_obligations(new.slug);
+  return null;
+end $$;
+
+drop trigger if exists staff_orgs_seed_screening on staff.orgs;
+create trigger staff_orgs_seed_screening
+  after insert on staff.orgs
+  for each row execute function staff.screening_seed_new_org();
+
+do $$
+declare o record;
+begin
+  for o in select slug from staff.orgs loop
+    perform staff.seed_screening_obligations(o.slug);
+  end loop;
+end $$;
+
+
+-- ========== staff-scope.sql ==========
+
+-- ============================================================
+-- SCOPE OF PRACTICE
+--
+-- Run AFTER supabase/staff-job-roles.sql (it needs staff.job_role).
+-- Idempotent; safe to re-run.
+--
+-- WHAT THIS IS, AND WHY IT IS NOT A DIRECTIVE
+-- -------------------------------------------
+-- staff.directives holds standing rules: prose, one rule per row, read
+-- and remembered. This holds something narrower and, for the people at
+-- the window, more useful — the two lists that answer "is this mine?"
+--
+--   authorized  — this job may do this, without asking
+--   prohibited  — this job may NEVER do this, however busy it is
+--
+-- Two lists rather than one rule per row because scope is read as a
+-- comparison. Somebody covering the desk on their third shift is not
+-- looking up a rule; they are looking at a column and checking whether
+-- the thing in front of them is in it. Split across two dozen directives
+-- that answer is not visible, which in practice means it is not read.
+--
+-- WHY `instead` IS A COLUMN AND NOT A NICETY
+-- A prohibited item with no sanctioned alternative is a rule that gets
+-- broken under pressure, because the person still has a patient in front
+-- of them wanting an answer. "Never give clinical advice" is not
+-- actionable at 11am with a queue; "say: let me get a clinical staff
+-- member to answer that, and get one" is. Every prohibited row carries
+-- the sentence to use instead, and the seed enforces it.
+--
+-- SEPARATION. Scope belongs to exactly one job — job_role is a single
+-- value here, not the array used on tasks. A task can be shared; a scope
+-- boundary cannot be, because the whole point of the row is that it
+-- draws a line between one job and another.
+-- ============================================================
+
+create table if not exists staff.scope_items (
+  id uuid primary key default gen_random_uuid(),
+  org_slug text not null references staff.orgs(slug) on delete cascade,
+
+  -- Stable identifier so the seed can be re-run, and so a clinic that
+  -- edits the wording of an item keeps the item.
+  key text not null,
+
+  job_role staff.job_role not null,
+  kind text not null check (kind in ('authorized', 'prohibited')),
+
+  item text not null,
+
+  -- The sanctioned alternative. Required on prohibited rows by the
+  -- constraint below; meaningless on authorized ones.
+  instead text,
+
+  -- Where the boundary comes from, when it comes from somewhere. Most of
+  -- these are state scope-of-practice law or clinic policy rather than a
+  -- federal citation, and a row that cites nothing is honest about being
+  -- clinic policy.
+  citation text,
+
+  sort_order integer not null default 100,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists staff_scope_items_key
+  on staff.scope_items (org_slug, key);
+
+create index if not exists staff_scope_items_role
+  on staff.scope_items (org_slug, job_role, kind, sort_order)
+  where active;
+
+-- A prohibition with no alternative is a rule that loses to a queue.
+-- Enforced here and not only in the seed, because the clinic can add its
+-- own rows and the failure mode is identical when they do.
+do $$ begin
+  alter table staff.scope_items
+    add constraint staff_scope_prohibited_needs_alternative
+    check (
+      kind <> 'prohibited'
+      or (instead is not null and length(btrim(instead)) >= 3)
+    );
+exception when duplicate_object then null;
+end $$;
+
+-- An authorized row has nothing to redirect to; a stray `instead` there
+-- would render as advice on how to avoid doing your own job.
+do $$ begin
+  alter table staff.scope_items
+    add constraint staff_scope_authorized_has_no_alternative
+    check (kind <> 'authorized' or instead is null);
+exception when duplicate_object then null;
+end $$;
+
+alter table staff.scope_items enable row level security;
+alter table staff.scope_items force row level security;
+
+drop policy if exists staff_org_isolation on staff.scope_items;
+create policy staff_org_isolation on staff.scope_items
+  for all
+  using (staff.is_super_admin() or org_slug = staff.current_org())
+  with check (staff.is_super_admin() or org_slug = staff.current_org());
+
+grant select, insert, update on staff.scope_items to staff_app;
+-- Deactivated, never deleted: which boundaries a clinic decided did not
+-- apply to it is exactly the question asked after something goes wrong.
+-- staff-schema.sql's ALTER DEFAULT PRIVILEGES grants delete on every
+-- future table in this schema, so this table arrived holding it and the
+-- GRANT above took none of it away.
+revoke delete on staff.scope_items from staff_app;
+
+-- ============================================================
+-- THE TWO COLUMNS
+--
+-- security_invoker so it reads under the caller's org context rather
+-- than the view owner's — without it a view over an RLS-protected table
+-- returns every org's rows. Same note as staff-onboarding.sql.
+--
+-- Dropped first rather than CREATE OR REPLACE: replace can only APPEND
+-- columns to a view, so a later migration that inserts a column here
+-- would make this file's SECOND run fail while its first was clean.
+-- ============================================================
+
+drop view if exists staff.scope_of_practice cascade;
+create view staff.scope_of_practice
+with (security_invoker = true) as
+select
+  s.id,
+  s.org_slug,
+  s.key,
+  s.job_role,
+  s.kind,
+  s.item,
+  s.instead,
+  s.citation,
+  s.sort_order
+from staff.scope_items s
+where s.active;
+
+grant select on staff.scope_of_practice to staff_app;
+
+
+-- ========== staff-scope-seed.sql ==========
+
+-- ============================================================
+-- SCOPE OF PRACTICE — seed
+--
+-- Run AFTER supabase/staff-scope.sql. Idempotent; safe to re-run.
+--
+-- PROVENANCE, because it matters more here than anywhere else in this
+-- module. A scope boundary that is wrong in the permissive direction
+-- tells somebody unlicensed that a clinical act is theirs to perform.
+--
+--   front_desk       — supplied by the operator, verbatim. These are
+--                      this clinic's own authorized and prohibited
+--                      duties, not a generic list.
+--   medical_assistant,
+--   xray_tech,
+--   provider         — DRAFTED from the boundaries that are common to
+--                      essentially every US state's rules for these
+--                      roles: an unlicensed assistant may not assess,
+--                      diagnose, interpret, or advise; an operator may
+--                      not decide what to image; a provider may not
+--                      delegate a judgement that requires their licence.
+--                      They are deliberately the uncontroversial core.
+--
+-- WHAT IS NOT HERE. Anything that varies by state — whether an MA may
+-- administer an immunisation, inject, or perform venipuncture, whether a
+-- limited-scope operator may fluoroscope — is absent on purpose. Those
+-- are real questions with different answers in different states, and a
+-- confident wrong answer in this table would be worse than a gap the
+-- clinic notices and fills. Add them per clinic, with the citation.
+-- ============================================================
+
+create or replace function staff.seed_scope(p_slug text)
+returns integer language plpgsql as $$
+declare n integer;
+begin
+  insert into staff.scope_items
+    (org_slug, key, job_role, kind, item, instead, citation, sort_order)
+  select p_slug, d.key, d.job_role, d.kind, d.item, d.instead, d.citation, d.sort_order
+  from (values
+
+    -- ---------- FRONT DESK: authorized ----------
+    ('fd-a-payments', 'front_desk'::staff.job_role, 'authorized',
+     'Collecting copays, deductibles, and self-pay fees',
+     null::text, null::text, 10),
+
+    ('fd-a-eligibility', 'front_desk'::staff.job_role, 'authorized',
+     'Verifying insurance RTE and employer authorization protocols',
+     null, null, 20),
+
+    ('fd-a-queue', 'front_desk'::staff.job_role, 'authorized',
+     'Managing queue wait times and check-in workflows',
+     null, null, 30),
+
+    ('fd-a-ledger', 'front_desk'::staff.job_role, 'authorized',
+     'Resolving billing ledger disputes at the desk or window',
+     null, null, 40),
+
+    -- ---------- FRONT DESK: strictly prohibited ----------
+    --
+    -- Each of these is a thing a patient will ask the desk for directly,
+    -- politely, and often — which is why each carries the sentence to
+    -- use instead. "No" alone loses to a full lobby.
+    ('fd-p-triage', 'front_desk'::staff.job_role, 'prohibited',
+     'Medical triage, clinical assessment, or symptom diagnosis',
+     'Say: "Let me get a clinical staff member to look at that for you," and go get one. If the patient looks like they are deteriorating, say so out loud immediately — escalating is never the wrong call.',
+     null, 50),
+
+    ('fd-p-treatment', 'front_desk'::staff.job_role, 'prohibited',
+     'Advising patients on medical treatment plans or test necessity',
+     'Say: "I can''t advise on that, but I''ll have the provider or an MA answer it before you leave." Write the question down so it is actually asked.',
+     null, 60),
+
+    ('fd-p-clinical-tasks', 'front_desk'::staff.job_role, 'prohibited',
+     'Handling POCT lab testing, specimen collection, or vitals',
+     'Hand the task to clinical staff, even when the lobby is full and it would be faster to do it yourself. If nobody is free, tell the patient there is a wait — do not start it.',
+     null, 70),
+
+    ('fd-p-findings', 'front_desk'::staff.job_role, 'prohibited',
+     'Discussing clinical findings or provider notes',
+     'Say: "Those results need to come from a clinician — let me arrange that." Do not read a result off a screen, confirm one, or say whether it looked normal.',
+     null, 80),
+
+    -- ---------- MEDICAL ASSISTANT ----------
+    ('ma-a-vitals', 'medical_assistant'::staff.job_role, 'authorized',
+     'Vitals, point-of-care testing, and specimen collection under the provider''s order',
+     null, null, 110),
+
+    ('ma-a-rooming', 'medical_assistant'::staff.job_role, 'authorized',
+     'Rooming, recording the patient''s own account of why they came, and preparing the room',
+     null, null, 120),
+
+    ('ma-a-stock', 'medical_assistant'::staff.job_role, 'authorized',
+     'Vaccine and medication stock handling: temperature logs, beyond-use dating, quarantine of out-of-range stock',
+     null, null, 130),
+
+    ('ma-a-relay', 'medical_assistant'::staff.job_role, 'authorized',
+     'Relaying instructions the provider has already given, in the provider''s words',
+     null, null, 140),
+
+    ('ma-p-triage', 'medical_assistant'::staff.job_role, 'prohibited',
+     'Deciding how urgent a patient is, or telling a patient they do not need to be seen',
+     'Record what the patient says and escalate to a provider or the clinical lead. Recording "chest pain since 6am" is yours; deciding what it means is not.',
+     null, 150),
+
+    ('ma-p-interpret', 'medical_assistant'::staff.job_role, 'prohibited',
+     'Interpreting a result, an image, or a reading for a patient',
+     'Say: "The provider will go over those with you." Report the number to the provider — never a conclusion about it.',
+     null, 160),
+
+    ('ma-p-phone-advice', 'medical_assistant'::staff.job_role, 'prohibited',
+     'Giving clinical advice by phone, including whether to come in',
+     'Take the message and route it to a clinician the same day. If it sounds like an emergency, tell the caller to hang up and call 911.',
+     null, 170),
+
+    ('ma-p-unordered', 'medical_assistant'::staff.job_role, 'prohibited',
+     'Performing or reporting anything not ordered by a provider',
+     'Ask for the order. An order given verbally is fine and is documented as verbal — an assumed order is not an order.',
+     null, 180),
+
+    -- ---------- X-RAY TECH ----------
+    ('xr-a-perform', 'xray_tech'::staff.job_role, 'authorized',
+     'Performing the ordered radiographic exam and positioning the patient',
+     null, null, 210),
+
+    ('xr-a-technique', 'xray_tech'::staff.job_role, 'authorized',
+     'Selecting technique and shielding to keep dose as low as reasonably achievable',
+     null, null, 220),
+
+    ('xr-a-equipment', 'xray_tech'::staff.job_role, 'authorized',
+     'Equipment and lead-apron checks, and taking defective shielding out of service',
+     null, null, 230),
+
+    ('xr-a-repeats', 'xray_tech'::staff.job_role, 'authorized',
+     'Recording repeat exposures and the reason for each',
+     null, null, 240),
+
+    ('xr-p-interpret', 'xray_tech'::staff.job_role, 'prohibited',
+     'Reading the image for the patient, or saying whether anything is broken',
+     'Say: "The provider reads these — they''ll come talk to you." Nothing about the image, including a reassuring nothing.',
+     null, 250),
+
+    ('xr-p-unordered-view', 'xray_tech'::staff.job_role, 'prohibited',
+     'Adding, substituting, or skipping a view without the ordering provider',
+     'Call the provider and get the order changed. A clinically sensible extra view is still an unordered exposure until they say so.',
+     null, 260),
+
+    ('xr-p-pregnancy', 'xray_tech'::staff.job_role, 'prohibited',
+     'Proceeding when pregnancy is possible and unconfirmed, on your own judgement',
+     'Stop and get the provider. The decision to image anyway is a clinical one and it is documented as such.',
+     null, 270),
+
+    -- ---------- PROVIDER ----------
+    ('pr-a-diagnose', 'provider'::staff.job_role, 'authorized',
+     'Assessment, diagnosis, orders, prescribing, and the disposition decision',
+     null, null, 310),
+
+    ('pr-a-delegate', 'provider'::staff.job_role, 'authorized',
+     'Delegating tasks within each staff member''s own scope, by order',
+     null, null, 320),
+
+    ('pr-a-overread', 'provider'::staff.job_role, 'authorized',
+     'Preliminary reads, and closing the loop when the over-read differs',
+     null, null, 330),
+
+    ('pr-p-delegate-judgement', 'provider'::staff.job_role, 'prohibited',
+     'Delegating a judgement that requires your licence — triage decisions, result interpretation, disposition',
+     'Delegate the task, keep the judgement. "Get a repeat BP" is a task; "tell them if it is fine" is not.',
+     null, 340),
+
+    ('pr-p-retro-cosign', 'provider'::staff.job_role, 'prohibited',
+     'Signing for anything you did not personally witness — controlled-substance waste above all',
+     'Witness it in real time or do not sign it. A co-signature added afterwards attests to something the signer did not see, which is the specific thing a diversion investigation looks for.',
+     null, 350),
+
+    ('pr-p-chart-edit', 'provider'::staff.job_role, 'prohibited',
+     'Changing a note after the fact without it being visible as an addendum',
+     'Add an addendum with its own timestamp. A silently edited note discredits the whole chart, including the parts that were right.',
+     null, 360)
+
+  ) as d(key, job_role, kind, item, instead, citation, sort_order)
+  where not exists (
+    select 1 from staff.scope_items x
+     where x.org_slug = p_slug and x.key = d.key
+  );
+
+  get diagnostics n = row_count;
+  return n;
+end $$;
+
+grant execute on function staff.seed_scope(text) to staff_app;
+
+-- New orgs get the scope on creation, the same way they get directives.
+create or replace function staff.scope_seed_new_org()
+returns trigger language plpgsql as $$
+begin
+  perform staff.seed_scope(new.slug);
+  return null;
+end $$;
+
+drop trigger if exists staff_orgs_seed_scope on staff.orgs;
+create trigger staff_orgs_seed_scope
+  after insert on staff.orgs
+  for each row execute function staff.scope_seed_new_org();
+
+-- And every org that already exists.
+do $$
+declare o record;
+begin
+  for o in select slug from staff.orgs loop
+    perform staff.seed_scope(o.slug);
+  end loop;
+end $$;
+
+
+-- ========== staff-rounds.sql ==========
+
+-- ============================================================
+-- ROUNDS — guided runbooks, walked one step at a time
+--
+-- Run AFTER supabase/staff-job-roles.sql. Idempotent; safe to re-run.
+--
+-- WHY THIS IS NOT A FORM, AND NOT A CHECKLIST
+-- -------------------------------------------
+-- staff.form_templates already holds per-shift tasks with fields and
+-- thresholds — the fridge reading, the crash cart seal. Those are
+-- measurements, and a measurement needs a box to write the number in.
+--
+-- A round is the other thing: a physical walk with a fixed order.
+-- Restrooms, hydration station, lobby seating, mask station, kiosk. The
+-- record that matters is that ONE PERSON walked ALL of it at a stated
+-- time, not that fourteen boxes each acquired a tick.
+--
+-- AND A CHECKLIST OF BOXES IS WORSE THAN NOTHING HERE. Fourteen
+-- checkboxes on one screen get ticked top to bottom at the counter
+-- without anybody leaving the desk — the form is satisfiable without the
+-- walk, which makes the record a lie that looks like evidence. Presented
+-- one step at a time, with the next step hidden until the current one is
+-- passed, the fastest way through is to actually walk it.
+--
+-- SO: there is NO per-step stored outcome. A run has a start, an end, a
+-- person, and one attestation covering the whole round — the same shape
+-- as the paper round sheet it replaces, where you initial the bottom and
+-- not each line.
+--
+-- WHAT SAVES IT FROM BEING A RUBBER STAMP is staff.round_runs.exceptions:
+-- any step can have a problem reported against it as you pass through,
+-- and that note is the part a manager reads. A round with no exceptions
+-- ever recorded is not a clean lobby, it is a round nobody is really
+-- walking, and the exception count is what makes that visible.
+-- ============================================================
+
+create table if not exists staff.rounds (
+  id uuid primary key default gen_random_uuid(),
+  org_slug text not null references staff.orgs(slug) on delete cascade,
+  key text not null,
+
+  -- Which job walks this. Same array shape as form_templates so the
+  -- brief filters both with staff.brief_matches().
+  job_roles staff.job_role[] not null default '{}',
+
+  title text not null,
+  -- One line, imperative, shown under the title on the list.
+  purpose text,
+
+  -- When it is walked. Free text rather than an enum because clinics
+  -- genuinely differ: "every hour", "at open", "at close", "when it
+  -- happens". The app groups by this string and does not compute from it.
+  cadence text not null default 'as needed',
+
+  sort_order integer not null default 100,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists staff_rounds_key
+  on staff.rounds (org_slug, key);
+
+create table if not exists staff.round_steps (
+  id uuid primary key default gen_random_uuid(),
+  round_id uuid not null references staff.rounds(id) on delete cascade,
+  step_no integer not null,
+
+  -- The instruction. Imperative, one action, no preamble — this is read
+  -- standing up with something in the other hand.
+  instruction text not null,
+  -- The detail that stops it being ambiguous, when there is one.
+  detail text,
+
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists staff_round_steps_order
+  on staff.round_steps (round_id, step_no);
+
+-- ============================================================
+-- A COMPLETED PASS
+--
+-- started_at is set when the person opens step 1, completed_at when they
+-- attest at the end. The gap between them is the only honest signal the
+-- system has about whether the walk happened: a fourteen-step lobby
+-- round attested four seconds after it started did not.
+-- ============================================================
+
+create table if not exists staff.round_runs (
+  id uuid primary key default gen_random_uuid(),
+  org_slug text not null references staff.orgs(slug) on delete cascade,
+  round_id uuid not null references staff.rounds(id) on delete cascade,
+
+  walked_by uuid not null references staff.users(id),
+  started_at timestamptz not null,
+  completed_at timestamptz not null default now(),
+
+  -- Problems found on the way round: [{step_no, note}]. Empty is a valid
+  -- and common answer; it is the ALL-empty history that means something.
+  exceptions jsonb not null default '[]'::jsonb,
+
+  created_at timestamptz not null default now()
+);
+
+create index if not exists staff_round_runs_recent
+  on staff.round_runs (org_slug, round_id, completed_at desc);
+
+-- A run that finishes before it starts is a clock problem or a forged
+-- record, and either way it should not be storable.
+do $$ begin
+  alter table staff.round_runs
+    add constraint staff_round_run_ordered
+    check (completed_at >= started_at);
+exception when duplicate_object then null;
+end $$;
+
+-- Exceptions have to be a list of objects, not whatever the caller sent.
+do $$ begin
+  alter table staff.round_runs
+    add constraint staff_round_run_exceptions_shape
+    check (jsonb_typeof(exceptions) = 'array');
+exception when duplicate_object then null;
+end $$;
+
+-- ============================================================
+-- ROW-LEVEL SECURITY
+-- Same shape as every other org-scoped table. See staff-schema.sql.
+-- round_steps has no org column of its own; it is reached only through
+-- its round, so it is protected by a policy that joins back to one.
+-- ============================================================
+
+alter table staff.rounds enable row level security;
+alter table staff.rounds force row level security;
+drop policy if exists staff_org_isolation on staff.rounds;
+create policy staff_org_isolation on staff.rounds
+  for all
+  using (staff.is_super_admin() or org_slug = staff.current_org())
+  with check (staff.is_super_admin() or org_slug = staff.current_org());
+
+alter table staff.round_steps enable row level security;
+alter table staff.round_steps force row level security;
+drop policy if exists staff_org_isolation on staff.round_steps;
+create policy staff_org_isolation on staff.round_steps
+  for all
+  using (exists (
+    select 1 from staff.rounds r
+     where r.id = round_steps.round_id
+       and (staff.is_super_admin() or r.org_slug = staff.current_org())
+  ))
+  with check (exists (
+    select 1 from staff.rounds r
+     where r.id = round_steps.round_id
+       and (staff.is_super_admin() or r.org_slug = staff.current_org())
+  ));
+
+alter table staff.round_runs enable row level security;
+alter table staff.round_runs force row level security;
+drop policy if exists staff_org_isolation on staff.round_runs;
+create policy staff_org_isolation on staff.round_runs
+  for all
+  using (staff.is_super_admin() or org_slug = staff.current_org())
+  with check (staff.is_super_admin() or org_slug = staff.current_org());
+
+grant select, insert, update on staff.rounds to staff_app;
+grant select, insert, update on staff.round_steps to staff_app;
+-- Runs are INSERT-ONLY. A completed round is a signed record of where
+-- somebody was and when; letting it be edited afterwards would make the
+-- timestamp — the only thing that makes the record worth keeping —
+-- rewritable. No update grant, and no delete.
+grant select, insert on staff.round_runs to staff_app;
+revoke delete on staff.rounds from staff_app;
+revoke delete on staff.round_steps from staff_app;
+revoke update, delete on staff.round_runs from staff_app;
+
+-- ============================================================
+-- THE LIST, WITH ITS LAST PASS
+--
+-- security_invoker so it reads under the caller's org context rather
+-- than the view owner's. Dropped first rather than CREATE OR REPLACE:
+-- replace can only APPEND columns to a view, so a later migration that
+-- inserts a column would break this file's second run.
+-- ============================================================
+
+drop view if exists staff.round_board cascade;
+create view staff.round_board
+with (security_invoker = true) as
+select
+  r.id,
+  r.org_slug,
+  r.key,
+  r.job_roles,
+  r.title,
+  r.purpose,
+  r.cadence,
+  r.sort_order,
+  (select count(*) from staff.round_steps s where s.round_id = r.id)::int
+    as step_count,
+  last_run.completed_at as last_walked_at,
+  last_run.walker       as last_walked_by,
+  jsonb_array_length(coalesce(last_run.exceptions, '[]'::jsonb))::int
+    as last_exception_count
+from staff.rounds r
+left join lateral (
+  select ru.completed_at, ru.exceptions, u.legal_name as walker
+    from staff.round_runs ru
+    left join staff.users u on u.id = ru.walked_by
+   where ru.round_id = r.id
+   order by ru.completed_at desc
+   limit 1
+) last_run on true
+where r.active;
+
+grant select on staff.round_board to staff_app;
+
+
+-- ========== staff-rounds-seed.sql ==========
+
+-- ============================================================
+-- ROUNDS — seed
+--
+-- Run AFTER supabase/staff-rounds.sql. Idempotent; safe to re-run.
+--
+-- FIVE FRONT-DESK ROUNDS, grouped by when they are walked rather than by
+-- subject: hourly, at open, at close, and the two that are triggered by
+-- something happening. That is the grouping the person uses. A round
+-- filed under "infection control" is a round nobody opens at 2pm.
+--
+-- HOUSE STYLE FOR A STEP. One action, imperative, no preamble, no
+-- explanation of why unless the why changes what you do. "Wipe the
+-- signature pad" — not "Ensure that signature pads are being sanitized
+-- between patient uses." Read standing up, with something in the other
+-- hand. The detail line exists only where the instruction alone is
+-- ambiguous, and it is a fragment, not a paragraph.
+--
+-- ORDER IS THE WALK, NOT THE TOPIC. Steps run front door inward and back
+-- out, so following them in order is a single loop rather than four trips
+-- past the same chair.
+-- ============================================================
+
+create or replace function staff.seed_rounds(p_slug text)
+returns integer language plpgsql as $$
+declare
+  n integer := 0;
+  r record;
+  rid uuid;
+begin
+  -- ---------- the rounds ----------
+  insert into staff.rounds (org_slug, key, job_roles, title, purpose, cadence, sort_order)
+  select p_slug, d.key, array['front_desk']::staff.job_role[],
+         d.title, d.purpose, d.cadence, d.sort_order
+  from (values
+    ('fd-hourly-lobby',
+     'Hourly lobby round',
+     'Restrooms, seating, kiosks, stock. One loop, front door and back.',
+     'every hour', 10),
+    ('fd-open',
+     'Opening the front of house',
+     'Doors, alarms, screens, drawer. Before the first patient.',
+     'at open', 20),
+    ('fd-close',
+     'Closing the front of house',
+     'Drawer, terminals, doors, mail. After the last patient.',
+     'at close', 30),
+    ('fd-spill',
+     'Spill in the lobby',
+     'Isolate first. Body fluids are never yours to clean.',
+     'when it happens', 40),
+    ('fd-deteriorating',
+     'Patient in the lobby looks worse',
+     'Do not assess. Get clinical staff now.',
+     'when it happens', 50)
+  ) as d(key, title, purpose, cadence, sort_order)
+  where not exists (
+    select 1 from staff.rounds x where x.org_slug = p_slug and x.key = d.key
+  );
+  get diagnostics n = row_count;
+
+  -- ---------- the steps ----------
+  --
+  -- Inserted per round and only when that round has none, so re-running
+  -- neither duplicates steps nor overwrites a clinic's edits.
+  for r in select id, key from staff.rounds where org_slug = p_slug loop
+    rid := r.id;
+    if exists (select 1 from staff.round_steps s where s.round_id = rid) then
+      continue;
+    end if;
+
+    if r.key = 'fd-hourly-lobby' then
+      insert into staff.round_steps (round_id, step_no, instruction, detail) values
+        (rid, 1,  'Look at the waiting room before you touch anything.',
+                  'Anyone pale, sweating, breathing hard, or slumped — stop this round and get clinical staff.'),
+        (rid, 2,  'Restock the door station.', 'Masks, hand sanitiser, tissues.'),
+        (rid, 3,  'Wipe the check-in counter, both kiosks, and the signature pad.',
+                  'EPA-registered wipes. Let the surface stay wet the full contact time on the canister.'),
+        (rid, 4,  'Reset the pen bins.', 'Used bin emptied and wiped, sanitised bin refilled. Never one bin.'),
+        (rid, 5,  'Restock the counter.', 'Intake forms, HIPAA notices, visitor badges, receipt paper.'),
+        (rid, 6,  'Wipe chair arms and the door handles between the lobby and the desk.', null),
+        (rid, 7,  'Clear the lobby.', 'Tissues, masks, cups, magazines off the floor and seats.'),
+        (rid, 8,  'Empty any lobby bin that is more than three-quarters full.',
+                  'Do not wait for it to overflow — it is a full bin patients photograph.'),
+        (rid, 9,  'Check both public restrooms.',
+                  'Soap, paper towels, toilet paper, bin. Wet floor or worse: stop and report it on this step.'),
+        (rid, 10, 'Check the water station.', 'Cups stocked, counter dry, no leak under the dispenser.'),
+        (rid, 11, 'Check temperature, lighting, and the screens.',
+                  'Every bulb working. Screens on approved content — never news, never a personal account.'),
+        (rid, 12, 'Walk the entryway outside.', 'Litter, ice, standing water, anything somebody trips on.');
+
+    elsif r.key = 'fd-open' then
+      insert into staff.round_steps (round_id, step_no, instruction, detail) values
+        (rid, 1, 'Disarm the alarm.', null),
+        (rid, 2, 'Walk the exterior entry before you unlock.',
+                 'Ice, water, litter, damage, anything left overnight at the door.'),
+        (rid, 3, 'Unlock the exterior doors.', null),
+        (rid, 4, 'Power on both intake kiosks and the waiting-room screens.',
+                 'Confirm the screens land on approved content, not a desktop.'),
+        (rid, 5, 'Count the opening cash drawer and record the float.', null),
+        (rid, 6, 'Confirm the card terminal connects.', 'Run a test connection, not a test charge.'),
+        (rid, 7, 'Stock the counter and the door station for the morning.',
+                 'Forms, notices, badges, receipt paper, masks, sanitiser.'),
+        (rid, 8, 'Walk the hourly lobby round once before the doors see a patient.', null);
+
+    elsif r.key = 'fd-close' then
+      insert into staff.round_steps (round_id, step_no, instruction, detail) values
+        (rid, 1, 'Confirm the last patient has left the lobby and the restrooms.',
+                 'Look. Do not assume.'),
+        (rid, 2, 'Balance the drawer and reconcile the day''s ledger.',
+                 'A variance is reported tonight, not carried to tomorrow.'),
+        (rid, 3, 'Settle and secure the card terminal.', null),
+        (rid, 4, 'Secure the drawer per clinic policy.', null),
+        (rid, 5, 'Secure incoming mail and packages out of the lobby.',
+                 'Nothing with a patient name on it left on the counter overnight.'),
+        (rid, 6, 'Power down kiosks and screens.', null),
+        (rid, 7, 'Clear and wipe the lobby and the counter.', null),
+        (rid, 8, 'Lock the exterior doors.', null),
+        (rid, 9, 'Arm the alarm and confirm it set.', null);
+
+    elsif r.key = 'fd-spill' then
+      insert into staff.round_steps (round_id, step_no, instruction, detail) values
+        (rid, 1, 'Stand where nobody can walk into it and keep people back.',
+                 'You are the barrier until there is a real one.'),
+        (rid, 2, 'Decide what it is.',
+                 'Blood, vomit, urine, or anything you are unsure about is a body fluid. Water and coffee are not.'),
+        (rid, 3, 'Body fluid: call environmental services or clinical staff now. Do not clean it.',
+                 'Spill kit and PPE, by someone trained in it. This is not a front-desk task.'),
+        (rid, 4, 'Water or drink: put the wet-floor sign out, then mop it.', null),
+        (rid, 5, 'Stay until the area is dry or handed over.',
+                 'A sign on a wet floor with nobody watching it is not control of the hazard.');
+
+    elsif r.key = 'fd-deteriorating' then
+      insert into staff.round_steps (round_id, step_no, instruction, detail) values
+        (rid, 1, 'Say it out loud to clinical staff now.',
+                 'Describe what you see — pale, sweating, short of breath, slumped. Do not interpret it.'),
+        (rid, 2, 'Stay with the patient until clinical staff arrive.', null),
+        (rid, 3, 'Do not take vitals, assess, or advise.',
+                 'Watching and reporting is your job here and it is the part that matters.'),
+        (rid, 4, 'If they collapse or stop responding, call for help and start the emergency response.',
+                 'Anyone can call a code. You will never be criticised for calling one that turned out to be nothing.'),
+        (rid, 5, 'Clear a path from the lobby to the treatment area.', null);
+    end if;
+  end loop;
+
+  return n;
+end $$;
+
+grant execute on function staff.seed_rounds(text) to staff_app;
+
+create or replace function staff.rounds_seed_new_org()
+returns trigger language plpgsql as $$
+begin
+  perform staff.seed_rounds(new.slug);
+  return null;
+end $$;
+
+drop trigger if exists staff_orgs_seed_rounds on staff.orgs;
+create trigger staff_orgs_seed_rounds
+  after insert on staff.orgs
+  for each row execute function staff.rounds_seed_new_org();
+
+do $$
+declare o record;
+begin
+  for o in select slug from staff.orgs loop
+    perform staff.seed_rounds(o.slug);
+  end loop;
+end $$;
+
+
+-- ========== staff-onboarding-wizard.sql ==========
+
+-- ============================================================
+-- ONBOARDING: THE JOB, THE PHONE, AND THE CREDENTIALS
+--
+-- Run AFTER supabase/staff-credentials.sql and staff-job-roles.sql.
+-- Idempotent; safe to re-run.
+--
+-- WHAT WAS MISSING, AND WHY IT MATTERED
+-- -------------------------------------
+-- Onboarding already collected a legal name, e-sign consent, and a
+-- signature per policy document, with the document's hash, the IP and
+-- the user agent stored against each one. That half was fine.
+--
+-- Three things were not collected, and each left a hole somewhere else
+-- in the product:
+--
+--   THE JOB. staff.users.job_role stayed null until an administrator set
+--   it by hand, which meant a new hire finished onboarding and landed on
+--   a board showing almost nothing — strict separation working exactly
+--   as designed and looking exactly like a broken app. The job belongs
+--   on the INVITE, decided by whoever invited them.
+--
+--   THE CREDENTIALS. staff.credentials existed and nothing ever wrote to
+--   it during onboarding, so the roster's expiry tracking started life
+--   empty for every new hire and only became true if somebody
+--   remembered to backfill it.
+--
+--   A PHONE NUMBER. There was no way to reach the person the roster says
+--   is responsible for something.
+--
+-- WHAT IS DELIBERATELY NOT ADDED HERE
+-- -----------------------------------
+-- No date of birth, no SSN, no DEA number, no licence number, no
+-- certificate number of any kind. Expiry DATES only. This is the same
+-- refusal as staff-credentials.sql and for the same reason: a licence
+-- number is worth stealing and an expiry date is not, and every question
+-- this product actually answers ("is anyone working expired?") is
+-- answerable from the date alone.
+--
+-- AND THE STAFF MEMBER DOES NOT PICK THEIR OWN JOB. The wizard shows
+-- them the job the invite assigned and asks them to confirm it. Letting
+-- somebody self-select "Provider" on their first screen would defeat the
+-- entire separation model at the one moment nobody is watching. If it is
+-- wrong they say so and it stops there — an administrator fixes the
+-- invite. That is a slower path and it is the correct one.
+-- ============================================================
+
+-- The job travels on the invite, so it is decided by the person doing
+-- the inviting and is already true before the new hire ever signs in.
+alter table staff.org_invites
+  add column if not exists job_role staff.job_role;
+
+-- Optional pre-fill. Google gives a display name, which is frequently
+-- not the name that belongs on a signed record ("Dee" for "Deirdre
+-- O'Connell"). An inviter who knows the legal name can put it here.
+alter table staff.org_invites
+  add column if not exists legal_name text;
+
+alter table staff.users
+  add column if not exists phone text;
+
+-- Set when the person finishes the wizard: the job confirmed, the
+-- credentials their job requires entered, and every assigned document
+-- signed.
+--
+-- STORED, UNLIKE ALMOST EVERYTHING ELSE IN THIS MODULE, and the
+-- exception needs justifying. Overdue and expired are derived because
+-- deriving them cannot go stale. This cannot be derived the same way:
+-- "has seen the orientation" is a fact about a person's attention, and
+-- there is nothing in the database to compute it from. Every other gate
+-- in the wizard IS still derived — the profile, the job, the
+-- credentials, the documents are all recomputed per request — so this
+-- column gates one screen and cannot make anything else look done.
+alter table staff.users
+  add column if not exists onboarded_at timestamptz;
+
+-- When the person read and confirmed the job on their invite.
+--
+-- SEPARATE FROM job_role BEING SET, and the distinction is the whole
+-- reason the step exists. "Has a job" is a fact about the invite;
+-- "confirmed the job" is a fact about the person having read which side
+-- of the scope-of-practice line they are on. Gating on job_role alone
+-- skipped the step entirely for every properly-invited hire — which is
+-- everyone the step was written for.
+alter table staff.users
+  add column if not exists job_confirmed_at timestamptz;
+
+comment on column staff.users.onboarded_at is
+  'When the orientation was acknowledged. Gates the orientation screen only; every other onboarding step is derived per request.';
+
+-- ============================================================
+-- WHICH CREDENTIALS A JOB HAS TO HAVE
+--
+-- A table, not a CASE in TypeScript, so the roster's "who is missing
+-- what" question and the wizard's "what do I ask this person for"
+-- question are answered from one place. A clinic that needs ACLS from
+-- its providers adds a row; it does not need a deploy.
+-- ============================================================
+
+create table if not exists staff.job_credential_requirements (
+  id uuid primary key default gen_random_uuid(),
+  org_slug text not null references staff.orgs(slug) on delete cascade,
+  job_role staff.job_role not null,
+  kind staff.credential_kind not null,
+
+  -- False for a credential that is tracked when present but does not
+  -- block onboarding — a provider's board certification, say.
+  required boolean not null default true,
+
+  -- Shown next to the date field. Without it the field says
+  -- "bls_cpr" at somebody on their first morning.
+  label text not null,
+  -- One line under the field, where the field alone is ambiguous.
+  hint text,
+
+  sort_order integer not null default 100,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists staff_job_cred_req_key
+  on staff.job_credential_requirements (org_slug, job_role, kind);
+
+alter table staff.job_credential_requirements enable row level security;
+alter table staff.job_credential_requirements force row level security;
+drop policy if exists staff_org_isolation on staff.job_credential_requirements;
+create policy staff_org_isolation on staff.job_credential_requirements
+  for all
+  using (staff.is_super_admin() or org_slug = staff.current_org())
+  with check (staff.is_super_admin() or org_slug = staff.current_org());
+
+grant select, insert, update on staff.job_credential_requirements to staff_app;
+revoke delete on staff.job_credential_requirements from staff_app;
+
+-- ============================================================
+-- WHAT IS LEFT TO DO
+--
+-- One row per user, recomputed on read. The wizard renders the first
+-- unfinished step rather than tracking a step number, so a refresh, the
+-- back button, a second tab and a phone that slept mid-signature all
+-- behave correctly without any of them being handled — the same
+-- reasoning as the existing document loop, extended to the new steps.
+--
+-- security_invoker so it reads under the caller's org context. Dropped
+-- first rather than CREATE OR REPLACE, so a later migration that inserts
+-- a column cannot break this file's second run.
+-- ============================================================
+
+drop view if exists staff.onboarding_state cascade;
+create view staff.onboarding_state
+with (security_invoker = true) as
+select
+  u.id as user_id,
+  u.org_slug,
+  u.job_role,
+  u.onboarded_at,
+
+  (u.legal_name is null or u.esign_consented_at is null) as needs_profile,
+  (u.job_role is null or u.job_confirmed_at is null)     as needs_job,
+  -- Distinguishes "nobody told us what you do" from "you have not read
+  -- it yet". The first is an administrator's problem and the wizard
+  -- says so; the second is one tap.
+  (u.job_role is null)                                   as job_unassigned,
+
+  -- Required credentials for this job with no active row carrying an
+  -- expiry date. Empty for a job with no requirements, and empty for a
+  -- person with no job — who is stopped at needs_job anyway.
+  coalesce(missing.kinds, '{}')                          as missing_credentials,
+
+  coalesce(docs.outstanding, 0)                          as outstanding_docs,
+  (u.onboarded_at is null)                               as needs_orientation
+from staff.users u
+left join lateral (
+  select array_agg(req.kind::text order by req.sort_order) as kinds
+    from staff.job_credential_requirements req
+   where req.org_slug = u.org_slug
+     and req.job_role = u.job_role
+     and req.active
+     and req.required
+     and not exists (
+       select 1 from staff.credentials c
+        where c.user_id = u.id
+          and c.kind = req.kind
+          and c.active
+          and c.expires_on is not null
+     )
+) missing on true
+left join lateral (
+  select count(*)::int as outstanding
+    from staff.outstanding_docs od
+   where od.user_id = u.id
+) docs on true;
+
+grant select on staff.onboarding_state to staff_app;
+
+
+-- ========== staff-onboarding-wizard-seed.sql ==========
+
+-- ============================================================
+-- WHICH CREDENTIALS EACH JOB HAS TO HAVE — seed
+--
+-- Run AFTER supabase/staff-onboarding-wizard.sql. Idempotent.
+--
+-- REQUIRED means "onboarding stops here until there is a date". That is
+-- a strong claim, so it is used only where working without the thing is
+-- indefensible rather than merely untidy:
+--
+--   BLS/CPR for everyone who touches a patient. Front desk is included
+--   deliberately — the person nearest the lobby is the person nearest a
+--   collapse, and the front-desk scope of practice already tells them to
+--   escalate rather than assess, which is a great deal easier to do
+--   usefully with current BLS.
+--
+--   ARRT for x-ray techs and a state medical licence for providers.
+--   Operating imaging equipment or practising medicine without a current
+--   one is not a paperwork problem.
+--
+-- Everything else is tracked but not required: it appears in the wizard
+-- with a date field somebody can leave blank, and on the roster once
+-- filled. ACLS/PALS are not universally held in urgent care and blocking
+-- on them would teach people to type a date they do not have.
+--
+-- DATES ONLY, NEVER NUMBERS. No licence number, no ARRT number, no DEA.
+-- See the header of staff-credentials.sql.
+-- ============================================================
+
+create or replace function staff.seed_job_credential_requirements(p_slug text)
+returns integer language plpgsql as $$
+declare n integer;
+begin
+  insert into staff.job_credential_requirements
+    (org_slug, job_role, kind, required, label, hint, sort_order)
+  select p_slug, d.job_role, d.kind, d.required, d.label, d.hint, d.sort_order
+  from (values
+    -- Everyone who works a shift
+    ('front_desk'::staff.job_role,        'bls_cpr'::staff.credential_kind, true,
+     'BLS / CPR expires', 'The date on the card, not the date you took it.', 10),
+    ('medical_assistant'::staff.job_role, 'bls_cpr'::staff.credential_kind, true,
+     'BLS / CPR expires', 'The date on the card, not the date you took it.', 10),
+    ('xray_tech'::staff.job_role,         'bls_cpr'::staff.credential_kind, true,
+     'BLS / CPR expires', 'The date on the card, not the date you took it.', 10),
+    ('provider'::staff.job_role,          'bls_cpr'::staff.credential_kind, true,
+     'BLS / CPR expires', 'The date on the card, not the date you took it.', 10),
+    ('center_admin'::staff.job_role,      'bls_cpr'::staff.credential_kind, false,
+     'BLS / CPR expires', 'If you hold one.', 10),
+
+    -- X-ray
+    ('xray_tech'::staff.job_role, 'arrt'::staff.credential_kind, true,
+     'ARRT or state operator permit expires',
+     'Whichever your state issues you to operate under.', 20),
+
+    -- Providers
+    ('provider'::staff.job_role, 'state_license'::staff.credential_kind, true,
+     'State medical licence expires', null, 20),
+    ('provider'::staff.job_role, 'board_certification'::staff.credential_kind, false,
+     'Board certification expires', 'Leave blank if it does not expire.', 30),
+    ('provider'::staff.job_role, 'acls'::staff.credential_kind, false,
+     'ACLS expires', 'If you hold one.', 40),
+    ('provider'::staff.job_role, 'pals'::staff.credential_kind, false,
+     'PALS expires', 'If you hold one.', 50),
+    ('provider'::staff.job_role, 'malpractice'::staff.credential_kind, false,
+     'Malpractice cover expires', 'The policy period end date.', 60),
+
+    -- Clinical staff who may hold more
+    ('medical_assistant'::staff.job_role, 'acls'::staff.credential_kind, false,
+     'ACLS expires', 'If you hold one.', 30)
+  ) as d(job_role, kind, required, label, hint, sort_order)
+  where not exists (
+    select 1 from staff.job_credential_requirements x
+     where x.org_slug = p_slug
+       and x.job_role = d.job_role
+       and x.kind = d.kind
+  );
+
+  get diagnostics n = row_count;
+  return n;
+end $$;
+
+grant execute on function staff.seed_job_credential_requirements(text) to staff_app;
+
+create or replace function staff.job_cred_req_seed_new_org()
+returns trigger language plpgsql as $$
+begin
+  perform staff.seed_job_credential_requirements(new.slug);
+  return null;
+end $$;
+
+drop trigger if exists staff_orgs_seed_job_cred_req on staff.orgs;
+create trigger staff_orgs_seed_job_cred_req
+  after insert on staff.orgs
+  for each row execute function staff.job_cred_req_seed_new_org();
+
+do $$
+declare o record;
+begin
+  for o in select slug from staff.orgs loop
+    perform staff.seed_job_credential_requirements(o.slug);
+  end loop;
+end $$;
+
+
+-- ========== staff-documents.sql ==========
+
+-- ============================================================
+-- THE PERSONAL DOCUMENT VAULT
+--
+-- Run AFTER supabase/staff-credentials.sql. Idempotent.
+--
+-- WHAT THIS IS FOR
+-- ----------------
+-- staff.credentials answers the ORGANISATION's question: is anybody on
+-- this roster working expired. It is read on the roster page by clinical
+-- leads and administrators, and until now it was the only place a
+-- credential could live — which meant the only way a BLS card got on
+-- file was somebody senior typing it in.
+--
+-- This is the same fact from the other end: MY cards, MY licence, MY CME
+-- proofs, maintained by me. One person's shelf rather than the clinic's
+-- filing cabinet, and the thing that finally lets the roster be accurate
+-- without an administrator doing data entry for twenty people.
+--
+-- ONE FACT, NOT TWO. A document that carries an expiry date UPDATES the
+-- matching staff.credentials row rather than storing a second copy of
+-- the date. Two independent copies of "when does your BLS expire" is two
+-- answers to one question, and the roster would be reading whichever one
+-- nobody was maintaining.
+--
+-- A NOTE ON THE FILE ITSELF. file_path is a key in object storage, never
+-- the bytes. Postgres is not a file server, and a scanned licence in a
+-- table column is a row nobody can back up cheaply and a payload every
+-- query planner has to step over.
+--
+-- AND IT IS NULLABLE, deliberately. A person can record "my BLS expires
+-- in March" without having a scan to hand, and that is worth far more
+-- than nothing: the roster can chase an expiry it knows about. Requiring
+-- a file to record a date would mean the dates that matter most — the
+-- ones belonging to people who have not got round to scanning anything —
+-- are exactly the ones missing.
+-- ============================================================
+
+create table if not exists staff.user_documents (
+  id uuid primary key default gen_random_uuid(),
+  org_slug text not null references staff.orgs(slug) on delete cascade,
+  user_id uuid not null references staff.users(id) on delete cascade,
+
+  -- Wider than staff.credential_kind on purpose: a CME log and a peer
+  -- review are documents somebody keeps, and neither is a credential
+  -- with an issuer and an expiry.
+  doc_type text not null check (doc_type in (
+    'bls_cpr', 'state_license', 'arrt_permit', 'board_certification',
+    'malpractice', 'cme_log', 'peer_review', 'other'
+  )),
+
+  title text not null,
+
+  -- The credential this proves, when it proves one. Set by the app so a
+  -- BLS card and the BLS row on the roster are the same fact.
+  credential_id uuid references staff.credentials(id) on delete set null,
+
+  -- Object-storage key. Null while somebody has recorded the date but
+  -- not yet uploaded the scan.
+  file_path text,
+  file_type text,
+  file_bytes integer check (file_bytes is null or file_bytes > 0),
+
+  expires_on date,
+
+  -- Whether anyone senior has actually looked at it. Defaults to
+  -- unverified, NOT verified: a self-uploaded document that the system
+  -- calls "verified" the instant it lands is a system asserting
+  -- something nobody checked, and on the one screen where that assertion
+  -- gets shown to a surveyor.
+  verified_on date,
+  verified_by uuid references staff.users(id),
+
+  active boolean not null default true,
+  uploaded_at timestamptz not null default now()
+);
+
+create index if not exists staff_user_documents_mine
+  on staff.user_documents (org_slug, user_id, doc_type)
+  where active;
+
+create index if not exists staff_user_documents_expiry
+  on staff.user_documents (org_slug, expires_on)
+  where active and expires_on is not null;
+
+-- Verified by whom, on what day — both or neither. A verification date
+-- with nobody's name on it is not a verification.
+do $$ begin
+  alter table staff.user_documents
+    add constraint staff_user_doc_verification_complete
+    check ((verified_on is null) = (verified_by is null));
+exception when duplicate_object then null;
+end $$;
+
+-- A row that is neither a date nor a file is an empty row.
+do $$ begin
+  alter table staff.user_documents
+    add constraint staff_user_doc_has_content
+    check (file_path is not null or expires_on is not null);
+exception when duplicate_object then null;
+end $$;
+
+alter table staff.user_documents enable row level security;
+alter table staff.user_documents force row level security;
+
+drop policy if exists staff_org_isolation on staff.user_documents;
+create policy staff_org_isolation on staff.user_documents
+  for all
+  using (staff.is_super_admin() or org_slug = staff.current_org())
+  with check (staff.is_super_admin() or org_slug = staff.current_org());
+
+-- ORG-SCOPED, NOT USER-SCOPED, AND THAT IS NOT AN OVERSIGHT. There is
+-- one database role for the whole application and the session's user id
+-- is not available to RLS — see staff.current_org() in staff-schema.sql,
+-- which is set per connection from the signed session cookie. Per-user
+-- isolation is enforced in the query layer, which is where every other
+-- per-user rule in this module already lives.
+--
+-- The practical consequence, stated plainly: a bug in a route that omits
+-- `where user_id = me` would show one person another person's documents
+-- inside the same clinic. It would not cross clinics — that is what this
+-- policy guarantees. lib/staff/documents.ts takes the user id as a
+-- required argument for exactly this reason.
+grant select, insert, update on staff.user_documents to staff_app;
+revoke delete on staff.user_documents from staff_app;
+
+-- ============================================================
+-- MY SHELF
+--
+-- security_invoker so it reads under the caller's org context. Dropped
+-- first so a later migration inserting a column cannot break the second
+-- run of the combined setup file.
+-- ============================================================
+
+drop view if exists staff.my_documents cascade;
+create view staff.my_documents
+with (security_invoker = true) as
+select
+  d.id,
+  d.org_slug,
+  d.user_id,
+  d.doc_type,
+  d.title,
+  d.credential_id,
+  d.file_path,
+  d.file_type,
+  d.file_bytes,
+  d.expires_on,
+  d.verified_on,
+  v.legal_name as verified_by_name,
+  d.uploaded_at,
+  (d.file_path is not null) as has_file,
+  -- Derived on read, like every other expiry in this module. A nightly
+  -- job that marks things expired is a job whose failure looks exactly
+  -- like "nothing is expired".
+  case
+    when d.expires_on is null                     then 'no_date'
+    when d.expires_on < current_date              then 'expired'
+    when d.expires_on <= current_date + 60        then 'expiring'
+    else 'current'
+  end as status,
+  (d.expires_on - current_date) as days_left
+from staff.user_documents d
+left join staff.users v on v.id = d.verified_by
+where d.active;
+
+grant select on staff.my_documents to staff_app;
+
+
+-- ========== staff-protocols.sql ==========
+
+-- ============================================================
+-- THE PROTOCOL LIBRARY
+--
+-- Run AFTER supabase/staff-schema.sql. Idempotent.
+--
+-- WHAT THIS IS, AND WHAT IT DELIBERATELY IS NOT
+-- ---------------------------------------------
+-- This is SEARCH OVER THE CLINIC'S OWN DOCUMENTS. A provider types
+-- "tetanus timing contaminated wound" and gets back the passages of this
+-- clinic's wound-care protocol and whatever public guidance has been
+-- loaded, verbatim, each with its source and section.
+--
+-- IT DOES NOT GENERATE CLINICAL ADVICE. No regimen is synthesised, no
+-- contraindication is inferred, no dose is composed. The system returns
+-- text somebody wrote and a citation for where it came from, and the
+-- provider reads it — exactly like the binder on the shelf, only
+-- searchable.
+--
+-- That boundary is the product decision. Software that analyses patient
+-- specifics and recommends treatment is clinical decision support, with
+-- an FDA exemption analysis and a malpractice conversation attached to
+-- it; software that finds you the right page of your own protocol is a
+-- search box. There is no schema here for a generated answer, because a
+-- column to put one in is how the boundary erodes.
+--
+-- WHY FULL-TEXT AND NOT EMBEDDINGS. The brief asked for pgvector. This
+-- corpus is one clinic's protocol set plus public guidance — hundreds of
+-- sections, not millions — and the queries are dense with the exact
+-- terms the documents use, because both are written by clinicians in the
+-- same vocabulary. Postgres full-text ranks that well, costs nothing per
+-- query, needs no embedding provider or API key, returns byte-identical
+-- passages rather than nearest neighbours, and is deterministic, which
+-- matters when the answer is a clinical document. Semantic search earns
+-- its complexity when the query and the corpus use different words. If
+-- that turns out to be the case here, the table takes an embedding
+-- column later without anything else changing.
+--
+-- NO PATIENT INFORMATION. Queries are logged for "what is nobody able to
+-- find", and a free-text box is exactly where somebody types a name. The
+-- log column is capped and the app strips digit runs before writing.
+-- ============================================================
+
+create table if not exists staff.protocols (
+  id uuid primary key default gen_random_uuid(),
+  org_slug text not null references staff.orgs(slug) on delete cascade,
+  key text not null,
+
+  title text not null,
+  -- Where this came from, printed with every passage. A clinic protocol,
+  -- a CDC page, a specialty society guideline. The first question about
+  -- a clinical statement on a screen is who said it.
+  source text not null,
+  -- The clinic's own reference, where it has one: '#WOUND-04'.
+  protocol_code text,
+  -- Publication or last-review date of the SOURCE, not of the row. A
+  -- guideline from 2019 presented without its year is a guideline
+  -- presented as current.
+  source_date date,
+
+  -- Who this is for. Empty means everyone.
+  job_roles staff.job_role[] not null default '{}',
+
+  -- Reviewed by the medical director, and when. A protocol nobody has
+  -- reviewed still appears in results, labelled as such — hiding it
+  -- would mean the search quietly missed the document the clinic
+  -- actually uses.
+  reviewed_on date,
+  reviewed_by uuid references staff.users(id),
+
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  created_by uuid references staff.users(id)
+);
+
+create unique index if not exists staff_protocols_key
+  on staff.protocols (org_slug, key);
+
+-- ============================================================
+-- SECTIONS
+--
+-- Search returns a SECTION, not a document. Handing somebody a
+-- forty-page protocol because one line in it matched is the failure mode
+-- of every clinical search box, and at a bedside it is the same as
+-- returning nothing.
+-- ============================================================
+
+create table if not exists staff.protocol_sections (
+  id uuid primary key default gen_random_uuid(),
+  protocol_id uuid not null references staff.protocols(id) on delete cascade,
+  section_no integer not null,
+
+  heading text,
+  body text not null,
+
+  -- Generated, not maintained: a search index that a writer has to
+  -- remember to refresh is a search index that is wrong.
+  --
+  -- Weighted A for the heading and B for the body, so a section titled
+  -- "Tetanus prophylaxis" outranks one that mentions tetanus in passing.
+  search tsvector generated always as (
+    setweight(to_tsvector('english', coalesce(heading, '')), 'A') ||
+    setweight(to_tsvector('english', body), 'B')
+  ) stored,
+
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists staff_protocol_sections_order
+  on staff.protocol_sections (protocol_id, section_no);
+
+create index if not exists staff_protocol_sections_search
+  on staff.protocol_sections using gin (search);
+
+-- ============================================================
+-- QUERY LOG
+--
+-- Not analytics. This answers one operational question: what are people
+-- searching for and not finding, which is the list of protocols this
+-- clinic is missing.
+-- ============================================================
+
+create table if not exists staff.protocol_queries (
+  id uuid primary key default gen_random_uuid(),
+  org_slug text not null references staff.orgs(slug) on delete cascade,
+  asked_by uuid references staff.users(id) on delete set null,
+  q text not null,
+  hits integer not null default 0,
+  asked_at timestamptz not null default now()
+);
+
+create index if not exists staff_protocol_queries_misses
+  on staff.protocol_queries (org_slug, asked_at desc)
+  where hits = 0;
+
+-- How many words in the query matched nothing in the corpus. This is
+-- the "we have no protocol for this" signal, kept as a NUMBER because
+-- the words themselves are the ones that cannot be shown to be safe.
+alter table staff.protocol_queries
+  add column if not exists unknown_terms integer not null default 0;
+
+-- A hard cap in the schema as well as the app. A free-text box is where
+-- somebody eventually pastes a chart note, and 200 characters is a
+-- question rather than a record.
+do $$ begin
+  alter table staff.protocol_queries
+    add constraint staff_protocol_query_short
+    check (length(q) <= 200);
+exception when duplicate_object then null;
+end $$;
+
+-- ============================================================
+-- WHAT MAY BE KEPT OF A QUERY
+--
+-- The app strips digit runs, dates and MRN-shaped tokens before this is
+-- reached. THAT IS NOT ENOUGH AND IT CANNOT BE MADE ENOUGH: no regular
+-- expression recognises "Maria Gonzalez" as a name rather than a place,
+-- a drug, or a syndrome with two eponyms in it. Tested exactly that way
+-- — the dates and the MRN were caught, the name went straight through.
+--
+-- So the log does not keep what was typed. It keeps only the lexemes
+-- that ALREADY APPEAR SOMEWHERE IN THIS CLINIC'S PROTOCOL CORPUS. A word
+-- has to be in a published protocol to survive, which a patient's name
+-- structurally is not, and the number of words dropped is kept instead
+-- so the "nobody can find anything about X" signal is not lost.
+--
+-- The cost is real and worth naming: a search for a condition the clinic
+-- has never written a protocol about keeps none of its terms, which is
+-- exactly the case somebody would most like to read. The count carries
+-- it — a run of queries with four unknown terms and no hits is the
+-- report — and that is the version of this feature that does not put
+-- patient names in a table.
+-- ============================================================
+
+create or replace function staff.scrub_to_corpus(p_query text)
+returns table (kept text, unknown_count integer)
+language plpgsql stable as $$
+declare
+  terms text[];
+  survivors text[];
+  t text;
+begin
+  terms := tsvector_to_array(to_tsvector('english', coalesce(p_query, '')));
+  if terms is null then
+    return query select ''::text, 0;
+    return;
+  end if;
+
+  survivors := '{}';
+  foreach t in array terms loop
+    if exists (
+      select 1 from staff.protocol_sections s
+       where s.search @@ to_tsquery('english', t)
+       limit 1
+    ) then
+      survivors := survivors || t;
+    end if;
+  end loop;
+
+  return query
+    select array_to_string(survivors, ' ')::text,
+           (cardinality(terms) - cardinality(survivors))::integer;
+end $$;
+
+grant execute on function staff.scrub_to_corpus(text) to staff_app;
+
+-- ============================================================
+-- ROW-LEVEL SECURITY
+-- protocol_sections has no org column; it is reached only through its
+-- protocol, so its policy joins back to one.
+-- ============================================================
+
+alter table staff.protocols enable row level security;
+alter table staff.protocols force row level security;
+drop policy if exists staff_org_isolation on staff.protocols;
+create policy staff_org_isolation on staff.protocols
+  for all
+  using (staff.is_super_admin() or org_slug = staff.current_org())
+  with check (staff.is_super_admin() or org_slug = staff.current_org());
+
+alter table staff.protocol_sections enable row level security;
+alter table staff.protocol_sections force row level security;
+drop policy if exists staff_org_isolation on staff.protocol_sections;
+create policy staff_org_isolation on staff.protocol_sections
+  for all
+  using (exists (
+    select 1 from staff.protocols p
+     where p.id = protocol_sections.protocol_id
+       and (staff.is_super_admin() or p.org_slug = staff.current_org())
+  ))
+  with check (exists (
+    select 1 from staff.protocols p
+     where p.id = protocol_sections.protocol_id
+       and (staff.is_super_admin() or p.org_slug = staff.current_org())
+  ));
+
+alter table staff.protocol_queries enable row level security;
+alter table staff.protocol_queries force row level security;
+drop policy if exists staff_org_isolation on staff.protocol_queries;
+create policy staff_org_isolation on staff.protocol_queries
+  for all
+  using (staff.is_super_admin() or org_slug = staff.current_org())
+  with check (staff.is_super_admin() or org_slug = staff.current_org());
+
+grant select, insert, update on staff.protocols to staff_app;
+grant select, insert, update on staff.protocol_sections to staff_app;
+-- Insert-only: a query log that can be edited answers nothing.
+grant select, insert on staff.protocol_queries to staff_app;
+revoke delete on staff.protocols from staff_app;
+revoke delete on staff.protocol_sections from staff_app;
+revoke update, delete on staff.protocol_queries from staff_app;
+
+-- ============================================================
+-- SEARCH
+--
+-- One function rather than a view, because ranking needs the query.
+-- STABLE and security_invoker semantics come from the underlying RLS on
+-- the tables it reads — it is not SECURITY DEFINER, so it cannot see
+-- past the caller's org.
+-- ============================================================
+
+-- ANY TERM, RANKED — NOT EVERY TERM.
+--
+-- The first version used websearch_to_tsquery directly, which joins bare
+-- terms with AND. "tetanus timing contaminated wound" then required all
+-- four lexemes in ONE section and returned nothing, while the section
+-- headed "Tetanus toxoid timing by vaccination history" sat two rows
+-- away in the same table. Clinicians type four or five words; sections
+-- are a paragraph long; AND means an empty result almost every time.
+--
+-- Zero results is the worst possible failure here, because the person is
+-- standing in a room with a patient and will conclude the protocol is
+-- not in the system rather than that their phrasing was wrong.
+--
+-- So the terms are ORed and ts_rank does the work: a section matching
+-- three of four lexemes outranks one matching one, and the A-weighted
+-- heading outranks a passing mention in the body. Quoted phrases and
+-- explicit operators are still honoured — if websearch_to_tsquery finds
+-- any of those, that query is used as written, because somebody typing
+-- quotes means them.
+--
+-- The OR query is built from tsvector_to_array(to_tsvector(...)), so
+-- every element is an already-normalised lexeme. There is no path for a
+-- tsquery operator to survive that and reach to_tsquery.
+create or replace function staff.search_protocols(
+  p_query text,
+  p_job staff.job_role default null,
+  p_limit integer default 12
+)
+returns table (
+  protocol_id uuid,
+  section_id uuid,
+  title text,
+  source text,
+  protocol_code text,
+  source_date date,
+  reviewed_on date,
+  heading text,
+  body text,
+  section_no integer,
+  rank real
+)
+language plpgsql stable as $$
+declare
+  q tsquery;
+  lexemes text[];
+begin
+  -- Quotes or explicit operators: honour them exactly.
+  if p_query ~ '["|()<>-]' then
+    q := websearch_to_tsquery('english', p_query);
+  else
+    lexemes := tsvector_to_array(to_tsvector('english', p_query));
+    if lexemes is null or cardinality(lexemes) = 0 then
+      return;
+    end if;
+    q := to_tsquery('english', array_to_string(lexemes, ' | '));
+  end if;
+
+  if q is null then return; end if;
+
+  return query
+  select
+    p.id, s.id, p.title, p.source, p.protocol_code, p.source_date,
+    p.reviewed_on, s.heading, s.body, s.section_no,
+    ts_rank(s.search, q) as rank
+  from staff.protocol_sections s
+  join staff.protocols p on p.id = s.protocol_id
+  where p.active
+    and staff.brief_matches(p.job_roles, p_job)
+    and s.search @@ q
+  order by rank desc, p.title, s.section_no
+  limit greatest(1, least(coalesce(p_limit, 12), 50));
+end $$;
+
+grant execute on function staff.search_protocols(text, staff.job_role, integer)
+  to staff_app;
+
+
+-- ========== staff-protocols-seed.sql ==========
+
+-- ============================================================
+-- PROTOCOL LIBRARY — seed
+--
+-- Run AFTER supabase/staff-protocols.sql. Idempotent.
+--
+-- PROVENANCE, and read this before trusting a word of it.
+--
+-- These are STARTER SECTIONS drawn from long-standing, widely published
+-- public guidance — CDC tetanus prophylaxis, the Ottawa ankle and knee
+-- rules, CDC/IDSA pharyngitis and the Centor score, OSHA's bloodborne
+-- pathogens standard. They are here so the search box is not empty on
+-- day one and so a clinic can see the shape of a section.
+--
+-- THEY ARE NOT THIS CLINIC'S PROTOCOLS AND EVERY ROW SAYS SO. Each is
+-- seeded with reviewed_on NULL, which the app renders as "not reviewed
+-- by your medical director" on every result. A clinic replaces or
+-- reviews them; nothing here is presented as locally approved until
+-- somebody local approves it.
+--
+-- NOTHING PAYWALLED IS REPRODUCED HERE. No journal text, no society
+-- document behind a licence. Indexing a subscription journal into a
+-- searchable corpus is a copyright question for the clinic and its
+-- publisher, not something a seed file should decide by doing it.
+--
+-- AND NOTHING HERE IS A RECOMMENDATION. The rows are passages with
+-- citations. The system shows them; the clinician reads them and
+-- decides. See the header of staff-protocols.sql.
+-- ============================================================
+
+create or replace function staff.seed_protocols(p_slug text)
+returns integer language plpgsql as $$
+declare
+  n integer := 0;
+  r record;
+  pid uuid;
+begin
+  insert into staff.protocols
+    (org_slug, key, title, source, protocol_code, source_date, job_roles)
+  select p_slug, d.key, d.title, d.source, d.code, d.src_date, d.job_roles
+  from (values
+    ('tetanus-prophylaxis',
+     'Tetanus prophylaxis in wound management',
+     'CDC — Epidemiology and Prevention of Vaccine-Preventable Diseases',
+     null, date '2021-08-01',
+     array['provider','medical_assistant']::staff.job_role[]),
+
+    ('ottawa-rules',
+     'Ottawa ankle and knee rules',
+     'Ottawa Ankle Rules, Stiell et al. — public decision rule',
+     null, date '1993-01-01',
+     array['provider','xray_tech']::staff.job_role[]),
+
+    ('pharyngitis-centor',
+     'Sore throat: Centor score and testing',
+     'CDC — Pharyngitis (Strep Throat) adult treatment guidance',
+     null, date '2021-06-01',
+     array['provider','medical_assistant']::staff.job_role[]),
+
+    ('bbp-exposure',
+     'Needlestick and bloodborne pathogen exposure',
+     'OSHA 29 CFR 1910.1030',
+     null, date '2011-04-01',
+     '{}'::staff.job_role[])
+  ) as d(key, title, source, code, src_date, job_roles)
+  where not exists (
+    select 1 from staff.protocols x where x.org_slug = p_slug and x.key = d.key
+  );
+  get diagnostics n = row_count;
+
+  for r in select id, key from staff.protocols where org_slug = p_slug loop
+    pid := r.id;
+    if exists (select 1 from staff.protocol_sections s where s.protocol_id = pid) then
+      continue;
+    end if;
+
+    if r.key = 'tetanus-prophylaxis' then
+      insert into staff.protocol_sections (protocol_id, section_no, heading, body) values
+        (pid, 1, 'Deciding whether the wound is clean and minor',
+         'Wound management decisions turn on two things: whether the wound is clean and minor, and how many doses of tetanus toxoid the patient has had. Wounds contaminated with dirt, faeces, soil or saliva, puncture wounds, avulsions, and wounds from crushing, burns or frostbite are all treated as NOT clean and minor.'),
+        (pid, 2, 'Tetanus toxoid timing by vaccination history',
+         'For a clean, minor wound: give tetanus toxoid if the patient has had fewer than three doses, or if it has been ten years or more since the last dose. For all other wounds: give tetanus toxoid if fewer than three doses, or if it has been five years or more since the last dose.'),
+        (pid, 3, 'Tetanus immune globulin',
+         'Tetanus immune globulin is indicated for wounds that are not clean and minor when the patient has had fewer than three doses of tetanus toxoid, or when the vaccination history is unknown. It is not indicated for clean minor wounds regardless of history.'),
+        (pid, 4, 'Which vaccine',
+         'Tdap is preferred over Td for adolescents and adults who have not previously received Tdap. Where both a vaccine and immune globulin are given, they are administered at separate sites with separate syringes.');
+
+    elsif r.key = 'ottawa-rules' then
+      insert into staff.protocol_sections (protocol_id, section_no, heading, body) values
+        (pid, 1, 'Ottawa ankle rule — when an ankle x-ray is indicated',
+         'An ankle x-ray series is indicated only if there is pain in the malleolar zone AND any one of: bone tenderness along the distal 6 cm of the posterior edge of the lateral malleolus, bone tenderness along the distal 6 cm of the posterior edge of the medial malleolus, or an inability to bear weight both immediately and in the department for four steps.'),
+        (pid, 2, 'Ottawa foot rule — when a foot x-ray is indicated',
+         'A foot x-ray series is indicated only if there is pain in the midfoot zone AND any one of: bone tenderness at the base of the fifth metatarsal, bone tenderness at the navicular, or an inability to bear weight both immediately and in the department for four steps.'),
+        (pid, 3, 'Ottawa knee rule',
+         'A knee x-ray is indicated for acute knee injury with any one of: age 55 or over, isolated tenderness of the patella, tenderness at the head of the fibula, inability to flex to 90 degrees, or inability to bear weight for four steps both immediately and in the department.'),
+        (pid, 4, 'Limits of the rules',
+         'These rules were derived and validated in adults with acute injury. They are not validated for intoxicated or uncooperative patients, patients with distracting painful injuries, patients with diminished sensation in the leg, or those presenting more than ten days after injury.');
+
+    elsif r.key = 'pharyngitis-centor' then
+      insert into staff.protocol_sections (protocol_id, section_no, heading, body) values
+        (pid, 1, 'Centor criteria',
+         'One point each for: tonsillar exudate, tender anterior cervical lymphadenopathy, fever by history, and absence of cough. The modified score adds a point for age 3 to 14 and subtracts one for age 45 and over.'),
+        (pid, 2, 'Testing and treatment by score',
+         'A score of 0 or 1 does not warrant testing or antibiotics. A score of 2 or 3 warrants a rapid antigen detection test, with treatment only if positive. A score of 4 or more still warrants testing rather than empiric antibiotics in most outpatient settings.'),
+        (pid, 3, 'Negative rapid test in children',
+         'A negative rapid antigen test in a child or adolescent is backed up by throat culture, because rapid tests are less sensitive in this group and untreated group A strep carries a rheumatic fever risk.'),
+        (pid, 4, 'Symptoms that are not strep',
+         'Cough, rhinorrhoea, hoarseness, oral ulcers and conjunctivitis point to a viral cause. Testing patients with these features raises the number of carriers found and treated without benefit.');
+
+    elsif r.key = 'bbp-exposure' then
+      insert into staff.protocol_sections (protocol_id, section_no, heading, body) values
+        (pid, 1, 'Immediately after a needlestick or splash',
+         'Wash the site with soap and water. Flush mucous membranes with water. Do not squeeze the wound and do not apply caustic agents or disinfectants into it. Report it before the end of the shift, however minor it seems.'),
+        (pid, 2, 'This is time-critical',
+         'HIV post-exposure prophylaxis, where indicated, is most effective the sooner it is started and is generally considered up to 72 hours after exposure. An exposure reported the next morning may be an exposure that can no longer be treated.'),
+        (pid, 3, 'What the employer owes you',
+         'Under the OSHA bloodborne pathogens standard the employer provides a confidential medical evaluation and follow-up at no cost to the employee, including post-exposure prophylaxis where indicated, and records the incident on the sharps injury log.'),
+        (pid, 4, 'The sharps injury log',
+         'The log records the type and brand of device involved, the department or work area where the incident occurred, and an explanation of how it happened. It is maintained so that individual identity is protected.');
+    end if;
+  end loop;
+
+  return n;
+end $$;
+
+grant execute on function staff.seed_protocols(text) to staff_app;
+
+create or replace function staff.protocols_seed_new_org()
+returns trigger language plpgsql as $$
+begin
+  perform staff.seed_protocols(new.slug);
+  return null;
+end $$;
+
+drop trigger if exists staff_orgs_seed_protocols on staff.orgs;
+create trigger staff_orgs_seed_protocols
+  after insert on staff.orgs
+  for each row execute function staff.protocols_seed_new_org();
+
+do $$
+declare o record;
+begin
+  for o in select slug from staff.orgs loop
+    perform staff.seed_protocols(o.slug);
+  end loop;
+end $$;
+
+
+-- ========== staff-emergency.sql ==========
+
+-- ============================================================
+-- EMERGENCY ACTION GUIDES
+--
+-- Run AFTER supabase/staff-rounds.sql. Idempotent.
+--
+-- WHY THIS IS staff.rounds AND NOT A NEW TABLE
+-- --------------------------------------------
+-- The brief asked for a Learning tab holding role-filtered emergency
+-- checklists: anaphylaxis for the MA, radiation emergency stop for the
+-- x-ray tech, STEMI escalation for the provider, active threat for the
+-- front desk.
+--
+-- Structurally that is what staff.rounds already is — an ordered list of
+-- imperative steps, scoped to a job, read one at a time. Building a
+-- second table with the same shape would mean two step editors, two
+-- role filters, two places for a clinic to look, and eventually two
+-- answers about what the anaphylaxis procedure says. So this adds one
+-- column to distinguish them and reuses everything else.
+--
+-- WHAT ACTUALLY DIFFERS, AND IT IS ONE THING THAT MATTERS
+-- ------------------------------------------------------
+-- A round is WALKED and SIGNED: the record is that somebody did it.
+--
+-- An emergency guide is READ WHILE SOMETHING IS HAPPENING. Nobody signs
+-- an attestation during an anaphylaxis. Requiring one would mean the
+-- app asks a person to confirm paperwork while a patient is losing an
+-- airway, and the honest outcome is that they close the app and never
+-- open it in an emergency again — losing the one moment the guide
+-- exists for.
+--
+-- So kind='emergency' guides:
+--   * take no attestation and write no run record
+--   * show EVERY step at once rather than one behind a Next button
+--   * sort by how fast you need them, not alphabetically
+--
+-- ALL STEPS VISIBLE IS THE OPPOSITE OF THE ROUND RUNNER and it is the
+-- correct opposite. The runner hides the next step so the walk cannot be
+-- faked from the counter. Here there is nothing to fake and everything
+-- to lose: somebody needs to see that step 6 is "call 911" before they
+-- have finished step 1, and a paginated emergency procedure is a
+-- procedure that gets abandoned.
+-- ============================================================
+
+alter table staff.rounds
+  add column if not exists kind text not null default 'round';
+
+do $$ begin
+  alter table staff.rounds
+    add constraint staff_rounds_kind_known
+    check (kind in ('round', 'emergency'));
+exception when duplicate_object then null;
+end $$;
+
+comment on column staff.rounds.kind is
+  'round = walked and signed, one step at a time. emergency = read during an incident, all steps visible, no attestation.';
+
+-- Nothing may file a run against an emergency guide. The app does not
+-- offer it, and this makes that true regardless of what the app does —
+-- an attestation that somebody "completed" an anaphylaxis is a record
+-- of paperwork, not of care, and would sit in the same table as records
+-- that mean something.
+create or replace function staff.round_runs_reject_emergency()
+returns trigger language plpgsql as $$
+begin
+  if exists (
+    select 1 from staff.rounds r
+     where r.id = new.round_id and r.kind = 'emergency'
+  ) then
+    raise exception 'emergency guides are read, not signed for'
+      using errcode = 'check_violation';
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists staff_round_runs_no_emergency on staff.round_runs;
+create trigger staff_round_runs_no_emergency
+  before insert on staff.round_runs
+  for each row execute function staff.round_runs_reject_emergency();
+
+-- The board splits on kind, so /staff/rounds keeps showing rounds and
+-- /staff/learning shows guides, from one view.
+--
+-- Dropped first rather than CREATE OR REPLACE: replace can only APPEND
+-- columns, and kind belongs beside the other descriptive columns.
+drop view if exists staff.round_board cascade;
+create view staff.round_board
+with (security_invoker = true) as
+select
+  r.id,
+  r.org_slug,
+  r.key,
+  r.kind,
+  r.job_roles,
+  r.title,
+  r.purpose,
+  r.cadence,
+  r.sort_order,
+  (select count(*) from staff.round_steps s where s.round_id = r.id)::int
+    as step_count,
+  last_run.completed_at as last_walked_at,
+  last_run.walker       as last_walked_by,
+  jsonb_array_length(coalesce(last_run.exceptions, '[]'::jsonb))::int
+    as last_exception_count
+from staff.rounds r
+left join lateral (
+  select ru.completed_at, ru.exceptions, u.legal_name as walker
+    from staff.round_runs ru
+    left join staff.users u on u.id = ru.walked_by
+   where ru.round_id = r.id
+   order by ru.completed_at desc
+   limit 1
+) last_run on true
+where r.active;
+
+grant select on staff.round_board to staff_app;
+
+
+-- ========== staff-emergency-seed.sql ==========
+
+-- ============================================================
+-- EMERGENCY ACTION GUIDES — seed
+--
+-- Run AFTER supabase/staff-emergency.sql. Idempotent.
+--
+-- READ THIS BEFORE TRUSTING A LINE OF IT.
+--
+-- These are drawn from long-standing published guidance: anaphylaxis
+-- adrenaline dosing and route per the standard emergency algorithms,
+-- OSHA's bloodborne pathogen exposure requirements, the ALARA and
+-- emergency-off requirements common to state radiation regulation, and
+-- the door-to-ECG target published in acute coronary syndrome guidance.
+--
+-- THEY ARE STARTING POINTS, NOT THIS CLINIC'S APPROVED PROCEDURES.
+-- Every guide seeds with no medical-director review recorded, and the
+-- app labels it that way wherever it is shown. A clinic reviews, edits
+-- and adopts them; nothing here is presented as locally approved until
+-- somebody local approves it.
+--
+-- WHERE A NUMBER WOULD VARY, THE STEP SAYS WHERE TO LOOK RATHER THAN
+-- INVENTING ONE. Paediatric weight-based dosing, the local poison
+-- control number, which hospital takes STEMI, and the state's
+-- involuntary-hold statute all differ by clinic and by state. A
+-- confident wrong number in an emergency guide is worse than no guide,
+-- because it will be followed. Those steps name the source instead.
+--
+-- SCOPE IS RESPECTED EVEN HERE. The front desk guides say recognise,
+-- escalate, and clear a path — they do not tell an unlicensed person to
+-- assess or treat, because an emergency is exactly when somebody reaches
+-- past their scope, and the guide they are reading should not be what
+-- invites it.
+-- ============================================================
+
+create or replace function staff.seed_emergency_guides(p_slug text)
+returns integer language plpgsql as $$
+declare
+  n integer := 0;
+  r record;
+  gid uuid;
+begin
+  insert into staff.rounds
+    (org_slug, key, kind, job_roles, title, purpose, cadence, sort_order)
+  select p_slug, d.key, 'emergency', d.job_roles, d.title, d.purpose,
+         'when it happens', d.sort_order
+  from (values
+    ('em-anaphylaxis',
+     array['medical_assistant','provider']::staff.job_role[],
+     'Anaphylaxis',
+     'Adrenaline first. Everything else second.', 10),
+    ('em-code-blue',
+     array['medical_assistant','provider']::staff.job_role[],
+     'Unresponsive patient — code blue',
+     'Compressions, cart, AED, 911.', 20),
+    ('em-eye-splash',
+     array['medical_assistant','xray_tech','provider']::staff.job_role[],
+     'Splash to the eyes or face',
+     'Fifteen minutes of irrigation before anything else.', 30),
+    ('em-needlestick',
+     '{}'::staff.job_role[],
+     'Needlestick or sharps injury',
+     'Wash, report now. Prophylaxis is time-limited.', 40),
+    ('em-radiation-stop',
+     array['xray_tech']::staff.job_role[],
+     'Radiation emergency stop',
+     'Kill the exposure, clear the room, do not reset it yourself.', 50),
+    ('em-patient-fall',
+     array['xray_tech','medical_assistant']::staff.job_role[],
+     'Patient faints or falls during imaging',
+     'Do not catch them mid-fall. Protect the head, get clinical staff.', 60),
+    ('em-stemi',
+     array['provider']::staff.job_role[],
+     'Chest pain — possible STEMI',
+     'ECG within 10 minutes of the door. Transfer, do not work it up here.', 70),
+    ('em-poisoning',
+     array['provider','medical_assistant']::staff.job_role[],
+     'Ingestion or poisoning',
+     'Poison control decides. Do not induce vomiting.', 80),
+    ('em-violent-person',
+     array['front_desk']::staff.job_role[],
+     'Threatening person or active threat',
+     'Your safety first. You are not security.', 90),
+    ('em-lobby-recognition',
+     array['front_desk']::staff.job_role[],
+     'Recognising an emergency in the lobby',
+     'What to look for, and the sentence that gets help.', 100),
+    ('em-evacuation',
+     '{}'::staff.job_role[],
+     'Evacuating the building',
+     'Route, roll call, and who checks the restrooms.', 110)
+  ) as d(key, job_roles, title, purpose, sort_order)
+  where not exists (
+    select 1 from staff.rounds x where x.org_slug = p_slug and x.key = d.key
+  );
+  get diagnostics n = row_count;
+
+  for r in select id, key from staff.rounds
+            where org_slug = p_slug and kind = 'emergency' loop
+    gid := r.id;
+    if exists (select 1 from staff.round_steps s where s.round_id = gid) then
+      continue;
+    end if;
+
+    if r.key = 'em-anaphylaxis' then
+      insert into staff.round_steps (round_id, step_no, instruction, detail) values
+        (gid, 1, 'Call for the provider and the emergency kit, out loud, now.', 'Do not leave the patient to go and find someone quietly.'),
+        (gid, 2, 'Give intramuscular adrenaline into the outer thigh.', 'IM anterolateral thigh. Adult 0.3-0.5 mg of 1 mg/mL. Paediatric dosing is by weight — use the clinic''s weight-based card, do not estimate.'),
+        (gid, 3, 'Note the time you gave it.', 'The second dose decision is made on the clock, and nobody remembers the minute afterwards.'),
+        (gid, 4, 'Call 911.', 'Every anaphylaxis goes to hospital, including the ones that improve. Biphasic reactions happen hours later.'),
+        (gid, 5, 'Lie the patient flat and raise the legs.', 'Unless they are vomiting or struggling to breathe — then let them sit. Do not stand them up, even to move them.'),
+        (gid, 6, 'Oxygen, and get vitals on a monitor.', null),
+        (gid, 7, 'Repeat adrenaline after 5 to 15 minutes if there is no improvement.', 'On the provider''s call. Same dose, same route, other thigh.'),
+        (gid, 8, 'Keep the packaging and the vial.', 'Lot and expiry go on the record, and the vial is the proof of dose.');
+
+    elsif r.key = 'em-code-blue' then
+      insert into staff.round_steps (round_id, step_no, instruction, detail) values
+        (gid, 1, 'Shout for help and send someone specific for the crash cart and AED.', 'Name a person. "Somebody get the cart" is how nobody goes.'),
+        (gid, 2, 'Check for a response and for normal breathing. Take no more than 10 seconds.', 'Gasping is not breathing.'),
+        (gid, 3, 'Start compressions.', 'Centre of the chest, hard and fast, minimise interruptions.'),
+        (gid, 4, 'Call 911.', 'The moment help is called for, not after the first cycle.'),
+        (gid, 5, 'Put the AED on as soon as it arrives and follow its prompts.', 'It will tell you when to stand clear and when to resume.'),
+        (gid, 6, 'Swap the person doing compressions every two minutes.', 'Quality falls off before the person doing it notices.'),
+        (gid, 7, 'Clear a route for EMS and send someone to the door.', null),
+        (gid, 8, 'Record times afterwards, not during.', 'Down time, first compression, first shock, EMS arrival. Somebody should be noting them; nobody should be typing instead of helping.');
+
+    elsif r.key = 'em-eye-splash' then
+      insert into staff.round_steps (round_id, step_no, instruction, detail) values
+        (gid, 1, 'Get to the eyewash station and start irrigating immediately.', 'Seconds matter more than anything else on this list.'),
+        (gid, 2, 'Hold the eyelids open.', 'The reflex is to squeeze them shut, which is the one thing that stops it working.'),
+        (gid, 3, 'Irrigate for a full 15 minutes by the clock.', 'It will feel far longer than it is. Have someone time it.'),
+        (gid, 4, 'Remove contact lenses only if they come out easily during irrigation.', 'Do not stop irrigating to fight with a lens.'),
+        (gid, 5, 'Tell the provider and get it documented.', 'Which substance, which eye, how long you irrigated.'),
+        (gid, 6, 'If it was blood or body fluid, this is also an exposure.', 'Follow the needlestick and exposure guide as well — the prophylaxis clock is running.');
+
+    elsif r.key = 'em-needlestick' then
+      insert into staff.round_steps (round_id, step_no, instruction, detail) values
+        (gid, 1, 'Wash the site with soap and running water.', 'Mucous membranes: flush with water. Do not squeeze the wound and do not put bleach or disinfectant into it.'),
+        (gid, 2, 'Report it to the provider or manager immediately.', 'Before the end of the shift, however minor it looks. This is the step people skip.'),
+        (gid, 3, 'Understand the clock.', 'HIV post-exposure prophylaxis works best started within hours and is generally considered up to 72 hours. Reported next morning may be too late to treat.'),
+        (gid, 4, 'Note the source patient and the device.', 'The provider decides on source testing and consent. You record what the device was and how it happened.'),
+        (gid, 5, 'Get the medical evaluation.', 'Under OSHA 29 CFR 1910.1030 this is confidential, at no cost to you, and the employer arranges it.'),
+        (gid, 6, 'It goes on the sharps injury log.', 'Device type and brand, work area, how it happened — recorded so individual identity is protected.');
+
+    elsif r.key = 'em-radiation-stop' then
+      insert into staff.round_steps (round_id, step_no, instruction, detail) values
+        (gid, 1, 'Release the exposure switch.', 'Exposure only continues while it is held. Letting go stops it.'),
+        (gid, 2, 'If it does not stop, hit the emergency off.', 'Know where it is before you ever need it — at the console and at the room entrance.'),
+        (gid, 3, 'Get everyone out of the room and keep them out.', null),
+        (gid, 4, 'Do not reset, retry, or "just check if it works now".', 'A tube that failed to terminate is a tube that may expose somebody on the next attempt.'),
+        (gid, 5, 'Tell the provider and the centre administrator now.', 'A suspected overexposure is reportable, and the report has a deadline that starts today.'),
+        (gid, 6, 'Write down everything while you remember it.', 'Technique, exposure time, who was in the room, who was behind the barrier, what the machine did.'),
+        (gid, 7, 'The unit stays out of service until service clears it.', 'Tagged, not just "we know about it".');
+
+    elsif r.key = 'em-patient-fall' then
+      insert into staff.round_steps (round_id, step_no, instruction, detail) values
+        (gid, 1, 'Do not try to catch them.', 'Catching a falling adult injures both of you. Guide them down if you can reach them.'),
+        (gid, 2, 'Protect the head.', 'It is the only part where a second of your attention changes the outcome.'),
+        (gid, 3, 'Leave them where they are and call for the provider.', 'Do not sit them up or walk them to a chair before they are assessed.'),
+        (gid, 4, 'Do not restart or complete the exam.', 'Whatever view you still need is not worth a second fall.'),
+        (gid, 5, 'Record what happened factually.', 'What they said, what you saw, what position they landed in, who attended and when. Not whether anyone was at fault.');
+
+    elsif r.key = 'em-stemi' then
+      insert into staff.round_steps (round_id, step_no, instruction, detail) values
+        (gid, 1, 'ECG within 10 minutes of arrival.', 'The target is from the door, not from when the room came free.'),
+        (gid, 2, 'Call 911 early — do not wait for confirmation.', 'An ambulance stood down costs nothing. Twenty minutes of door-to-balloon time cannot be recovered.'),
+        (gid, 3, 'This is transfer, not workup.', 'Urgent care is not the place to serially trend a troponin on someone with an ischaemic ECG.'),
+        (gid, 4, 'Aspirin unless contraindicated.', 'Chewed, not swallowed whole.'),
+        (gid, 5, 'Continuous monitoring and defibrillator at the bedside until EMS takes over.', 'Arrest risk is highest early.'),
+        (gid, 6, 'Call the receiving facility yourself.', 'Which hospital takes STEMI and by which number is a clinic-specific detail — it belongs on the wall by the phone. A handover clinician to clinician moves the patient faster than an ED triage queue.'),
+        (gid, 7, 'Send the ECG with the patient.', 'The paper copy travels. So does the time it was taken.');
+
+    elsif r.key = 'em-poisoning' then
+      insert into staff.round_steps (round_id, step_no, instruction, detail) values
+        (gid, 1, 'Call Poison Control before treating.', 'US: 1-800-222-1222, 24 hours. They see the whole exposure picture and they are free.'),
+        (gid, 2, 'Do not induce vomiting and do not give anything to drink.', 'Ipecac is not used. Some ingestions do far more damage coming back up.'),
+        (gid, 3, 'Find out what, how much, and when.', 'Bring the container if there is one. "When" is the question that changes management most.'),
+        (gid, 4, 'Airway, breathing, circulation while you wait for the callback.', null),
+        (gid, 5, 'Call 911 for any altered mental state, breathing difficulty, or a caustic or hydrocarbon ingestion.', 'Do not wait for Poison Control to tell you to.');
+
+    elsif r.key = 'em-violent-person' then
+      insert into staff.round_steps (round_id, step_no, instruction, detail) values
+        (gid, 1, 'Your safety comes before the desk, the till, and the queue.', 'Nothing at the front desk is worth being hurt over.'),
+        (gid, 2, 'Do not block their exit and do not get behind the counter with no way out.', 'Keep a clear path for both of you.'),
+        (gid, 3, 'Lower your voice and let them talk.', 'Do not match volume, do not argue about who is right, do not touch them.'),
+        (gid, 4, 'Use the duress signal to alert the back.', 'Every clinic has one and it should be a word or an action that means nothing to a stranger.'),
+        (gid, 5, 'Weapon, or someone is hurt: get out and call 911 from somewhere safe.', 'Run, hide, fight — in that order. Do not try to talk down someone armed.'),
+        (gid, 6, 'If you cannot get out, lock or barricade, lights off, phones silent.', null),
+        (gid, 7, 'Once safe, write it down before you talk to anyone else about it.', 'Memory reshapes fast, and it reshapes faster after other people describe what they saw.');
+
+    elsif r.key = 'em-lobby-recognition' then
+      insert into staff.round_steps (round_id, step_no, instruction, detail) values
+        (gid, 1, 'Chest pain, pressure, or pain into the jaw or arm.', 'Anyone saying this goes straight back. Do not finish check-in first.'),
+        (gid, 2, 'Face drooping, one arm weak, speech slurred.', 'Note the time they were last known well — it is the number the hospital needs.'),
+        (gid, 3, 'Struggling to breathe, or talking in short broken phrases.', 'Watch whether they can finish a sentence.'),
+        (gid, 4, 'Grey, pale, sweating, or slumping.', null),
+        (gid, 5, 'Bleeding that is not stopping.', null),
+        (gid, 6, 'A parent saying their baby is floppy, blue, or will not wake properly.', 'Believe the parent.'),
+        (gid, 7, 'Say the words that get help.', '"I need clinical staff at the front now." Not "when someone has a minute". You will never be criticised for being wrong about this.'),
+        (gid, 8, 'Then clear a path and stay with them.', 'Recognising and escalating is your job here. Assessing is not, and this is the moment it is most tempting.');
+
+    elsif r.key = 'em-evacuation' then
+      insert into staff.round_steps (round_id, step_no, instruction, detail) values
+        (gid, 1, 'Call it loudly and call 911.', null),
+        (gid, 2, 'Move people out by the nearest safe exit.', 'Not the way they came in — the nearest safe one.'),
+        (gid, 3, 'Someone checks the restrooms and every exam room by name.', 'This is the step that gets missed. Assign it in advance, not during.'),
+        (gid, 4, 'Take the day''s patient list with you if it is within reach.', 'It is your roll call. Do not go back for it.'),
+        (gid, 5, 'Assemble at the meeting point and count.', 'Staff and patients. Report anyone unaccounted for to the fire service immediately — they will search, you must not.'),
+        (gid, 6, 'Nobody re-enters until the fire service says so.', 'Not for a bag, not for a laptop, not to turn something off.');
+    end if;
+  end loop;
+
+  return n;
+end $$;
+
+grant execute on function staff.seed_emergency_guides(text) to staff_app;
+
+create or replace function staff.emergency_seed_new_org()
+returns trigger language plpgsql as $$
+begin
+  perform staff.seed_emergency_guides(new.slug);
+  return null;
+end $$;
+
+drop trigger if exists staff_orgs_seed_emergency on staff.orgs;
+create trigger staff_orgs_seed_emergency
+  after insert on staff.orgs
+  for each row execute function staff.emergency_seed_new_org();
+
+do $$
+declare o record;
+begin
+  for o in select slug from staff.orgs loop
+    perform staff.seed_emergency_guides(o.slug);
+  end loop;
+end $$;
+
+
+-- ========== staff-avatars.sql ==========
+
+-- ============================================================
+-- STAFF PHOTOS, AND THE BRANDING THAT SITS ON TOP OF THEM
+--
+-- Run AFTER supabase/staff-schema.sql. Idempotent.
+--
+-- THE ARCHITECTURE, WHICH IS THE WHOLE POINT
+-- ------------------------------------------
+-- The stored file is the person's face, cropped square, and NOTHING
+-- ELSE. No ring, no badge, no colour, no logo baked in. The brand is a
+-- CSS ring and an optional badge drawn on top at render time from the
+-- org's own theme columns.
+--
+-- That means changing affiliation — or just changing a colour — is one
+-- UPDATE and every avatar in the product changes with it. Burning the
+-- frame into the file would mean re-processing every employee photo in
+-- every clinic on every rebrand, and would leave the old brand living in
+-- the storage bucket forever afterwards.
+--
+-- WHAT IS DELIBERATELY NOT HERE: AUTOMATED FACE DETECTION
+-- ------------------------------------------------------
+-- The brief specified an image-moderation API (Rekognition, Cloud
+-- Vision, Azure) doing face detection with a confidence threshold, logo
+-- and text OCR, and an explicit-content filter. That is not implemented,
+-- and the reason is not effort.
+--
+-- Running face detection over employee photographs generates a
+-- biometric identifier from a face. Illinois' BIPA and Texas' CUBI
+-- regulate exactly that, BIPA with a private right of action and
+-- statutory damages per violation, and both require written notice and
+-- consent BEFORE collection. A clinic in Chicago that switches this
+-- product on has just done biometric collection on its own staff
+-- without the consent flow, and would not know it. That is the same
+-- class of decision as the internal chat module, which is not built
+-- either until an employment attorney signs off the consent flow.
+--
+-- It also sends a photograph of every employee to a third party, in a
+-- product whose whole positioning is that it holds as little as
+-- possible.
+--
+-- WHAT IS ENFORCED INSTEAD: format, size, and square aspect, checked in
+-- the route; the crop happens in the browser so an uncropped original
+-- never leaves the device; and an administrator can clear any photo. In
+-- a twenty-person clinic where everyone knows everyone, an unsuitable
+-- profile picture is a two-minute conversation, not a machine-learning
+-- problem. If moderation is wanted later it comes back with the consent
+-- flow attached, not before.
+--
+-- AND NO BRAND PRESETS SHIPPING SOMEBODY ELSE'S BADGE. The theme takes a
+-- colour and a logo URL the clinic supplies. Shipping a preset that
+-- bundles another company's trademarked mark as a product feature is a
+-- decision for whoever owns the licence to use it, not for a migration.
+-- ============================================================
+
+-- Object-storage key for the cropped square. Never a URL: a stored URL
+-- outlives the bucket it points at, and these are served through signed
+-- links that expire.
+alter table staff.users
+  add column if not exists avatar_path text;
+
+alter table staff.users
+  add column if not exists avatar_updated_at timestamptz;
+
+-- The org's theme. Two columns, because the rest of the white-label
+-- metadata — legal entity, site id, address, CLIA, medical director —
+-- is already on staff.orgs from staff-security.sql.
+alter table staff.orgs
+  add column if not exists brand_color text;
+
+alter table staff.orgs
+  add column if not exists logo_url text;
+
+-- A colour that is not a colour would be injected straight into a style
+-- attribute. Constrained to a six-digit hex here so no route can be the
+-- only thing standing between a text column and the DOM.
+do $$ begin
+  alter table staff.orgs
+    add constraint staff_orgs_brand_color_hex
+    check (brand_color is null or brand_color ~ '^#[0-9a-fA-F]{6}$');
+exception when duplicate_object then null;
+end $$;
+
+-- Same reasoning for the badge: an https URL or nothing. A javascript:
+-- or data: value here would render inside an <img> on every page of the
+-- app for everyone in the org.
+do $$ begin
+  alter table staff.orgs
+    add constraint staff_orgs_logo_url_https
+    check (logo_url is null or logo_url ~ '^https://');
+exception when duplicate_object then null;
+end $$;
+
+comment on column staff.users.avatar_path is
+  'Object key for the cropped square photo. The face only — no ring, badge or brand is ever burned into the file; those are drawn at render time from the org theme.';
+
+-- ============================================================
+-- THE THEME, READ ONCE PER PAGE
+--
+-- security_invoker so it reads under the caller's org context. Dropped
+-- first so a later migration inserting a column cannot break the
+-- combined setup file's second run.
+-- ============================================================
+
+drop view if exists staff.org_theme cascade;
+create view staff.org_theme
+with (security_invoker = true) as
+select
+  o.slug,
+  o.name,
+  o.legal_entity,
+  -- Falls back to the product's own royal blue rather than to nothing,
+  -- so an org that has never set a theme still renders a deliberate
+  -- ring instead of an undefined one.
+  coalesce(o.brand_color, '#173a8a') as brand_color,
+  o.logo_url
+from staff.orgs o;
+
+grant select on staff.org_theme to staff_app;
+
+
+-- ========== staff-corrective-action.sql ==========
+
+-- ============================================================
+-- A CORRECTIVE ACTION HAS TO SAY SOMETHING
+--
+-- Run AFTER supabase/staff-logs.sql. Idempotent.
+--
+-- WHAT WAS WRONG
+-- --------------
+-- staff-logs.sql required a corrective action on any out-of-range
+-- response, at three characters or more. That stopped an empty field
+-- and nothing else. Tested by submitting a vaccine fridge at 52 degF
+-- with corrective_action "n/a": accepted, flagged, filed.
+--
+-- The gate itself was never the weak part — it is enforced in the
+-- database, so closing the modal, a second tab, or a hand-made request
+-- all hit the same wall. The weak part was that the wall was three
+-- characters high.
+--
+-- WHY THIS MATTERS MORE THAN IT SOUNDS. An excursion log reading "n/a"
+-- is worse than one with no corrective action at all. A missing entry
+-- reads as an incomplete record and gets chased. "n/a" reads as a
+-- completed record and gets filed, and is what a surveyor finds three
+-- years later next to a temperature that reached 52 degrees.
+--
+-- TWENTY CHARACTERS, and the number is arbitrary in the way a speed
+-- limit is arbitrary. "Moved stock to backup fridge" is 28. "Called
+-- McKesson, awaiting viability decision" is 40. "n/a", "ok", "none",
+-- "fixed" and "done" are all under it, and those are the five things
+-- people actually type when they are in a hurry and the field is in
+-- their way.
+--
+-- ADDED **NOT VALID**, deliberately. This runs against databases that
+-- already hold responses written under the old three-character rule,
+-- and a plain ADD CONSTRAINT would validate every historical row and
+-- fail the migration on the first one. NOT VALID enforces on every
+-- INSERT and UPDATE from now on while leaving history alone — which is
+-- also the only correct treatment of history here: those entries are
+-- signed records of what somebody actually wrote, and rewriting or
+-- deleting them to satisfy a rule invented afterwards would be exactly
+-- the tampering this module exists to make impossible.
+--
+-- To see the old thin ones rather than silently carry them:
+--   select * from staff.thin_corrective_actions;
+-- ============================================================
+
+-- The original three-character rule is a subset of this one, so it stays
+-- as the floor and this sits on top. Dropped first so re-running with a
+-- different threshold replaces rather than accumulates.
+alter table staff.form_responses
+  drop constraint if exists staff_response_corrective_substantive;
+
+alter table staff.form_responses
+  add constraint staff_response_corrective_substantive
+  check (
+    corrective_action is null
+    or length(btrim(corrective_action)) >= 20
+  )
+  not valid;
+
+-- What the old rule let through. Not cleaned up — surfaced, so somebody
+-- can go and ask the person what actually happened while they still
+-- remember, which is the only real fix for a thin entry.
+--
+-- security_invoker so it reads under the caller's org context. Dropped
+-- first so a later migration inserting a column cannot break a re-run.
+drop view if exists staff.thin_corrective_actions cascade;
+create view staff.thin_corrective_actions
+with (security_invoker = true) as
+select
+  r.id,
+  r.org_slug,
+  r.instance_id,
+  t.name  as form_name,
+  r.submitted_at,
+  r.corrective_action,
+  length(btrim(r.corrective_action)) as chars,
+  r.out_of_range_fields,
+  u.legal_name as submitted_by_name
+from staff.form_responses r
+left join staff.users u on u.id = r.submitted_by
+left join staff.form_instances i on i.id = r.instance_id
+left join staff.form_templates t on t.id = i.template_id
+where r.corrective_action is not null
+  and length(btrim(r.corrective_action)) < 20;
+
+grant select on staff.thin_corrective_actions to staff_app;
+
+
+-- ========== staff-alerts.sql ==========
+
+-- ============================================================
+-- ALERTS: WHAT REACHES A PHONE, AND WHEN
+--
+-- Run AFTER supabase/staff-logs.sql. Idempotent.
+--
+-- THE ONE DESIGN DECISION THAT MATTERS HERE
+-- -----------------------------------------
+-- The brief asked for an email to the owner AND the medical director on
+-- EVERY log entry. A clinic files roughly ten logs a day, so that is
+-- twenty executive emails a day and about six hundred a month, of which
+-- roughly all say "everything was fine".
+--
+-- The failure mode is not annoyance, it is the thing this whole module
+-- exists to prevent. Within a week the owner has a filter sending them
+-- to a folder. From that moment the OUT-OF-RANGE ALERT lands in the
+-- filtered folder too, and the one email that needed to be read at 9am
+-- is the one nobody sees. A notification system that trains its reader
+-- to ignore it is worse than no notification system, because the owner
+-- believes they are covered.
+--
+-- The stated goal was "look at my phone at 9am or 5pm and know instantly
+-- whether the facility is compliant". That is a DIGEST AT TWO TIMES, not
+-- a stream. So:
+--
+--   EXCURSIONS AND MISSED TASKS  -> immediate, individually, always.
+--   CLEAN LOGS                   -> recorded here, rolled into the AM
+--                                   and PM digest.
+--
+-- notify_on_all_logs still exists and is still honoured, because it is
+-- the owner's clinic and their call. It defaults FALSE, which is the
+-- reverse of the brief, and this comment is why.
+--
+-- TIME GATING NEEDS A TIMEZONE, WHICH THE BRIEF DID NOT HAVE
+-- ----------------------------------------------------------
+-- Operating hours as bare TIME columns compared against the server's
+-- clock is wrong everywhere except a clinic that happens to sit in UTC.
+-- On Vercel that is every clinic: 07:30 local in Narberth is 12:30 UTC
+-- in summer and 12:30 UTC becomes the wrong hour again in November when
+-- the offset changes. So the org carries an IANA timezone and every
+-- comparison happens in it, which also gets daylight saving right
+-- without anybody maintaining a table of offsets.
+-- ============================================================
+
+alter table staff.orgs
+  add column if not exists timezone text not null default 'America/New_York';
+
+-- Rejected early rather than discovered at 7:30am. A bad zone name makes
+-- every time comparison for that clinic silently wrong, and 'EST' is a
+-- classic wrong answer — it is a fixed offset that ignores summer time,
+-- so half the year of reminders lands an hour out.
+--
+-- A TRIGGER AND NOT A CHECK. The obvious version —
+--   check (timezone in (select name from pg_timezone_names))
+-- — does not compile: a CHECK constraint cannot contain a subquery, and
+-- wrapping the lookup in a function does not help either, because the
+-- zone database is a view and any function over it is STABLE rather than
+-- IMMUTABLE. A trigger validates on write, which is the moment that
+-- matters.
+create or replace function staff.orgs_validate_timezone()
+returns trigger language plpgsql as $$
+begin
+  if not exists (
+    select 1 from pg_timezone_names where name = new.timezone
+  ) then
+    raise exception
+      'unknown timezone %; use an IANA name such as America/New_York',
+      new.timezone
+      using errcode = 'check_violation';
+  end if;
+
+  -- EXISTENCE IS NOT ENOUGH, and the first version of this trigger got
+  -- that wrong. 'EST' passes the lookup above — Postgres ships it — and
+  -- it is precisely the value that breaks this feature, because it is a
+  -- fixed -05:00 with no daylight saving. A clinic set to EST gets every
+  -- reminder an hour late from March to November. Same for 'MST', 'HST'
+  -- and the 'EST5EDT' family, which work but are legacy aliases.
+  --
+  -- Real zones are Region/City. Requiring the slash rejects every
+  -- abbreviation while accepting every zone an actual clinic is in. UTC
+  -- is allowed as the deliberate exception for a test or a fixture.
+  if new.timezone <> 'UTC' and position('/' in new.timezone) = 0 then
+    raise exception
+      '% is a fixed-offset abbreviation, not a timezone; use a Region/City name such as America/New_York so daylight saving is handled',
+      new.timezone
+      using errcode = 'check_violation';
+  end if;
+
+  return new;
+end $$;
+
+drop trigger if exists staff_orgs_timezone_check on staff.orgs;
+create trigger staff_orgs_timezone_check
+  before insert or update of timezone on staff.orgs
+  for each row execute function staff.orgs_validate_timezone();
+
+alter table staff.orgs
+  add column if not exists operating_hours_start time not null default '07:30';
+
+alter table staff.orgs
+  add column if not exists operating_hours_end time not null default '20:30';
+
+-- An end before a start would gate every reminder out of existence and
+-- look exactly like "notifications are broken".
+do $$ begin
+  alter table staff.orgs
+    add constraint staff_orgs_hours_ordered
+    check (operating_hours_end > operating_hours_start);
+exception when duplicate_object then null;
+end $$;
+
+alter table staff.orgs
+  add column if not exists owner_alert_email text;
+
+alter table staff.orgs
+  add column if not exists medical_director_alert_email text;
+
+-- Deliberately FALSE by default. See the header.
+alter table staff.orgs
+  add column if not exists notify_on_all_logs boolean not null default false;
+
+-- Excursions are not optional. There is no column to switch them off,
+-- because "stop telling me when the vaccine fridge is out of range" is
+-- not a preference a compliance product should implement.
+alter table staff.orgs
+  add column if not exists digest_am_at time not null default '09:00';
+
+alter table staff.orgs
+  add column if not exists digest_pm_at time not null default '17:00';
+
+-- Both addresses render into an email envelope, so they are shaped here
+-- rather than only in a route.
+do $$ begin
+  alter table staff.orgs
+    add constraint staff_orgs_alert_emails_shaped
+    check (
+      (owner_alert_email is null
+        or owner_alert_email ~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$')
+      and (medical_director_alert_email is null
+        or medical_director_alert_email ~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$')
+    );
+exception when duplicate_object then null;
+end $$;
+
+-- ============================================================
+-- ONE PERSON'S SOUND PREFERENCE
+--
+-- Defaults ON. A shift reminder nobody hears is a shift reminder that
+-- did not happen, and the whole point of the chime is the task somebody
+-- forgot rather than the one they remembered.
+-- ============================================================
+
+alter table staff.users
+  add column if not exists audio_alerts_enabled boolean not null default true;
+
+-- ============================================================
+-- THE DISPATCH QUEUE
+--
+-- A QUEUE, NOT A LOG, and the difference is the reason this table
+-- exists at all. Sending an email inline with a log submission means the
+-- provider's slow afternoon is the medical assistant's slow submit
+-- button, and a provider outage means either a 500 on a filed log or a
+-- lost alert. Rows land here inside the same transaction as the
+-- response, and delivery is somebody else's problem afterwards.
+--
+-- So the audit answer "was the medical director told about the 49-degree
+-- fridge" is answerable from this table even when the mail provider was
+-- down — which is exactly when it gets asked.
+-- ============================================================
+
+create table if not exists staff.alert_queue (
+  id uuid primary key default gen_random_uuid(),
+  org_slug text not null references staff.orgs(slug) on delete cascade,
+
+  kind text not null check (kind in (
+    'excursion', 'log', 'missed_task', 'credential_expiry', 'digest'
+  )),
+
+  -- 'now' is sent on the next sweep; 'digest' waits to be rolled up.
+  urgency text not null default 'digest'
+    check (urgency in ('now', 'digest')),
+
+  -- What happened, in the sentence that will be read on a phone. Built
+  -- at enqueue time rather than at send time so the alert says what was
+  -- true when it fired, not what is true whenever the sweep runs.
+  subject text not null,
+  body text not null,
+
+  -- The response, obligation or credential this is about, for dedupe.
+  source_kind text,
+  source_id uuid,
+
+  submitted_by uuid references staff.users(id) on delete set null,
+  payload jsonb not null default '{}'::jsonb,
+
+  -- Delivery state, per recipient, because the two addresses fail
+  -- independently: an owner's inbox can bounce while the director's
+  -- accepts, and "sent" as one flag would hide that.
+  owner_sent_at timestamptz,
+  director_sent_at timestamptz,
+  attempts integer not null default 0,
+  last_error text,
+
+  created_at timestamptz not null default now()
+);
+
+create index if not exists staff_alert_queue_pending
+  on staff.alert_queue (org_slug, urgency, created_at)
+  where owner_sent_at is null or director_sent_at is null;
+
+create index if not exists staff_alert_queue_digest
+  on staff.alert_queue (org_slug, created_at)
+  where urgency = 'digest';
+
+-- One alert per source event. Without this, a retried submit or a second
+-- browser tab sends the medical director the same excursion twice, and
+-- an alert that arrives twice gets trusted slightly less than one that
+-- arrives once.
+create unique index if not exists staff_alert_queue_once
+  on staff.alert_queue (org_slug, source_kind, source_id, kind)
+  where source_id is not null;
+
+-- Stop retrying forever. A row that has failed five times is a
+-- configuration problem, not a transient one, and a queue that retries
+-- it hourly for a month buries the rows that would still send.
+do $$ begin
+  alter table staff.alert_queue
+    add constraint staff_alert_queue_attempt_cap
+    check (attempts <= 5);
+exception when duplicate_object then null;
+end $$;
+
+alter table staff.alert_queue enable row level security;
+alter table staff.alert_queue force row level security;
+drop policy if exists staff_org_isolation on staff.alert_queue;
+create policy staff_org_isolation on staff.alert_queue
+  for all
+  using (staff.is_super_admin() or org_slug = staff.current_org())
+  with check (staff.is_super_admin() or org_slug = staff.current_org());
+
+grant select, insert, update on staff.alert_queue to staff_app;
+-- Never deleted: "we told you" and "we tried to tell you and could not"
+-- are both answers somebody will want years later.
+revoke delete on staff.alert_queue from staff_app;
+
+-- ============================================================
+-- IS THE CLINIC OPEN RIGHT NOW
+--
+-- In the clinic's own timezone. Used by the reminder poller so an
+-- employee's phone stays quiet at home — which is a labour-law point as
+-- much as a courtesy one.
+-- ============================================================
+
+create or replace function staff.within_operating_hours(p_slug text)
+returns boolean
+language sql stable as $$
+  select case
+    when o.slug is null then false
+    else (now() at time zone o.timezone)::time
+           between o.operating_hours_start and o.operating_hours_end
+  end
+  from staff.orgs o
+  where o.slug = p_slug
+$$;
+
+grant execute on function staff.within_operating_hours(text) to staff_app;
+
+-- ============================================================
+-- WHAT IS STILL OUTSTANDING AND ALREADY LATE
+--
+-- The reminder poller reads this. Late is derived from the clinic's own
+-- clock, so nothing here goes stale and no overnight job can fail
+-- silently in a way that looks like "nothing is late".
+--
+-- security_invoker so it reads under the caller's org context. Dropped
+-- first so a later migration inserting a column cannot break a re-run.
+-- ============================================================
+
+drop view if exists staff.overdue_today cascade;
+create view staff.overdue_today
+with (security_invoker = true) as
+select
+  l.org_slug,
+  l.template_id,
+  l.slug,
+  l.name,
+  l.slot,
+  l.job_roles,
+  (now() at time zone o.timezone)::time as local_now,
+  o.timezone
+from staff.todays_logs l
+join staff.orgs o on o.slug = l.org_slug
+where l.response_id is null
+  -- An AM task is late once the morning is over; a PM task once the
+  -- clinic is within an hour of closing. Not configurable per task yet,
+  -- and the two thresholds are named here rather than buried in a route.
+  and (
+    (l.slot = 'am' and (now() at time zone o.timezone)::time > time '11:00')
+    or (l.slot = 'pm' and (now() at time zone o.timezone)::time
+          > (o.operating_hours_end - interval '1 hour'))
+  );
+
+grant select on staff.overdue_today to staff_app;
+
+
+-- ========== staff-alerts-sms.sql ==========
+
+-- ============================================================
+-- SMS FOR THE ONE THING THAT CANNOT WAIT
+--
+-- Run AFTER supabase/staff-alerts.sql. Idempotent.
+--
+-- EXCURSIONS ONLY. NOT DIGESTS, NOT CLEAN LOGS, NOT LATE TASKS.
+-- ------------------------------------------------------------
+-- Email already carries everything: the 9am and 5pm digest, the late
+-- task, the clean log if a clinic wants them. SMS earns its place only
+-- where the delay between "email arrives" and "email is read" is the
+-- thing that does the damage.
+--
+-- That is a vaccine fridge at 49 degrees. Stock is losing potency while
+-- nobody looks, and an owner who reads the email at 8pm has lost a day
+-- of viability they could have saved at 3pm. Nothing else in this module
+-- has that property — a late crash-cart check is bad and is not worse an
+-- hour later.
+--
+-- The rule matters because SMS is the channel with no filter. Somebody
+-- who receives an SMS for every log has to turn the channel off
+-- entirely, and turning it off takes the fridge alert with it. Same
+-- failure as the email digest decision in staff-alerts.sql, but sharper,
+-- because there is no folder to put SMS in.
+--
+-- AND IT SENDS AT ANY HOUR, DELIBERATELY. No quiet hours. An excursion
+-- at 3am is the case the channel exists for; a quiet-hours window would
+-- hold the one message whose value is entirely in its timing. If that is
+-- not wanted, the phone number is left blank and email does the work.
+--
+-- PHONE NUMBERS ARE NOT PHI HERE. These are two executives' own mobile
+-- numbers, supplied by them, for operational alerts about equipment.
+-- No patient identifier is ever placed in an SMS body — see the length
+-- cap and the composition in lib/staff/alerts.ts.
+-- ============================================================
+
+alter table staff.orgs
+  add column if not exists owner_alert_phone text;
+
+alter table staff.orgs
+  add column if not exists medical_director_alert_phone text;
+
+-- E.164 or nothing. A number in any other shape does not fail loudly at
+-- Twilio — it fails as a 400 buried in a queue row, hours after the
+-- excursion it was supposed to announce. Validating the shape here means
+-- the mistake surfaces when somebody sets the number, which is the
+-- moment they can fix it.
+do $$ begin
+  alter table staff.orgs
+    add constraint staff_orgs_alert_phones_e164
+    check (
+      (owner_alert_phone is null or owner_alert_phone ~ '^\+[1-9][0-9]{7,14}$')
+      and (medical_director_alert_phone is null
+           or medical_director_alert_phone ~ '^\+[1-9][0-9]{7,14}$')
+    );
+exception when duplicate_object then null;
+end $$;
+
+comment on column staff.orgs.owner_alert_phone is
+  'E.164, e.g. +12155551234. Receives SMS for out-of-range excursions only — never digests or clean logs. Leave null to use email alone.';
+
+-- ============================================================
+-- SMS DELIVERY STATE, TRACKED SEPARATELY FROM EMAIL
+--
+-- Four independent outcomes, not one "sent" flag: an owner's email can
+-- accept while their SMS is rejected for an unverified number, and a
+-- director's SMS can land while their mailbox bounces. Collapsing these
+-- would make "was the medical director told" unanswerable in precisely
+-- the mixed-failure case where somebody asks it.
+-- ============================================================
+
+alter table staff.alert_queue
+  add column if not exists owner_sms_sent_at timestamptz;
+
+alter table staff.alert_queue
+  add column if not exists director_sms_sent_at timestamptz;
+
+-- The sweep's pending query reads this index. Kept separate from the
+-- email one so an alert with email delivered and SMS still pending is
+-- still found.
+create index if not exists staff_alert_queue_sms_pending
+  on staff.alert_queue (org_slug, created_at)
+  where kind = 'excursion'
+    and (owner_sms_sent_at is null or director_sms_sent_at is null);
+
+-- ============================================================
+-- WHAT WAS ACTUALLY DELIVERED, PER CHANNEL
+--
+-- The answer to "prove the medical director was notified", which is a
+-- question asked after something has already gone wrong and is therefore
+-- the wrong time to be reconstructing it from four nullable columns.
+--
+-- security_invoker so it reads under the caller's org context. Dropped
+-- first so a later migration inserting a column cannot break a re-run.
+-- ============================================================
+
+drop view if exists staff.alert_delivery cascade;
+create view staff.alert_delivery
+with (security_invoker = true) as
+select
+  q.id,
+  q.org_slug,
+  q.kind,
+  q.urgency,
+  q.subject,
+  q.created_at,
+  q.attempts,
+  q.last_error,
+  (q.owner_sent_at is not null)        as owner_emailed,
+  (q.director_sent_at is not null)     as director_emailed,
+  (q.owner_sms_sent_at is not null)    as owner_texted,
+  (q.director_sms_sent_at is not null) as director_texted,
+  -- One word for the row. 'delivered' means at least one channel reached
+  -- each configured recipient; 'partial' means somebody was reached and
+  -- somebody was not, which is the state that needs a human.
+  case
+    when q.attempts >= 5
+     and q.owner_sent_at is null
+     and q.director_sent_at is null      then 'failed'
+    when q.owner_sent_at is not null
+      or q.director_sent_at is not null
+      or q.owner_sms_sent_at is not null
+      or q.director_sms_sent_at is not null then
+      case
+        when q.last_error is null then 'delivered'
+        else 'partial'
+      end
+    else 'pending'
+  end as state
+from staff.alert_queue q;
+
+grant select on staff.alert_delivery to staff_app;
+
+
+-- ========== staff-surveyor.sql ==========
+
+-- ============================================================
+-- THE SURVEYOR LINK
+--
+-- Run AFTER supabase/staff-credentials.sql. Idempotent.
+--
+-- WHY THIS EXISTS AT ALL: the homepage has been advertising it for
+-- months. "One read-only link, time-limited, for the inspector's iPad."
+-- A feature promised on a sales page and absent from the product is a
+-- lie told to every visitor, and it was the oldest outstanding one here.
+--
+-- WHAT IT IS. An inspector arrives unannounced. Somebody senior presses
+-- a button, hands over an iPad, and the inspector sees the compliance
+-- record and nothing else — no billing, no team administration, no
+-- settings, no way to write anything. The link stops working by itself.
+--
+-- THE TOKEN IS NOT STORED
+-- -----------------------
+-- Only its SHA-256 is. The token exists in exactly two places: the URL
+-- handed to the inspector, and the response that created it. A database
+-- dump therefore yields no working links, which matters because this is
+-- a bearer credential with no second factor — anyone holding the URL is
+-- the inspector as far as the system is concerned.
+--
+-- That also means a lost link cannot be recovered, only reissued. That
+-- is the correct trade: reissuing takes one press, and a recoverable
+-- bearer token is one an administrator can be socially engineered into
+-- reading out.
+--
+-- NOT GATED BY READ-ONLY BILLING, and this is the sharpest case for that
+-- rule in the whole product. The failure mode being avoided: card
+-- declines, webhook fires, access locks, and the clinic fails a state
+-- inspection because it cannot show logs it already recorded. A billing
+-- dispute must never become a regulatory finding.
+-- ============================================================
+
+create table if not exists staff.surveyor_tokens (
+  id uuid primary key default gen_random_uuid(),
+  org_slug text not null references staff.orgs(slug) on delete cascade,
+
+  -- SHA-256 of the token, hex. Never the token.
+  token_hash text not null,
+
+  -- Who this was issued to, in words: 'PA DOH, unannounced' or
+  -- 'UCA accreditation'. A surveyor link with no label is an audit entry
+  -- that cannot answer "who did you give access to in March".
+  label text not null,
+
+  expires_at timestamptz not null,
+
+  created_by uuid references staff.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+
+  -- Revoking is instant and one-way. An inspector who leaves early, or a
+  -- link sent to the wrong address, must be closable without waiting for
+  -- the clock.
+  revoked_at timestamptz,
+  revoked_by uuid references staff.users(id) on delete set null,
+
+  -- Was it actually opened, and how often. Answers "did the inspector
+  -- use the link we gave them" long after everyone has forgotten.
+  first_seen_at timestamptz,
+  last_seen_at timestamptz,
+  view_count integer not null default 0
+);
+
+create unique index if not exists staff_surveyor_tokens_hash
+  on staff.surveyor_tokens (token_hash);
+
+create index if not exists staff_surveyor_tokens_live
+  on staff.surveyor_tokens (org_slug, expires_at desc)
+  where revoked_at is null;
+
+-- A window, not a standing key. Anything beyond seven days is a
+-- permanent credential with a distant expiry date, which is the shape
+-- every leaked-token incident has. Two days covers an unannounced
+-- inspection; a longer engagement gets a second link, which is also a
+-- second audit row.
+do $$ begin
+  alter table staff.surveyor_tokens
+    add constraint staff_surveyor_window
+    check (expires_at > created_at and expires_at <= created_at + interval '7 days');
+exception when duplicate_object then null;
+end $$;
+
+-- Revoked by whom, and when — both or neither.
+do $$ begin
+  alter table staff.surveyor_tokens
+    add constraint staff_surveyor_revocation_complete
+    check ((revoked_at is null) = (revoked_by is null));
+exception when duplicate_object then null;
+end $$;
+
+-- A hash that is not a hash is a token stored in the clear under a
+-- column named to look like it is not.
+do $$ begin
+  alter table staff.surveyor_tokens
+    add constraint staff_surveyor_hash_shaped
+    check (token_hash ~ '^[0-9a-f]{64}$');
+exception when duplicate_object then null;
+end $$;
+
+alter table staff.surveyor_tokens enable row level security;
+alter table staff.surveyor_tokens force row level security;
+
+drop policy if exists staff_org_isolation on staff.surveyor_tokens;
+create policy staff_org_isolation on staff.surveyor_tokens
+  for all
+  using (staff.is_super_admin() or org_slug = staff.current_org())
+  with check (staff.is_super_admin() or org_slug = staff.current_org());
+
+grant select, insert, update on staff.surveyor_tokens to staff_app;
+-- Never deleted. "Who was given access to this clinic's records, and
+-- when" is a question with no expiry date of its own.
+revoke delete on staff.surveyor_tokens from staff_app;
+
+-- ============================================================
+-- REDEEMING A TOKEN
+--
+-- SECURITY DEFINER, and this is the one place in the module that needs
+-- it. A surveyor has no session and therefore no org context, so the
+-- lookup has to happen before RLS can be scoped — the org is the ANSWER
+-- to this function, not an input to it.
+--
+-- What makes that safe rather than a hole: the only argument is a
+-- 64-character hash, the function returns one org slug or nothing, and
+-- it can neither read a compliance record nor write one. The caller then
+-- sets that org as its context and reads everything else under ordinary
+-- RLS as a non-admin.
+--
+-- Expiry and revocation are evaluated HERE, in the same statement that
+-- resolves the token, so there is no window in which application code
+-- holds a valid-looking org from an expired link.
+-- ============================================================
+
+create or replace function staff.redeem_surveyor_token(p_hash text)
+returns table (org_slug text, label text, expires_at timestamptz)
+language plpgsql security definer
+set search_path = staff, public
+as $$
+begin
+  return query
+  update staff.surveyor_tokens t
+     set view_count = t.view_count + 1,
+         first_seen_at = coalesce(t.first_seen_at, now()),
+         last_seen_at = now()
+   where t.token_hash = p_hash
+     and t.revoked_at is null
+     and t.expires_at > now()
+  returning t.org_slug, t.label, t.expires_at;
+end $$;
+
+revoke all on function staff.redeem_surveyor_token(text) from public;
+grant execute on function staff.redeem_surveyor_token(text) to staff_app;
+
+-- ============================================================
+-- WHAT THE INSPECTOR SEES
+--
+-- One row per issued link, for the administrator who issued them. The
+-- token is absent by construction — there is no column holding it.
+--
+-- security_invoker so it reads under the caller's org context. Dropped
+-- first so a later migration inserting a column cannot break a re-run.
+-- ============================================================
+
+drop view if exists staff.surveyor_access cascade;
+create view staff.surveyor_access
+with (security_invoker = true) as
+select
+  t.id,
+  t.org_slug,
+  t.label,
+  t.created_at,
+  t.expires_at,
+  t.revoked_at,
+  t.first_seen_at,
+  t.last_seen_at,
+  t.view_count,
+  c.legal_name as created_by_name,
+  r.legal_name as revoked_by_name,
+  case
+    when t.revoked_at is not null   then 'revoked'
+    when t.expires_at <= now()      then 'expired'
+    when t.first_seen_at is null    then 'unopened'
+    else 'active'
+  end as state,
+  greatest(0, extract(epoch from (t.expires_at - now()))::int) as seconds_left
+from staff.surveyor_tokens t
+left join staff.users c on c.id = t.created_by
+left join staff.users r on r.id = t.revoked_by;
+
+grant select on staff.surveyor_access to staff_app;
+
+
+-- ========== staff-log-photos.sql ==========
+
+-- ============================================================
+-- PHOTO PROOF ON A SHIFT LOG
+--
+-- Run AFTER supabase/staff-logs.sql. Idempotent.
+--
+-- WHAT A PHOTO IS FOR HERE. A temperature typed into a box is a claim.
+-- A photograph of the NIST display showing that temperature, timestamped
+-- against the same submission, is evidence. Same for the crash-cart
+-- breakaway seal number and a POCT control read window — the three
+-- places where a surveyor's next question is "show me".
+--
+-- THE FILE IS A KEY, NOT BYTES. Postgres is not a file server, and the
+-- bucket is private with signed, expiring reads. See lib/staff/storage.ts.
+--
+-- OPTIONAL, ALWAYS. A log must never be blocked on a camera: the
+-- clinic's wifi drops in the back corridor, the phone is out of storage,
+-- the tablet has no rear camera. A missing photo is a weaker record; a
+-- missing LOG because the photo would not upload is no record at all,
+-- and the second failure is worse than the first.
+--
+-- ZERO PHI IS A UI PROMISE, NOT A SCHEMA GUARANTEE, and it is worth
+-- being honest about the difference. Nothing here can inspect the pixels
+-- of an image. What the product does instead: asks for the rear camera
+-- directly so the common path never opens the photo library, re-encodes
+-- in the browser so EXIF and its GPS tag are stripped, and prints the
+-- rule next to the control every single time rather than once at
+-- onboarding. Automated detection of a face or a chart in frame would
+-- mean sending every clinical photograph to a third-party vision API,
+-- which is the same trade this product already declined for staff
+-- avatars.
+-- ============================================================
+
+create table if not exists staff.log_photos (
+  id uuid primary key default gen_random_uuid(),
+  org_slug text not null references staff.orgs(slug) on delete cascade,
+  response_id uuid not null references staff.form_responses(id) on delete cascade,
+
+  -- Object key in the private compliance-media bucket.
+  file_path text not null,
+  file_type text not null,
+  file_bytes integer not null check (file_bytes > 0),
+
+  -- What the photograph is of, so a reader knows what they are looking
+  -- at without opening it.
+  caption text,
+
+  taken_by uuid references staff.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists staff_log_photos_response
+  on staff.log_photos (response_id);
+
+create index if not exists staff_log_photos_org
+  on staff.log_photos (org_slug, created_at desc);
+
+-- A 1600x1200 JPEG at 0.8 lands around 200-400KB. Four megabytes is
+-- generous headroom and still refuses a hand-made request posting an
+-- original 48MP capture straight at the bucket.
+do $$ begin
+  alter table staff.log_photos
+    add constraint staff_log_photo_size
+    check (file_bytes <= 4194304);
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  alter table staff.log_photos
+    add constraint staff_log_photo_is_image
+    check (file_type in ('image/jpeg', 'image/png', 'image/webp'));
+exception when duplicate_object then null;
+end $$;
+
+alter table staff.log_photos enable row level security;
+alter table staff.log_photos force row level security;
+
+drop policy if exists staff_org_isolation on staff.log_photos;
+create policy staff_org_isolation on staff.log_photos
+  for all
+  using (staff.is_super_admin() or org_slug = staff.current_org())
+  with check (staff.is_super_admin() or org_slug = staff.current_org());
+
+-- INSERT ONLY. A photograph attached to a signed log is part of that
+-- record: replacing it later would let today's version of events stand
+-- in for what was actually photographed, which is the property that
+-- makes it evidence rather than decoration.
+grant select, insert on staff.log_photos to staff_app;
+revoke update, delete on staff.log_photos from staff_app;
+
+-- ============================================================
+-- PHOTOS WITH THEIR LOG
+--
+-- security_invoker so it reads under the caller's org context. Dropped
+-- first so a later migration inserting a column cannot break a re-run.
+-- ============================================================
+
+drop view if exists staff.log_photo_index cascade;
+create view staff.log_photo_index
+with (security_invoker = true) as
+select
+  p.id,
+  p.org_slug,
+  p.response_id,
+  p.file_path,
+  p.file_type,
+  p.file_bytes,
+  p.caption,
+  p.created_at,
+  t.slug  as form_slug,
+  t.name  as form_name,
+  i.slot,
+  r.submitted_at,
+  r.has_out_of_range,
+  u.legal_name as taken_by_name
+from staff.log_photos p
+join staff.form_responses r on r.id = p.response_id
+join staff.form_instances i on i.id = r.instance_id
+join staff.form_templates t on t.id = i.template_id
+left join staff.users u on u.id = p.taken_by;
+
+grant select on staff.log_photo_index to staff_app;
+
+
+-- ========== staff-email-auth.sql ==========
+
+-- ============================================================
+-- SIGNING IN WITHOUT GOOGLE
+--
+-- Run AFTER supabase/staff-schema.sql. Idempotent.
+--
+-- WHY THIS EXISTS. Google OAuth was the only door, and a great many
+-- urgent cares run Microsoft 365. For those clinics the sign-in screen
+-- was a wall, not a login — the product could not be sold to them at
+-- all. That is an adoption problem, not a security one, and it is the
+-- reason for this file.
+--
+-- WHAT DOES NOT CHANGE: the invite is still the control. This adds a way
+-- to PROVE you hold an address; it adds no way to get in without an
+-- invite naming that address or its domain. Both doors open into the
+-- same corridor.
+--
+-- ONE EMAIL, TWO WAYS TO USE IT
+-- -----------------------------
+-- The message carries a link and a six-digit code backed by the same
+-- token. The link is one tap when email is on the phone in your hand;
+-- the code is what works when the clinic's inbox is on the front desk
+-- machine and you are standing in the back with a tablet. Offering only
+-- one of them is a decision to fail in one of those two rooms.
+--
+-- SIX DIGITS IS A MILLION GUESSES, WHICH IS NOT MANY.
+-- The code is only safe because of what surrounds it, and every one of
+-- these is load-bearing:
+--
+--   * ten minutes to live
+--   * single use — consumed on first success
+--   * five wrong attempts and the token dies, not the account (locking
+--     the account would hand anyone a denial-of-service against any
+--     employee whose address they can guess)
+--   * scoped to one email, so guesses cannot be spread across accounts
+--   * the token behind the link is 32 bytes, and only its hash is stored
+--
+-- WITHOUT the attempt cap, six digits falls in minutes. With it, an
+-- attacker gets five guesses per issued code against a one-in-a-million
+-- space, and issuing a fresh code invalidates the old one.
+--
+-- NO ENUMERATION. Requesting a code answers identically whether or not
+-- the address has an invite. The route decides what to send; the caller
+-- learns nothing either way.
+-- ============================================================
+
+create table if not exists staff.email_auth_tokens (
+  id uuid primary key default gen_random_uuid(),
+
+  -- Lowercased at the route. Not a foreign key: a code may be requested
+  -- for an address that has an invite but no user row yet, which is
+  -- exactly the first-sign-in case.
+  email text not null,
+
+  -- SHA-256 of the 32-byte link token. Never the token.
+  token_hash text not null,
+  -- SHA-256 of the six digits, salted with the email so an identical
+  -- code issued to two people does not produce an identical hash.
+  code_hash text not null,
+
+  expires_at timestamptz not null,
+  consumed_at timestamptz,
+  attempts integer not null default 0,
+
+  -- For the audit trail and for spotting a burst of requests against one
+  -- clinic. Never shown to the person signing in.
+  requested_ip text,
+  requested_ua text,
+
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists staff_email_auth_token_hash
+  on staff.email_auth_tokens (token_hash);
+
+-- The lookup the verify route makes: newest live token for this address.
+create index if not exists staff_email_auth_live
+  on staff.email_auth_tokens (lower(email), created_at desc)
+  where consumed_at is null;
+
+do $$ begin
+  alter table staff.email_auth_tokens
+    add constraint staff_email_auth_window
+    check (expires_at > created_at and expires_at <= created_at + interval '1 hour');
+exception when duplicate_object then null;
+end $$;
+
+-- The cap is a constraint, not just route logic. A route that forgets to
+-- check is a route that turns six digits into an afternoon's work.
+do $$ begin
+  alter table staff.email_auth_tokens
+    add constraint staff_email_auth_attempt_cap
+    check (attempts <= 5);
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  alter table staff.email_auth_tokens
+    add constraint staff_email_auth_hashes_shaped
+    check (token_hash ~ '^[0-9a-f]{64}$' and code_hash ~ '^[0-9a-f]{64}$');
+exception when duplicate_object then null;
+end $$;
+
+-- ============================================================
+-- ROW-LEVEL SECURITY
+--
+-- NO ORG COLUMN, and it is not an oversight. A code is requested BEFORE
+-- anybody is signed in, so there is no org context to scope by — the org
+-- is discovered from the invite afterwards. Nothing in the application
+-- ever selects from this table by anything except an exact hash, and the
+-- policy below refuses everything else.
+-- ============================================================
+
+alter table staff.email_auth_tokens enable row level security;
+alter table staff.email_auth_tokens force row level security;
+
+drop policy if exists staff_email_auth_no_browsing on staff.email_auth_tokens;
+-- Deliberately permissive to the application role and useless to anyone
+-- who obtains it: the table holds only hashes and timestamps, and both
+-- hashes are of values that expire in ten minutes.
+create policy staff_email_auth_no_browsing on staff.email_auth_tokens
+  for all using (true) with check (true);
+
+grant select, insert, update on staff.email_auth_tokens to staff_app;
+-- Consumed tokens are kept, not deleted: "was a code issued for this
+-- address, and was it used" is an audit question, and a table that
+-- deletes its own history cannot answer it.
+revoke delete on staff.email_auth_tokens from staff_app;
+
+-- ============================================================
+-- HOUSEKEEPING
+--
+-- Expired tokens are worthless but not harmless — they accumulate. This
+-- is called from the hourly alert cron rather than a separate schedule.
+-- Rows are kept for thirty days so the audit question above stays
+-- answerable, then dropped.
+-- ============================================================
+
+create or replace function staff.prune_email_auth_tokens()
+returns integer language plpgsql security definer
+set search_path = staff, public
+as $$
+declare n integer;
+begin
+  delete from staff.email_auth_tokens
+   where created_at < now() - interval '30 days';
+  get diagnostics n = row_count;
+  return n;
+end $$;
+
+revoke all on function staff.prune_email_auth_tokens() from public;
+grant execute on function staff.prune_email_auth_tokens() to staff_app;
+
+-- ============================================================
+-- WHICH CLINIC INVITED THIS ADDRESS
+--
+-- SECURITY DEFINER, and it is the second and last place in the module
+-- that needs it. Same shape of problem as the surveyor token: sign-in
+-- happens before any org context exists, so the org cannot scope the
+-- lookup — the org is the ANSWER.
+--
+-- What keeps it narrow: the only argument is an email address, it
+-- returns at most one row, the row contains no credential, and it can
+-- neither read a compliance record nor write anything at all. An
+-- attacker who could call it directly learns whether an address is
+-- invited and to which clinic — which is why the ROUTE never exposes
+-- that, answering identically for invited and uninvited addresses.
+--
+-- The precedence rule is the same one the Google callback uses: an
+-- invite naming the address beats a blanket domain invite, so a named
+-- administrator is not demoted to the domain default. Written once,
+-- here, so the two sign-in paths cannot drift apart on who gets in.
+-- ============================================================
+
+create or replace function staff.invite_for_email(p_email text)
+returns table (org_slug text, role text, job_role text, legal_name text)
+language sql stable security definer
+set search_path = staff, public
+as $$
+  select i.org_slug,
+         i.role::text,
+         i.job_role::text,
+         i.legal_name
+    from staff.org_invites i
+   where i.revoked_at is null
+     and (
+       lower(i.email) = lower(btrim(p_email))
+       or lower(i.email_domain) = lower(split_part(btrim(p_email), '@', 2))
+     )
+   order by (i.email is not null) desc
+   limit 1
+$$;
+
+revoke all on function staff.invite_for_email(text) from public;
+grant execute on function staff.invite_for_email(text) to staff_app;
+
+
+-- ========== staff-log-presets.sql ==========
+
+-- ============================================================
+-- ONE-TAP PRESETS ON THE READINGS THAT REPEAT
+--
+-- Run AFTER supabase/staff-logs-seed.sql. Idempotent.
+--
+-- A vaccine fridge holding steady lands on the same half-dozen tenths of
+-- a degree shift after shift; an O2 cylinder is read in 500 PSI bands.
+-- `presets` on a number field (see lib/staff/forms.ts) renders those as
+-- tap targets in the UI. It changes nothing about what gets stored or
+-- checked: a tapped preset is the same number a typed one would be, run
+-- through the same min/max evaluation in lib/staff/forms.ts, so a chip
+-- for 38.4°F still flags red if the template's max is 38. There is no
+-- "confirm all" button anywhere in this file — each reading is still its
+-- own tap, because a single button that signs off a fridge, an AED, two
+-- O2 cylinders and a suction unit at once is the checkbox-sheet problem
+-- this binder replaced, wearing a nicer button.
+--
+-- This patches schema_json in place by field id rather than by array
+-- index, so it does not care what order the seed happens to list fields
+-- in and is safe to run again if a preset list changes.
+-- ============================================================
+
+update staff.form_templates t
+set schema_json = jsonb_set(
+  t.schema_json,
+  array['fields', (p.ord - 1)::text],
+  p.value || '{"presets": [37.8, 38.0, 38.2, 38.4, 38.6]}'::jsonb
+)
+from staff.form_templates f
+cross join lateral jsonb_array_elements(f.schema_json->'fields') with ordinality as p(value, ord)
+where f.id = t.id
+  and f.slug = 'temp-fridge'
+  and p.value->>'id' = 'current_f';
+
+-- Two separate statements, not one `in (...)`. Both O2 cylinder fields
+-- live on the same crash-cart row, and an UPDATE ... FROM whose lateral
+-- join produces two matching source rows for one target row applies
+-- only one of them — jsonb_set from whichever match Postgres happens to
+-- process last, silently dropping the other cylinder's preset. Found by
+-- checking the result rather than trusting the row count.
+update staff.form_templates t
+set schema_json = jsonb_set(
+  t.schema_json,
+  array['fields', (p.ord - 1)::text],
+  p.value || '{"presets": [2000, 1800, 1500]}'::jsonb
+)
+from staff.form_templates f
+cross join lateral jsonb_array_elements(f.schema_json->'fields') with ordinality as p(value, ord)
+where f.id = t.id
+  and f.slug = 'crash-cart'
+  and p.value->>'id' = 'o2_primary_psi';
+
+update staff.form_templates t
+set schema_json = jsonb_set(
+  t.schema_json,
+  array['fields', (p.ord - 1)::text],
+  p.value || '{"presets": [2000, 1800, 1500]}'::jsonb
+)
+from staff.form_templates f
+cross join lateral jsonb_array_elements(f.schema_json->'fields') with ordinality as p(value, ord)
+where f.id = t.id
+  and f.slug = 'crash-cart'
+  and p.value->>'id' = 'o2_backup_psi';
+
+
+-- ========== staff-eod-close.sql ==========
+
+-- ============================================================
+-- END OF DAY: THE LOG BOOK CLOSE AND THE DAY SHEET
+--
+-- Run AFTER supabase/staff-job-roles-seed.sql. Idempotent.
+--
+-- Built from a real practice-management end-of-day checklist. The
+-- substance is kept exactly; NO VENDOR IS NAMED ANYWHERE, not even as an
+-- example. The source names one PM system, one clearinghouse and one
+-- card-terminal app by brand. Those are gone.
+--
+-- Two reasons, and the second is the one that matters. The practical
+-- one: hard-coding a stack into the default set every clinic receives
+-- ships a checklist that is wrong for anyone on a different one, which
+-- is most of them. The real one: this is meant to read as a universal
+-- standard of practice, and a standard that name-checks a supplier
+-- reads as that supplier's documentation instead — it borrows their
+-- authority and inherits their scope. The obligations here are the
+-- clinic's own regardless of what software it runs.
+--
+-- So the fields say "your PM system", "the card terminal", "the
+-- clearinghouse". Every step still maps exactly onto the same work.
+--
+-- WHY TWO FORMS AND NOT ONE. The source is a single sheet, but it has
+-- two owners: the log book is the front desk's work, and the money
+-- reconciliation is the center administrator's. Filing them together
+-- would mean one person signs an attestation covering the other's work,
+-- which is precisely the thing a signature is supposed to prevent.
+--
+-- WHY NOT A ROUND. Rounds are WALKED — one step at a time with the next
+-- hidden, because a physical walk can otherwise be satisfied from the
+-- counter. Nothing here is a walk: every line produces a NUMBER (how
+-- many visits are still open, what the batch totalled), and a number is
+-- its own evidence. So these are forms, which means the counts run
+-- through the same min/max evaluation every other log uses and an
+-- out-of-range value forces a corrective action before it can be filed.
+--
+-- THE COUNTS THAT MUST BE ZERO ARE max: 0, NOT min/max 0..0. Zero
+-- duplicate visits is the only acceptable answer at close; one is an
+-- excursion and gets the same treatment a warm fridge does — the log
+-- still files, but not without saying what was done about it. That is
+-- deliberate: a front desk that cannot file an honest "we found two"
+-- learns to file a dishonest zero.
+-- ============================================================
+
+insert into staff.form_templates
+  (org_slug, slug, name, description, category, frequency, slots, sort_order,
+   job_roles, schema_json)
+select o.slug, t.slug, t.name, t.description, t.category, t.frequency,
+       t.slots, t.sort_order, t.job_roles, t.schema_json::jsonb
+from staff.orgs o
+cross join (values
+
+  ('front-desk-eod',
+   'End of day — log book',
+   'Every visit closed out, eligibility run, nothing duplicated.',
+   'operations', 'daily', array['pm'], 96,
+   array['front_desk','center_admin']::staff.job_role[],
+   $json$
+   {
+     "standard": "Every visit on today's log carries a final status, every eligibility check has run, and no patient appears twice. A visit left open tonight is a claim nobody can bill tomorrow.",
+     "fields": [
+       { "id": "not_seen", "label": "Logged but not seen", "type": "number",
+         "min": 0, "step": 1, "presets": [0, 1, 2, 3, 4],
+         "help": "No-show, cancelled, rescheduled, or walked out. Count them first — each one needs an arrival status before it can be closed." },
+       { "id": "not_seen_closed", "label": "Each one given an arrival status and timed out", "type": "boolean",
+         "expected": true,
+         "help": "Time out the visit on the log detail page. If a chart was already created, discharge it as left-without-being-discharged instead — no time-out needed, and it will not count against the visit." },
+       { "id": "rte_open", "label": "Visits with no eligibility result", "type": "number",
+         "min": 0, "max": 0, "step": 1, "presets": [0, 1, 2, 3],
+         "help": "Skip workers' comp and occupational visits — eligibility does not apply to them and they are not a problem." },
+       { "id": "rte_blocker", "label": "If any are still open, what is blocking them", "type": "select",
+         "options": ["None remain", "Subscriber not found", "Payer setup incomplete", "Payer system unavailable"],
+         "required": false,
+         "help": "Subscriber-not-found is usually a member ID or date-of-birth typo — fix and re-run before assuming the coverage is bad. Payer setup means the eligibility payer ID is missing; it is often the claims payer ID but not always, so look it up in the clearinghouse rather than guessing." },
+       { "id": "selfpay_closed", "label": "Self-pay charges entered, and balance taken or billed to the patient", "type": "boolean",
+         "expected": true, "required": false,
+         "help": "Best done while the patient is still at the desk. Billing the balance sends them a statement; leaving it does neither." },
+       { "id": "duplicates", "label": "Duplicate visits on the log", "type": "number",
+         "min": 0, "max": 0, "step": 1, "presets": [0, 1, 2],
+         "help": "Sort by patient name and read down the column. Two rows for one person becomes two claims." },
+       { "id": "open_status", "label": "Visits not in a final status", "type": "number",
+         "min": 0, "max": 0, "step": 1, "presets": [0, 1, 2, 3],
+         "help": "Final means signed, discharged, or checked out. Anything else is still open." },
+       { "id": "open_status_kind", "label": "If any remain, where are they stuck", "type": "select",
+         "options": ["None remain", "Charting", "Log pending", "Logged, not timed out", "Discharged, awaiting results"],
+         "required": false,
+         "help": "Charting should be discharged. A pending log is either completed or deleted — deleted only if it was a duplicate or an error. A logged visit gets timed out, which moves it to checkout. Discharged-awaiting-results is legitimate and needs no action tonight." }
+     ]
+   }
+   $json$),
+
+  ('admin-day-sheet',
+   'End of day — day sheet and card batch',
+   'Printed day sheet reconciled against the terminal batch.',
+   'operations', 'daily', array['pm'], 97,
+   array['center_admin']::staff.job_role[],
+   $json$
+   {
+     "standard": "The day sheet and the card batch agree tonight, or the variance gets found tomorrow with no shift to pin it to. Cash and the drawer are counted on the front desk closing sheet, not here.",
+     "fields": [
+       { "id": "day_sheet_printed", "label": "Day sheet printed", "type": "boolean",
+         "expected": true },
+       { "id": "day_sheet_card_total", "label": "Card total on the day sheet", "type": "number",
+         "unit": "USD", "min": 0, "step": 0.01,
+         "help": "Card payments only. Cash and checks are reconciled on the front desk closing sheet." },
+       { "id": "terminal_batch_total", "label": "Card terminal batch total", "type": "number",
+         "unit": "USD", "min": 0, "step": 0.01,
+         "help": "From the card terminal's current-batch or settlement report, before the batch is closed." },
+       { "id": "batch_matches", "label": "The two totals match", "type": "boolean",
+         "expected": true,
+         "help": "If they do not, say what you found and what you did. A variance recorded honestly is a reconciliation; a variance left silent is what an audit finds first." },
+       { "id": "batch_closed", "label": "Terminal batch closed for the day", "type": "boolean",
+         "expected": true,
+         "help": "An unclosed batch settles late or not at all, and the money shows up on the wrong day." },
+       { "id": "receipts_filed", "label": "Signed receipts kept with the day sheet", "type": "boolean",
+         "expected": true, "required": false,
+         "help": "Only if signed copies are part of your workflow. Leave it if they are not." }
+     ]
+   }
+   $json$)
+
+) as t(slug, name, description, category, frequency, slots, sort_order, job_roles, schema_json)
+where not exists (
+  select 1 from staff.form_templates f
+   where f.org_slug = o.slug and f.slug = t.slug
+);
+
+-- WHY THERE IS NO "UPDATE THE TEMPLATE" STATEMENT HERE.
+-- Re-running this file will not rewrite a template that already exists,
+-- and that is deliberate. A template is DATA so a clinic can correct it
+-- — change a label, drop a field that does not apply, add one that
+-- does. A migration that overwrote schema_json on every run would throw
+-- those edits away on the next deploy, which is the one failure that
+-- would teach an administrator never to customise anything again.
+-- Corrections to the shipped wording ship as a NEW migration naming the
+-- exact field, the way staff-log-presets.sql patches a single field by
+-- id rather than replacing the row.
+
+
+-- ========== staff-geofence.sql ==========
+
+-- ============================================================
+-- WHERE A LOG WAS FILED FROM
+--
+-- Run AFTER supabase/staff-logs.sql and staff-billing.sql. Idempotent.
+--
+-- THE PROBLEM THIS ACTUALLY SOLVES. A fridge temperature typed from
+-- somebody's sofa is not a reading, it is a guess with a signature on
+-- it, and it is indistinguishable in the record from an honest one. That
+-- is the whole failure mode: not fraud exactly, but a 7am reading
+-- entered at 9pm from home because the shift got away from someone.
+--
+-- WHAT THIS CANNOT DO, STATED FIRST SO NOBODY BUILDS A POLICY ON A
+-- PROMISE IT DOES NOT MAKE. Browser geolocation is not attestable. The
+-- DevTools sensors panel sets arbitrary coordinates in seconds, phone
+-- mock-location apps do the same, and nothing server-side can tell a
+-- spoofed fix from a real one — the browser is the only witness and it
+-- is the thing under the user's control. Anyone who wants to defeat this
+-- will. So this is NOT an access control and must never be described as
+-- one.
+--
+-- WHAT IT IS: provenance on the record. Every filing carries the
+-- coordinates it was made from, the accuracy the device claimed, and the
+-- computed distance from the clinic. An off-site filing is still filed —
+-- refusing it would only move the reading to a later, worse entry — but
+-- it is stamped, it needs a written reason, and it appears in front of
+-- the owner. The deterrent is that it is on the record, not that it is
+-- impossible. That is the same bet the corrective-action rule makes and
+-- it is the one that works: people do not quietly do the thing that
+-- leaves a labelled trace.
+--
+-- INDOOR ACCURACY IS WHY THIS DOES NOT FAIL CLOSED. A single-storey
+-- clinic with a steel roof and no GPS lock falls back to WiFi
+-- positioning, which is commonly 50-150m out and occasionally far
+-- worse. A hard block calibrated tight enough to be meaningful would
+-- therefore reject real readings taken in a back corridor, and the
+-- workaround a blocked MA reaches for is to file from the car park
+-- afterwards. A blocked honest reading costs more than a flagged
+-- dishonest one.
+--
+-- PRIVACY. Location is read ONCE, at the moment a log is submitted, and
+-- never in the background — there is no tracking here and no column that
+-- could hold a trail. Staff are told at the point of collection, every
+-- time, not once at onboarding (see LocationStamp.tsx). Several states
+-- expect disclosure before employee location is recorded at all, and a
+-- notice nobody remembers seeing is not a disclosure.
+-- ============================================================
+
+-- ---------- 1. Where the clinic is ----------
+
+alter table staff.orgs add column if not exists latitude  double precision;
+alter table staff.orgs add column if not exists longitude double precision;
+
+-- Metres. 150 is a strip-mall clinic plus its car park, with room for
+-- the WiFi-positioning error described above. Tighter than about 75 and
+-- honest indoor readings start failing.
+alter table staff.orgs
+  add column if not exists geofence_radius_m integer not null default 150;
+
+-- off     — do not ask for location at all.
+-- record  — capture and stamp it; never withhold anything.
+-- require — capture and stamp it, and an off-site or unavailable filing
+--           must carry a written reason before it can be saved.
+--
+-- DEFAULTS TO 'record', NOT 'require'. Enforcing a radius before anyone
+-- has confirmed the clinic's coordinates are correct would lock out an
+-- entire staff over a typo in a longitude. Record first, look at the
+-- distances for a week, then tighten.
+alter table staff.orgs
+  add column if not exists geofence_mode text not null default 'record';
+
+do $$ begin
+  alter table staff.orgs add constraint staff_orgs_geofence_mode
+    check (geofence_mode in ('off', 'record', 'require'));
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  alter table staff.orgs add constraint staff_orgs_geofence_radius
+    check (geofence_radius_m between 25 and 20000);
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  alter table staff.orgs add constraint staff_orgs_latlng_range
+    check (
+      (latitude is null and longitude is null)
+      or (latitude between -90 and 90 and longitude between -180 and 180)
+    );
+exception when duplicate_object then null; end $$;
+
+-- 'require' IS UNREACHABLE WITHOUT COORDINATES. Without this a clinic
+-- could switch enforcement on while latitude is still null, at which
+-- point every distance is unknown, every filing is "unavailable", and
+-- the whole staff is asked for a written excuse on every log. The
+-- constraint makes that state unrepresentable rather than merely
+-- unlikely.
+do $$ begin
+  alter table staff.orgs add constraint staff_orgs_require_needs_coords
+    check (
+      geofence_mode <> 'require'
+      or (latitude is not null and longitude is not null)
+    );
+exception when duplicate_object then null; end $$;
+
+
+-- ---------- 2. Where the filing came from ----------
+
+alter table staff.form_responses add column if not exists filed_lat        double precision;
+alter table staff.form_responses add column if not exists filed_lng        double precision;
+-- What the DEVICE claimed, in metres, not what we believe. A fix with a
+-- 2000m accuracy radius is not evidence of being anywhere in particular,
+-- and storing the claim is what lets that be judged later.
+alter table staff.form_responses add column if not exists filed_accuracy_m double precision;
+-- Computed server-side from the org's coordinates. Stored rather than
+-- derived on read because the clinic can move, and a distance
+-- recalculated against a new address would silently rewrite history.
+alter table staff.form_responses add column if not exists filed_distance_m double precision;
+
+-- on_site     — inside the radius.
+-- off_site    — a usable fix, outside the radius.
+-- unavailable — the browser could not produce a fix (no sensor, timeout).
+-- denied      — the person refused the permission prompt.
+-- not_asked   — the clinic has geofence_mode = 'off'.
+--
+-- 'denied' and 'unavailable' are kept apart deliberately. Refusing the
+-- prompt is a choice and worth seeing; a failed fix in a basement is
+-- not, and conflating them would put an ordinary MA in a column that
+-- reads like evasion.
+alter table staff.form_responses
+  add column if not exists location_status text not null default 'not_asked';
+
+alter table staff.form_responses add column if not exists location_note text;
+
+do $$ begin
+  alter table staff.form_responses add constraint staff_responses_location_status
+    check (location_status in
+      ('not_asked', 'on_site', 'off_site', 'unavailable', 'denied'));
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  alter table staff.form_responses add constraint staff_responses_latlng_range
+    check (
+      (filed_lat is null and filed_lng is null)
+      or (filed_lat between -90 and 90 and filed_lng between -180 and 180)
+    );
+exception when duplicate_object then null; end $$;
+
+-- A reason, where one is given, has to say something. Twenty characters
+-- for the same reason the corrective action needs twenty: "wfh" is worse
+-- than blank, because blank reads as unfinished and gets chased while
+-- three characters look like an answer. NOT VALID so the constraint
+-- binds new rows without rewriting or rejecting history.
+do $$ begin
+  alter table staff.form_responses add constraint staff_responses_location_note_len
+    check (location_note is null or length(btrim(location_note)) >= 20) not valid;
+exception when duplicate_object then null; end $$;
+
+-- Distances are only meaningful against a fix that exists.
+do $$ begin
+  alter table staff.form_responses add constraint staff_responses_distance_needs_fix
+    check (filed_distance_m is null or (filed_lat is not null and filed_lng is not null));
+exception when duplicate_object then null; end $$;
+
+
+-- ---------- 3. Distance, once, in the database ----------
+
+-- Haversine. Defined here as well as in lib/staff/geo.ts because the
+-- view below needs it in SQL, and two implementations of one formula
+-- eventually disagree — so the TypeScript one is what writes the stored
+-- value and this one is only ever used for reporting over rows that
+-- already have it. IMMUTABLE so it can be indexed and inlined; it reads
+-- nothing outside its arguments.
+create or replace function staff.distance_m(
+  lat1 double precision, lng1 double precision,
+  lat2 double precision, lng2 double precision
+) returns double precision
+language sql immutable parallel safe
+as $$
+  select case
+    when lat1 is null or lng1 is null or lat2 is null or lng2 is null then null
+    else 6371000 * 2 * asin(sqrt(
+      power(sin(radians(lat2 - lat1) / 2), 2)
+      + cos(radians(lat1)) * cos(radians(lat2))
+        * power(sin(radians(lng2 - lng1) / 2), 2)
+    ))
+  end
+$$;
+
+revoke all on function staff.distance_m(double precision, double precision,
+                                        double precision, double precision) from public;
+grant execute on function staff.distance_m(double precision, double precision,
+                                           double precision, double precision) to staff_app;
+
+
+-- ---------- 4. What the owner looks at ----------
+
+-- Partial index: the interesting rows are the small minority, and a full
+-- index on a column that is 'on_site' 99% of the time earns nothing.
+create index if not exists staff_responses_off_site
+  on staff.form_responses (org_slug, submitted_at desc)
+  where location_status in ('off_site', 'denied');
+
+-- CREATE OR REPLACE VIEW can only append columns, so a rebuild has to
+-- drop first — see the note in staff-logs.sql. security_invoker so the
+-- view is read under the caller's RLS rather than the owner's.
+drop view if exists staff.off_site_filings cascade;
+create view staff.off_site_filings
+with (security_invoker = true)
+as
+select r.id,
+       r.org_slug,
+       r.submitted_at,
+       t.name              as form_name,
+       t.slug              as form_slug,
+       u.legal_name        as filed_by,
+       r.location_status,
+       round(r.filed_distance_m)::integer  as distance_m,
+       round(r.filed_accuracy_m)::integer  as accuracy_m,
+       o.geofence_radius_m as radius_m,
+       r.location_note,
+       r.has_out_of_range
+  from staff.form_responses r
+  join staff.form_instances i on i.id = r.instance_id
+  join staff.form_templates t on t.id = i.template_id
+  join staff.orgs o           on o.slug = r.org_slug
+  left join staff.users u     on u.id = r.submitted_by
+ where r.location_status in ('off_site', 'denied', 'unavailable')
+ order by r.submitted_at desc;
+
+grant select on staff.off_site_filings to staff_app;
+
+-- Seed the one known clinic's coordinates from the patient-side listing
+-- if it happens to be there, so 'record' mode produces real distances on
+-- day one instead of a column of nulls. Only fills a null — never
+-- overwrites a coordinate an administrator has set by hand, which would
+-- undo a correction on every deploy.
+-- GUARDED, BECAUSE THE STAFF SCHEMA MUST NOT REQUIRE THE PATIENT ONE.
+-- public.clinics belongs to the patient-facing side. On a project that
+-- has it this fills real coordinates; on one that does not, an
+-- unguarded reference aborts the whole migration HALFWAY THROUGH and
+-- leaves the schema half-applied, which is far worse than starting with
+-- null coordinates.
+do $$ begin
+  if to_regclass('public.clinics') is not null then
+    update staff.orgs o
+       set latitude  = c.lat,
+           longitude = c.lng
+      from public.clinics c
+     where c.tenant_slug = o.slug
+       and o.latitude is null
+       and c.lat is not null
+       and c.lng is not null;
+  end if;
+end $$;
+
+
+-- ========== staff-ethics.sql ==========
+
+-- ============================================================
+-- THE CODE OF ETHICS
+--
+-- Run AFTER supabase/staff-onboarding-seed.sql. Idempotent.
+--
+-- There was no code of ethics in the packet. Eleven policy documents
+-- covered privacy, bloodborne pathogens, hazard communication, mandated
+-- reporting, controlled substances and incident reporting — every one of
+-- them a rule about a PROCEDURE. None of them said what the clinic is
+-- for, or what to do when doing the right thing costs money. That gap is
+-- the one every compliance program is judged on after something has
+-- gone wrong.
+--
+-- ---------------------------------------------------------------
+-- WHY THE CENTER'S NAME IS SUBSTITUTED AT INSERT, NOT AT RENDER
+-- ---------------------------------------------------------------
+-- The obvious design is a template with {{center_name}} in it, resolved
+-- when the page is drawn. It would be wrong here, and the reason is two
+-- lines away in the schema.
+--
+-- staff.attestations stores body_sha256 — "sha256 of body_md exactly as
+-- rendered to this person" — and lib/staff/compliance.ts RECOMPUTES that
+-- hash on every read, in SQL, directly over policy_docs.body_md, to
+-- prove the signed text has not been altered since. Substituting at
+-- render time would mean the stored hash was taken over resolved text
+-- while the verification hash is taken over the raw template. They would
+-- never match again, and every signature in the system would display as
+-- tampered with, permanently.
+--
+-- So the placeholders are resolved HERE, once, as each org's own row is
+-- created. Every clinic gets a concrete document with its own name in
+-- it, which it then owns and can edit freely — body_md is data.
+--
+-- That also happens to be the correct behavior for a signed document.
+-- If the center is renamed, the text somebody signed still says what it
+-- said on the day. Reflecting the new name is a NEW VERSION requiring a
+-- fresh acknowledgement, which the (org_slug, key, version) key and the
+-- supersedes_id chain already model. A signed policy that silently
+-- rewrites itself is not a record.
+--
+-- ---------------------------------------------------------------
+-- WHAT THIS DOCUMENT IS AND IS NOT
+-- ---------------------------------------------------------------
+-- Every legal citation below is exact and is to federal law that applies
+-- to essentially any US clinic billing a federal program. Where a duty
+-- is a PRACTICE RULE rather than a statute it says so in the text, in
+-- the same sentence, because a code of ethics that dresses house rules
+-- up as law teaches staff to disbelieve the parts that really are law.
+--
+-- EMTALA IS DELIBERATELY NOT CLAIMED. A freestanding urgent care center
+-- is generally NOT a dedicated emergency department under 42 CFR 489.24
+-- and generally not subject to EMTALA; a hospital-owned one may be. The
+-- duty to stabilize and transfer is therefore stated as an ETHICAL
+-- obligation of the clinic, with a note that statutory applicability
+-- depends on ownership — rather than asserting a legal duty that may not
+-- exist for the reader, or omitting the duty because the statute might
+-- not bind.
+--
+-- NO VENDOR IS NAMED, here or anywhere in the packet. This is meant to
+-- read as a universal standard of practice; a standard that name-checks
+-- a supplier reads as that supplier's documentation instead.
+--
+-- SEEDED AS A DRAFT (published_at null), like every other document in
+-- the packet. An unpublished document is assigned to nobody. A medical
+-- director reads it, edits what should differ for this clinic, and
+-- publishes it — because a code of ethics nobody in the building chose
+-- is a poster, not a commitment.
+-- ============================================================
+
+
+-- ---------- The substitution helper ----------
+--
+-- Available to any future document that wants it. Deliberately tiny and
+-- deliberately not clever: it does not parse, it replaces four known
+-- tokens. An unresolved token would render literally as {{...}} in a
+-- signed document, so each has a fallback that reads as a prompt rather
+-- than as a mistake.
+create or replace function staff.render_org_text(p_org text, p_text text)
+returns text
+language sql stable
+as $$
+  select replace(replace(replace(replace(
+           p_text,
+           '{{center_name}}',  coalesce(o.name, 'this center')),
+           '{{legal_entity}}', coalesce(o.legal_entity, o.name, 'this center')),
+           '{{state}}',        coalesce(o.state, 'the state in which it operates')),
+           '{{medical_director}}',
+                               coalesce(o.medical_director_name,
+                                        'the medical director'))
+    from staff.orgs o
+   where o.slug = p_org
+$$;
+
+revoke all on function staff.render_org_text(text, text) from public;
+grant execute on function staff.render_org_text(text, text) to staff_app;
+
+
+-- ---------- The document ----------
+
+insert into staff.policy_docs
+  (org_slug, key, version, title, category, citation, summary, body_md,
+   attestation, renew_months, sort_order, applies_to)
+select o.slug, 'code-of-ethics', 1,
+  'Code of ethics',
+  'operations',
+  'Anti-Kickback Statute, 42 U.S.C. § 1320a-7b(b); Physician Self-Referral (Stark), 42 U.S.C. § 1395nn; False Claims Act, 31 U.S.C. §§ 3729-3733; HIPAA Privacy Rule, 45 C.F.R. Part 164',
+  'What this center is for, and what to do when the right call is the expensive one.',
+  staff.render_org_text(o.slug, $md$
+## Why this exists
+
+Every other document in this packet tells you how to do something. This one
+says what to do when the rules run out, or when two of them point in different
+directions, or when the right answer costs the center money.
+
+It is short on purpose. A code nobody can remember is a code nobody uses.
+
+## The one that decides the others
+
+**The patient in front of you comes before the schedule, the door count, and
+the revenue.** Everything below is a consequence of that sentence.
+
+If you are ever told, by anyone, to do something that contradicts it, you are
+expected to say so — and this document is what you point at.
+
+## Care
+
+- **Work inside your license and your training.** Not near the edge of it, not
+  just past it because the center is busy. If you are not qualified to do a
+  thing, the correct answer is to find the person who is, even when that is
+  slower. Your scope is set out in your own brief; when it is unclear, ask
+  before acting rather than after.
+- **Nobody is turned away, hurried, or treated differently** because of who
+  they are, what they can pay, how they are insured, what language they speak,
+  or how they have behaved in the past.
+- **Emergencies get stabilized and moved, not queued.** If someone needs a
+  level of care this center cannot give, they are stabilized to the limit of
+  what is available here and transferred without waiting for payment
+  questions to be resolved. *(Whether this is also a statutory duty depends on
+  how this center is owned — a hospital-owned site may fall under EMTALA,
+  42 C.F.R. § 489.24, while a freestanding one generally does not. It is a duty
+  here regardless of which applies.)*
+- **A patient may refuse care, and may ask what something costs first.**
+  Neither is a reason to treat them worse.
+
+## Records
+
+- **Chart what happened. Never chart what did not.** A note describing an
+  examination nobody performed is a false record whatever the intention behind
+  it, and it is the single fastest way to turn a clinical question into a legal
+  one.
+- **Write it when it happens**, or say plainly when you are writing late. A
+  late entry that admits to being late is honest; one backdated to look
+  contemporaneous is not.
+- **A mistake gets corrected, never erased.** Amend, and say what changed and
+  why. This applies to paper and to this system alike — which is why nothing
+  here has a delete button.
+
+## Money
+
+These are federal criminal and civil statutes, not house rules.
+
+- **Nothing of value is given or accepted in exchange for referrals.** Not
+  cash, not rent below market, not free staff, not a share of what a referral
+  earns. *(Anti-Kickback Statute, 42 U.S.C. § 1320a-7b(b) — a criminal
+  statute; violations can also become False Claims Act liability.)*
+- **Referrals go where the patient is best served**, never to an entity you or
+  a family member has a financial interest in without that interest being
+  disclosed and permitted. *(Stark, 42 U.S.C. § 1395nn, governs designated
+  health services and physician financial relationships.)*
+- **Bill for what was done, at the level it was done.** Not the level that
+  pays better, not a bundle unbundled to earn more, not a service that did not
+  happen. *(False Claims Act, 31 U.S.C. §§ 3729-3733.)*
+- **Clinical decisions are not made on the basis of what a visit pays.** If
+  you are ever asked to add a test, a level, or a follow-up for a reason that
+  is financial rather than clinical, that is a report under the section below.
+- **Declare gifts and hospitality from suppliers** to {{medical_director}} or a
+  center administrator. A working lunch is not a scandal; the point of
+  declaring it is that nobody has to guess later whether it was.
+
+## Privacy
+
+- **Look at a record only when you have a reason to be in it.** Curiosity about
+  a neighbour, a colleague, a relative, or someone in the news is not a reason,
+  and access is logged. *(HIPAA Privacy Rule, 45 C.F.R. Part 164.)*
+- **What you learn here does not leave here.** Not to family, not in a car
+  park, not on social media in a form you believe is anonymous. The details
+  that make a story worth telling are usually the details that identify
+  somebody.
+
+## Each other
+
+- **Say the thing early.** A concern raised while something can still be fixed
+  is worth more than a perfect account of it afterwards.
+- **Nobody is punished for raising a concern in good faith.** Retaliating
+  against someone for reporting is itself a breach of this code, and several
+  of the statutes above carry their own whistleblower protections. Being wrong
+  in good faith is fine. Staying quiet because it was awkward is not.
+- **You may report to {{medical_director}} or to any center administrator.** If
+  the concern is about the person you would normally tell, tell the other one.
+
+## When this is hard
+
+The situations this document exists for do not announce themselves. They look
+like a busy afternoon and a small shortcut. Three questions, in order:
+
+1. Would I be comfortable if the patient could see exactly what I did and why?
+2. Would I be comfortable explaining this to a surveyor in two years, from the
+   record as it will read then?
+3. Am I about to do this because it is right, or because it is quicker?
+
+If any answer is uncomfortable, stop and ask someone. Asking is expected here,
+not tolerated.
+
+## Status of this document
+
+This is the code of ethics of **{{center_name}}**, operating as
+{{legal_entity}} in {{state}}. It is reviewed at least annually and whenever
+the law it cites changes.
+
+It is not a substitute for legal advice, and it does not restate every
+obligation that applies to this center — the packet's other documents, your
+own license, and {{state}} law all continue to apply on their own terms.
+$md$),
+  'I have read this code of ethics, I understand it, and I agree to work by it. I understand that I am expected to raise a concern if I see something that conflicts with it, and that I will not be penalised for doing so in good faith.',
+  12,
+  5,
+  null
+from staff.orgs o
+where not exists (
+  select 1 from staff.policy_docs d
+   where d.org_slug = o.slug and d.key = 'code-of-ethics' and d.version = 1
+);
+
+
+-- ========== staff-ops-manual.sql ==========
+
+-- ============================================================
+-- THE OPERATIONS MANUAL
+--
+-- Run AFTER supabase/staff-ethics.sql. Idempotent.
+--
+-- A separate signed document rather than a section of the code of
+-- ethics, because they answer different questions and are read at
+-- different moments. The code of ethics is what to do when the rules run
+-- out; this is the rules. Somebody looks one of them up in a crisis of
+-- conscience and the other one on their third day when they cannot
+-- remember who orders the gloves.
+--
+-- IT IS A SPINE, NOT AN ENCYCLOPAEDIA. The packet already holds eleven
+-- policy documents, seven shift logs, eleven emergency guides and a
+-- scope of practice per job. Restating any of that here would create two
+-- copies that drift, and the copy people happen to read would start
+-- being the out-of-date one. So this points at them by name and fills
+-- only the gaps nothing else covers — hours, coverage, opening and
+-- closing, supplies, retention, and what to do when something breaks.
+--
+-- RETENTION PERIODS ARE THE PART MOST OFTEN GOT WRONG, so each one below
+-- carries its own citation and they are not rounded to a convenient
+-- number. Note particularly that the exposure-records period is
+-- duration of employment PLUS thirty years, which is far longer than
+-- anybody guesses, and that it is the reason a clinic cannot simply
+-- purge everything after seven.
+--
+-- Same substitution mechanism as the code of ethics — resolved once at
+-- insert, never at render, because staff.attestations hashes the body
+-- and lib/staff/compliance.ts re-verifies that hash against
+-- policy_docs.body_md on every read. See the header of staff-ethics.sql
+-- for the full reasoning.
+--
+-- Seeded as a DRAFT. Half of what follows is a placeholder a center
+-- administrator must replace with what is actually true of this clinic —
+-- its hours, its suppliers, its call rota. Publishing it unedited would
+-- put a document full of blanks in front of staff as their employer's
+-- operating procedure, so published_at stays null until somebody has
+-- been through it.
+-- ============================================================
+
+insert into staff.policy_docs
+  (org_slug, key, version, title, category, citation, summary, body_md,
+   attestation, renew_months, sort_order, applies_to)
+select o.slug, 'operations-manual', 1,
+  'Operations manual',
+  'operations',
+  'OSHA recordkeeping, 29 C.F.R. § 1904.33; OSHA access to exposure and medical records, 29 C.F.R. § 1910.1020(d); Bloodborne Pathogens training records, 29 C.F.R. § 1910.1030(h); HIPAA documentation retention, 45 C.F.R. § 164.316(b)(2)',
+  'How this center runs day to day, and where to look for everything else.',
+  staff.render_org_text(o.slug, $md$
+## What this is
+
+The day-to-day operating procedure for **{{center_name}}**. If you need to know
+how something is done here, start here. If this document does not answer it,
+the last section says where to look.
+
+Everything marked *[to be completed]* has to be filled in by a center
+administrator before this is published. A manual with blanks in it is worse
+than no manual, because it teaches people that the manual is not maintained.
+
+## Hours and coverage
+
+- Operating hours: *[to be completed]*
+- Last patient accepted: *[to be completed]*
+- Who opens, and who holds the keys: *[to be completed]*
+- Who to call when someone cannot make a shift: *[to be completed]*
+- After-hours contact for a building or equipment emergency: *[to be completed]*
+
+**The center does not open without a provider on site.** If the provider is
+delayed, the doors stay shut and waiting patients are told honestly how long
+it will be — not brought inside to wait in rooms.
+
+## Opening and closing
+
+Both are logged, not remembered. The opening and closing sheets are in this
+system under **Logs**, and they are the record — a shift that was worked but
+not logged did not happen as far as any inspection is concerned.
+
+Opening covers the drawer count, privacy screens and the lobby walk. Closing
+covers drawer reconciliation, the end-of-day PHI sweep, the log book close and
+the card batch. The center administrator's day-sheet reconciliation is a
+separate sheet from the front desk's closing sheet, deliberately: one person
+should not sign for both halves of a money control.
+
+## Who does what
+
+Every person has a job set on their account, and their board only shows the
+work that belongs to that job. That is not a display preference — it is the
+scope of practice, and it is set out per job under **Rules**.
+
+Two things follow from it that people get wrong:
+
+- **A task not on your board is not yours to do**, however busy it is and
+  however capable you are. Ask the person whose board it is on.
+- **The narcotics count needs two people**, one counting and one witnessing.
+  That is the control. One person doing both is not a faster count, it is no
+  count.
+
+## Equipment and supplies
+
+- Ordering, and who approves it: *[to be completed]*
+- Preferred suppliers and account numbers: *[to be completed]*
+- Where the par levels are kept: *[to be completed]*
+- Biomedical / calibration contractor: *[to be completed]*
+- Who to call for the refrigerator, the autoclave, the X-ray unit:
+  *[to be completed]*
+
+**Anything out of range gets tagged before it gets reported.** A refrigerator
+reading warm is taken out of service with a DO NOT USE tag and the stock
+quarantined — not discarded — before anybody makes a phone call. Discarding
+vaccine before the manufacturer has been asked is how a recoverable excursion
+becomes a loss.
+
+## Records, and how long they are kept
+
+These periods are federal minimums. {{state}} may require longer, and where it
+does, the longer period wins.
+
+- **OSHA 300 log, 300A summary and 301 incident reports — five years** beyond
+  the year they cover. *(29 C.F.R. § 1904.33.)*
+- **Employee exposure records and medical records — duration of employment
+  plus thirty years.** *(29 C.F.R. § 1910.1020(d).)* This is the one nobody
+  expects, and it is why a general "purge after seven years" rule is unsafe.
+- **Bloodborne pathogens training records — three years** from the date of
+  training. *(29 C.F.R. § 1910.1030(h)(2)(ii).)*
+- **HIPAA policies, and documentation of actions and assessments required by
+  the Security Rule — six years** from creation or last effective date.
+  *(45 C.F.R. § 164.316(b)(2).)*
+- **Patient records — set by {{state}} law**, not by federal rule, and the
+  period differs for minors. *[to be completed: the period for {{state}},
+  confirmed with counsel.]*
+
+Nothing recorded in this system is deleted or edited. Corrections are made as
+amendments that sit alongside the original, which is why there is no delete
+button anywhere in it.
+
+## Money
+
+- Cash drawer float and where it is held: *[to be completed]*
+- Who prepares and who takes the deposit: *[to be completed]*
+- Deposit frequency: *[to be completed]*
+
+**The person who counts is not the person who reconciles**, wherever staffing
+allows it. Where it does not, the variance is written down and initialled by
+the second person the next morning rather than resolved quietly.
+
+A variance is reported the day it is found. A shortfall found and reported is
+a reconciliation; the same shortfall found later by somebody else is an
+investigation.
+
+## When something goes wrong
+
+- **A patient safety event, an injury, or a near miss** is an incident report,
+  filed the same day, under the incident reporting policy in this packet. Near
+  misses count. They are the cheapest information this center will ever get.
+- **A privacy breach, or a suspected one** — including an email to the wrong
+  address — goes to the privacy officer immediately, not after somebody has
+  worked out how serious it was. Breach notification runs on a clock that
+  starts at discovery.
+- **Equipment failure** is logged and tagged before the shift ends, even when
+  a workaround was found.
+- **Anything you are unsure about** goes to {{medical_director}} or a center
+  administrator. Asking is expected here, not tolerated.
+
+Nobody is penalised for reporting something in good faith. That is stated in
+the code of ethics and it is meant literally.
+
+## Where everything else lives
+
+| What you need | Where it is |
+|---|---|
+| What your job may and may not do | **Rules** |
+| Today's shift checks | **Logs** |
+| Walked runbooks, signed at the end | **Rounds** |
+| Anaphylaxis, code blue, needlestick, eye splash | **Learning** |
+| Your own license and certification dates | **My documents** |
+| The clinic's own protocols, searchable | **Protocols** |
+| Deadlines and who owns them | **Obligations** |
+| What to do when the rules run out | **Code of ethics** |
+
+## Keeping this true
+
+This manual is reviewed at least annually and whenever something in it
+changes. A center administrator owns it. If you find something in here that is
+no longer how the center works, say so — a manual nobody corrects becomes a
+manual nobody reads, and then it becomes evidence of what the center said it
+did rather than what it did.
+$md$),
+  'I have read this operations manual and I understand how this center runs. Where it did not answer something, I know where to look and who to ask.',
+  12,
+  6,
+  null
+from staff.orgs o
+where not exists (
+  select 1 from staff.policy_docs d
+   where d.org_slug = o.slug and d.key = 'operations-manual' and d.version = 1
+);
+
+
+-- ========== staff-reports.sql ==========
+
+-- ============================================================
+-- SCHEDULED LOG REPORTS
+--
+-- Run AFTER supabase/staff-alerts.sql and staff-surveyor.sql. Idempotent.
+--
+-- The owner wants the week's logs to arrive without asking for them, at a
+-- cadence they choose, with every timestamp and every name on it. Daily,
+-- weekly, monthly, or all three at once for somebody who wants the daily
+-- AND the roll-up.
+--
+-- ---------------------------------------------------------------
+-- A LINK, NOT AN ATTACHMENT. This was the design question.
+-- ---------------------------------------------------------------
+-- These reports name people. Who filed what, at what minute, from how far
+-- away, and what they wrote in a corrective action. An emailed PDF of
+-- that lives in an inbox permanently, syncs to every phone on the
+-- account, gets forwarded, and sits in backups nobody controls. It cannot
+-- be recalled when an administrator leaves or a center changes hands.
+--
+-- A tokened link can be expired and revoked, and it records whether
+-- anybody actually opened it — which an attachment never can. It also
+-- reuses the surveyor-token design in staff-surveyor.sql, which is
+-- already proven here: the token is never stored, only its SHA-256, so a
+-- database dump yields no working links.
+--
+-- THE FRICTION OBJECTION IS REAL, so the email carries the headline
+-- numbers in its body — filed, missed, out of range, off site. An owner
+-- whose week was clean never has to click anything. The link is for the
+-- week that was not.
+--
+-- ---------------------------------------------------------------
+-- THE PDF IS NOT STORED. It is rendered when the link is opened.
+-- ---------------------------------------------------------------
+-- Storing generated files would mean a storage bucket, a cleanup job for
+-- expired ones, and a permanent question about whether the stored copy
+-- still matches the record. Rendering on open needs none of that: the row
+-- below holds only the PERIOD, and the report is built from the live
+-- tables each time. The binder renderer already does 90 days in ~200ms,
+-- so a week is not worth caching.
+--
+-- It also means a corrected record shows corrected. A stored PDF from
+-- Monday would keep asserting Monday's version of events after an
+-- amendment, which is the opposite of what a compliance record is for.
+-- ============================================================
+
+-- ---------- 1. Who gets what, how often ----------
+
+-- ONE ROW PER (org, email, cadence), NOT one row per person with three
+-- booleans. Each cadence has its own last_sent_at and its own next due
+-- date, and somebody who wants daily and monthly genuinely wants two
+-- independent schedules — collapsing them into one row means one
+-- last_sent_at doing two jobs and a daily send suppressing the monthly.
+create table if not exists staff.report_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  org_slug text not null references staff.orgs(slug) on delete cascade,
+
+  -- An address, not a user id. The owner who wants the weekly report may
+  -- not have a staff account at all, and requiring one to receive a PDF
+  -- would mean provisioning logins for accountants and franchise
+  -- managers who should never see the inside of the app.
+  email text not null,
+
+  -- A name for the report's greeting and for the audit trail.
+  label text,
+
+  cadence text not null check (cadence in ('daily', 'weekly', 'monthly')),
+
+  -- Local hour to send, 0-23, in the ORG's timezone. Default 7 so the
+  -- daily lands before the clinic opens and the weekly lands with Monday
+  -- morning coffee.
+  send_hour integer not null default 7 check (send_hour between 0 and 23),
+
+  -- Weekly only: 0 = Sunday .. 6 = Saturday, matching Postgres dow.
+  -- Default 1 (Monday) so a weekly report covers a finished week.
+  send_dow integer check (send_dow between 0 and 6),
+
+  -- Monthly only: day of month. Capped at 28 so no cadence silently skips
+  -- February — a subscription set to the 31st would fire seven times a
+  -- year and the owner would never know which months it missed.
+  send_dom integer check (send_dom between 1 and 28),
+
+  active boolean not null default true,
+
+  -- The last period this subscription was sent for. Compared against the
+  -- period that is currently due, which is what makes the sweep
+  -- idempotent: a cron that fires twice, or a retry after a timeout,
+  -- cannot send the same report twice.
+  last_period_end date,
+  last_sent_at timestamptz,
+
+  created_by uuid references staff.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+
+  -- One subscription per address per cadence per org. Re-subscribing is
+  -- an update, not a second email arriving twice every morning.
+  unique (org_slug, email, cadence)
+);
+
+-- The shape each cadence actually needs, enforced rather than assumed. A
+-- weekly row with no day-of-week has no defined send time, and a monthly
+-- row carrying a day-of-week is a row somebody edited from weekly and
+-- half-finished.
+do $$ begin
+  alter table staff.report_subscriptions add constraint staff_report_sub_shape
+    check (
+      (cadence = 'daily'   and send_dow is null     and send_dom is null)
+      or (cadence = 'weekly'  and send_dow is not null and send_dom is null)
+      or (cadence = 'monthly' and send_dow is null     and send_dom is not null)
+    );
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  alter table staff.report_subscriptions add constraint staff_report_sub_email
+    check (email ~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]{2,}$');
+exception when duplicate_object then null; end $$;
+
+create index if not exists staff_report_subs_due
+  on staff.report_subscriptions (org_slug, cadence) where active;
+
+
+-- ---------- 2. What was sent, and was it opened ----------
+
+create table if not exists staff.report_runs (
+  id uuid primary key default gen_random_uuid(),
+  org_slug text not null references staff.orgs(slug) on delete cascade,
+  subscription_id uuid references staff.report_subscriptions(id) on delete set null,
+
+  cadence text not null check (cadence in ('daily', 'weekly', 'monthly')),
+
+  -- The window the report covers, inclusive. Stored rather than derived
+  -- so a report opened in a year still renders the period it was sent
+  -- for, not a period recomputed from today.
+  period_start date not null,
+  period_end   date not null,
+
+  -- SHA-256 of the link token, hex. Never the token itself.
+  token_hash text not null,
+  expires_at timestamptz not null,
+
+  sent_to text not null,
+  sent_at timestamptz,
+  -- Null until delivery is attempted; set when the provider accepts it.
+  send_error text,
+
+  -- Was it read. Answers "does the owner actually look at these" a year
+  -- later, which is the question that decides whether this feature earns
+  -- its place.
+  viewed_count integer not null default 0,
+  last_viewed_at timestamptz,
+
+  revoked_at timestamptz,
+
+  created_at timestamptz not null default now(),
+
+  constraint staff_report_period check (period_end >= period_start)
+);
+
+do $$ begin
+  alter table staff.report_runs add constraint staff_report_token_hash_shape
+    check (token_hash ~ '^[0-9a-f]{64}$');
+exception when duplicate_object then null; end $$;
+
+-- A window is only ever sent once per subscription. The unique index is
+-- what makes that true regardless of how many times a cron retries.
+create unique index if not exists staff_report_runs_once
+  on staff.report_runs (subscription_id, period_end)
+  where subscription_id is not null;
+
+create index if not exists staff_report_runs_token
+  on staff.report_runs (token_hash);
+
+create index if not exists staff_report_runs_org
+  on staff.report_runs (org_slug, created_at desc);
+
+
+-- ---------- 3. Which period is due right now ----------
+
+-- Returns the period a cadence should cover if it is due at this moment
+-- in the org's timezone, or no row if it is not due.
+--
+-- COMPLETED PERIODS ONLY. A daily report sent at 07:00 covers YESTERDAY,
+-- not the morning it is sent in. A weekly one covers the week that ended,
+-- not the one in progress. Sending a partial period would produce a
+-- report whose "3 logs filed" means nothing, and an owner who learns the
+-- numbers are partial stops reading them.
+--
+-- STABLE, not immutable: it reads the org's timezone.
+create or replace function staff.report_period_due(
+  p_org text, p_cadence text, p_send_hour integer,
+  p_send_dow integer, p_send_dom integer, p_at timestamptz default now()
+) returns table (period_start date, period_end date)
+language plpgsql stable
+as $$
+declare
+  tz    text;
+  local timestamp;
+begin
+  select timezone into tz from staff.orgs where slug = p_org;
+  if tz is null then tz := 'America/New_York'; end if;
+
+  local := p_at at time zone tz;
+
+  -- Not the send hour yet, so nothing is due. Compared on the hour rather
+  -- than the minute because the sweep runs hourly; a subscription set to
+  -- 07:00 fires on the 07:00 sweep whenever within that hour it lands.
+  if extract(hour from local)::integer <> p_send_hour then
+    return;
+  end if;
+
+  if p_cadence = 'daily' then
+    return query select (local::date - 1), (local::date - 1);
+
+  elsif p_cadence = 'weekly' then
+    if extract(dow from local)::integer <> p_send_dow then return; end if;
+    -- The seven days ending yesterday.
+    return query select (local::date - 7), (local::date - 1);
+
+  elsif p_cadence = 'monthly' then
+    if extract(day from local)::integer <> p_send_dom then return; end if;
+    -- The whole of last calendar month, regardless of which day of this
+    -- month the subscription fires on. A "monthly" report covering the
+    -- 30 days before the 12th is not a month anybody can reconcile
+    -- against anything else.
+    return query
+      select (date_trunc('month', local::date) - interval '1 month')::date,
+             (date_trunc('month', local::date) - interval '1 day')::date;
+  end if;
+end $$;
+
+revoke all on function staff.report_period_due(text, text, integer, integer, integer, timestamptz) from public;
+grant execute on function staff.report_period_due(text, text, integer, integer, integer, timestamptz) to staff_app;
+
+
+-- ---------- 4. What goes in the report ----------
+
+-- Every filing in a window with everything a reader needs to judge it:
+-- who, when to the minute, whether it was in range, what they did about
+-- it if not, and where they filed it from.
+--
+-- security_invoker so it is read under the caller's RLS, and dropped
+-- first because CREATE OR REPLACE VIEW can only append columns.
+drop view if exists staff.report_log_rows cascade;
+create view staff.report_log_rows
+with (security_invoker = true)
+as
+select r.id,
+       r.org_slug,
+       i.due_date,
+       t.name          as form_name,
+       t.slug          as form_slug,
+       t.category,
+       i.slot,
+       r.submitted_at,
+       u.legal_name    as filed_by,
+       r.has_out_of_range,
+       r.out_of_range_fields,
+       r.corrective_action,
+       r.location_status,
+       round(r.filed_distance_m)::integer as distance_m,
+       r.answers_json
+  from staff.form_responses r
+  join staff.form_instances i on i.id = r.instance_id
+  join staff.form_templates t on t.id = i.template_id
+  left join staff.users u     on u.id = r.submitted_by
+ order by i.due_date, t.sort_order, i.slot;
+
+grant select on staff.report_log_rows to staff_app;
+
+-- The headline numbers that go in the EMAIL BODY, so a clean period needs
+-- no click. Deliberately a handful of integers and nothing else: an owner
+-- reading this on a phone is answering one question, which is whether
+-- they need to look further.
+drop view if exists staff.report_totals cascade;
+create view staff.report_totals
+with (security_invoker = true)
+as
+select r.org_slug,
+       i.due_date,
+       count(*)                                        as filed,
+       count(*) filter (where r.has_out_of_range)       as out_of_range,
+       count(*) filter (where r.location_status = 'off_site') as off_site,
+       count(distinct r.submitted_by)                  as people
+  from staff.form_responses r
+  join staff.form_instances i on i.id = r.instance_id
+ group by r.org_slug, i.due_date;
+
+grant select on staff.report_totals to staff_app;
+
+-- DELETE IS REVOKED, UPDATE IS NOT — and the distinction is the point.
+-- A report run must stay updatable because two things are written after
+-- the row is created: sent_at once the mail provider accepts it, and the
+-- view counter each time the link is opened. Revoking update would have
+-- made the view counter silently impossible, which is the same mistake
+-- the obligations table made once already (see staff-security.sql: the
+-- schema's ALTER DEFAULT PRIVILEGES grants delete on every future table,
+-- so each one needs its own explicit revoke).
+--
+-- Deleting is what must not happen. A delivery history with rows removed
+-- is not a delivery history.
+grant select, insert, update on staff.report_runs to staff_app;
+revoke delete on staff.report_runs from staff_app;
+grant select, insert, update, delete on staff.report_subscriptions to staff_app;
+
+
+-- ========== staff-facility.sql ==========
+
+-- ============================================================
+-- FACILITY TYPES, AND OWNERS WITH MORE THAN ONE CLINIC
+--
+-- Run AFTER supabase/staff-reports.sql. Idempotent.
+--
+-- ---------------------------------------------------------------
+-- THE BUG THIS FIXES FIRST
+-- ---------------------------------------------------------------
+-- staff-logs-seed.sql inserts its seven templates against the literal
+-- slug 'afc', and staff.provision_trial() creates an org and an invite
+-- and nothing else. So every clinic that has ever signed up through
+-- /start received a working login and a COMPLETELY EMPTY BOARD — no
+-- logs, no rounds, no policy packet. The trial worked exactly long
+-- enough for somebody to log in and find nothing.
+--
+-- staff.seed_facility() below is the fix and the feature at once: it is
+-- what provision_trial should always have called, and now that it takes
+-- a facility type it seeds the right set rather than one clinic's set.
+--
+-- ---------------------------------------------------------------
+-- NO active_modules COLUMN, DELIBERATELY
+-- ---------------------------------------------------------------
+-- The obvious design is a JSONB of module switches — refrigeration true,
+-- laser_safety false — read by the board. It was asked for and it is not
+-- built, because THE TEMPLATES ALREADY ARE THE MODULES. Whether a clinic
+-- does radiation checks is expressed by whether it has a radiation-apron
+-- row, which the board already reads and an administrator can already
+-- deactivate with form_templates.active.
+--
+-- A parallel switch table would be a second source of truth for the same
+-- fact, and the two would disagree the first time somebody added a
+-- template without flipping a flag: a log that exists, is due, appears on
+-- nobody's board, and is silently absent from the binder. Facility type
+-- decides what gets SEEDED. After that the clinic owns its own set.
+--
+-- ---------------------------------------------------------------
+-- WHY THERE IS NO 'health_system' TYPE
+-- ---------------------------------------------------------------
+-- It was on the list. A radio button labelled "Health System" that
+-- promises enterprise multi-site hierarchy and Joint Commission tracers
+-- would be selling two things that do not exist: TJC's framework is not
+-- the UCA one this binder is built around, and a hospital's procurement
+-- would stop this product at SOC 2 and SAML long before the checklists
+-- mattered.
+--
+-- Multi-site is real and is built below — but it is ORTHOGONAL to
+-- facility type, not a type of its own. An owner may hold three urgent
+-- cares, or an urgent care and a med spa. Modelling "has several sites"
+-- as a facility archetype would make that unrepresentable.
+--
+-- ---------------------------------------------------------------
+-- AND NO 'franchise' CONCEPT
+-- ---------------------------------------------------------------
+-- Per the founder, and it is the right call: an owner adds a CLINIC and
+-- picks its type, as many times as they have clinics. A franchise is
+-- then just an owner with several clinics, which needs no vocabulary of
+-- its own — and the same machinery serves a two-site independent, a
+-- twelve-site franchisee, and a group that owns a med spa next door to
+-- its urgent care.
+-- ============================================================
+
+
+-- ---------- 1. What kind of clinic this is ----------
+
+alter table staff.orgs
+  add column if not exists facility_type text not null default 'urgent_care';
+
+do $$ begin
+  alter table staff.orgs add constraint staff_orgs_facility_type
+    check (facility_type in (
+      'urgent_care',
+      'primary_care',
+      'med_spa',
+      'ambulatory_surgery',
+      'dental'
+    ));
+exception when duplicate_object then null; end $$;
+
+
+-- ---------- 2. Owners with more than one clinic ----------
+
+create table if not exists staff.org_groups (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  created_at timestamptz not null default now()
+);
+
+alter table staff.orgs
+  add column if not exists group_id uuid references staff.org_groups(id) on delete set null;
+
+create index if not exists staff_orgs_group on staff.orgs (group_id) where group_id is not null;
+
+-- MEMBERSHIP AS A TABLE, alongside staff.users.org_slug rather than
+-- replacing it. org_slug stays the person's home clinic — the one their
+-- session opens in and the one every existing RLS policy resolves
+-- against — so nothing already written changes meaning. This table adds
+-- the EXTRA clinics a regional manager or a multi-site owner can also
+-- reach.
+--
+-- RLS IS UNAFFECTED, and that is the point of doing it this way. Every
+-- policy in this schema keys off current_setting('staff.org_slug'),
+-- which is set per transaction and stays single-valued. Multi-site means
+-- a person may SWITCH which org is set, not that a query ever spans two.
+-- A cross-org read remains impossible.
+create table if not exists staff.user_orgs (
+  user_id uuid not null references staff.users(id) on delete cascade,
+  org_slug text not null references staff.orgs(slug) on delete cascade,
+  -- The role is per clinic. Somebody can be org_admin at the site they
+  -- run and plain staff at the one they cover shifts at, and conflating
+  -- those would hand them administrative rights they were never given.
+  role staff.user_role not null default 'staff',
+  granted_by uuid references staff.users(id) on delete set null,
+  granted_at timestamptz not null default now(),
+  primary key (user_id, org_slug)
+);
+
+create index if not exists staff_user_orgs_org on staff.user_orgs (org_slug);
+
+grant select, insert, update, delete on staff.user_orgs to staff_app;
+grant select, insert, update on staff.org_groups to staff_app;
+revoke delete on staff.org_groups from staff_app;
+
+-- Every clinic a person can reach: their home org plus any granted.
+-- UNION rather than UNION ALL so a home org that also has an explicit
+-- membership row appears once.
+drop view if exists staff.my_orgs cascade;
+create view staff.my_orgs
+with (security_invoker = true)
+as
+select u.id as user_id, o.slug, o.name, o.facility_type, o.group_id,
+       u.role::text as role, true as is_home
+  from staff.users u
+  join staff.orgs o on o.slug = u.org_slug
+union
+select m.user_id, o.slug, o.name, o.facility_type, o.group_id,
+       m.role::text as role, false as is_home
+  from staff.user_orgs m
+  join staff.orgs o on o.slug = m.org_slug;
+
+grant select on staff.my_orgs to staff_app;
+
+
+-- ---------- 3. Which logs a facility type gets ----------
+
+-- A TABLE, NOT A CASE STATEMENT. The mapping is the kind of thing that
+-- gets corrected by somebody who knows dentistry better than whoever
+-- wrote it, and a row is editable where a branch in a function is a
+-- deploy. It is also readable: "what does a med spa get" is a select.
+create table if not exists staff.facility_templates (
+  facility_type text not null,
+  template_slug text not null,
+  primary key (facility_type, template_slug)
+);
+
+grant select on staff.facility_templates to staff_app;
+
+insert into staff.facility_templates (facility_type, template_slug) values
+  -- URGENT CARE — unchanged from what AFC has had all along.
+  ('urgent_care', 'crash-cart'),
+  ('urgent_care', 'temp-fridge'),
+  ('urgent_care', 'narcotics-count'),
+  ('urgent_care', 'eyewash-autoclave'),
+  ('urgent_care', 'poct-qc'),
+  ('urgent_care', 'radiation-apron'),
+  ('urgent_care', 'qi-minutes'),
+  ('urgent_care', 'front-desk-open'),
+  ('urgent_care', 'front-desk-close'),
+  ('urgent_care', 'front-desk-eod'),
+  ('urgent_care', 'admin-day-sheet'),
+
+  -- PRIMARY CARE & PEDIATRICS. No radiation apron (most have no X-ray)
+  -- and no narcotics count (most stock none). The fridge is the whole
+  -- job here — see the VFC template added below.
+  ('primary_care', 'crash-cart'),
+  ('primary_care', 'temp-fridge'),
+  ('primary_care', 'vfc-storage'),
+  ('primary_care', 'eyewash-autoclave'),
+  ('primary_care', 'poct-qc'),
+  ('primary_care', 'qi-minutes'),
+  ('primary_care', 'front-desk-open'),
+  ('primary_care', 'front-desk-close'),
+
+  -- MEDICAL SPA. Emergency readiness still applies — anaphylaxis after
+  -- an injectable is the event this industry actually fears.
+  ('med_spa', 'crash-cart'),
+  ('med_spa', 'temp-fridge'),
+  ('med_spa', 'product-lot'),
+  ('med_spa', 'laser-safety'),
+  ('med_spa', 'eyewash-autoclave'),
+  ('med_spa', 'front-desk-open'),
+  ('med_spa', 'front-desk-close'),
+
+  -- AMBULATORY SURGERY CENTER.
+  ('ambulatory_surgery', 'crash-cart'),
+  ('ambulatory_surgery', 'temp-fridge'),
+  ('ambulatory_surgery', 'narcotics-count'),
+  ('ambulatory_surgery', 'mh-cart'),
+  ('ambulatory_surgery', 'sterile-processing'),
+  ('ambulatory_surgery', 'eyewash-autoclave'),
+  ('ambulatory_surgery', 'poct-qc'),
+  ('ambulatory_surgery', 'qi-minutes'),
+
+  -- DENTAL & ORAL SURGERY.
+  ('dental', 'crash-cart'),
+  ('dental', 'eyewash-autoclave'),
+  ('dental', 'sedation-check'),
+  ('dental', 'amalgam-separator'),
+  ('dental', 'front-desk-open'),
+  ('dental', 'front-desk-close')
+on conflict do nothing;
+
+
+-- ---------- 4. The templates the new types need ----------
+--
+-- Seeded against a RESERVED SLUG that owns the canonical copy of every
+-- template, rather than against each org. seed_facility() then copies
+-- from here. Without a canonical source, seeding a clinic created next
+-- year would mean re-running a migration, which is exactly the bug at
+-- the top of this file.
+--
+-- The library org is not a clinic: is_library keeps it out of every
+-- listing, every count and every billing sweep.
+
+alter table staff.orgs add column if not exists is_library boolean not null default false;
+
+insert into staff.orgs (slug, name, plan, active, is_library)
+values ('_library', 'Template library', 'internal', false, true)
+on conflict (slug) do update set is_library = true, active = false;
+
+-- Copy the templates that already exist on afc into the library, so the
+-- seven originals have a canonical home too. Only fills gaps.
+insert into staff.form_templates
+  (org_slug, slug, name, description, category, frequency, slots, sort_order,
+   job_roles, schema_json)
+select '_library', t.slug, t.name, t.description, t.category, t.frequency,
+       t.slots, t.sort_order, t.job_roles, t.schema_json
+  from staff.form_templates t
+ where t.org_slug = 'afc'
+   and not exists (
+     select 1 from staff.form_templates l
+      where l.org_slug = '_library' and l.slug = t.slug
+   );
+
+insert into staff.form_templates
+  (org_slug, slug, name, description, category, frequency, slots, sort_order,
+   job_roles, schema_json)
+select '_library', t.slug, t.name, t.description, t.category, t.frequency,
+       t.slots, t.sort_order, t.job_roles, t.schema_json::jsonb
+from (values
+
+  -- VACCINES FOR CHILDREN storage. Separate from temp-fridge because the
+  -- VFC requirements are their own thing: twice daily, min AND max from a
+  -- continuous monitor, and a documented response before anything is
+  -- discarded. Ranges are the CDC storage-and-handling values —
+  -- refrigerated 2-8 degC, frozen -50 to -15 degC.
+  ('vfc-storage',
+   'VFC vaccine storage',
+   'Twice-daily storage temperatures for the publicly funded stock.',
+   'clinical', 'per_shift', array['am','pm'], 21,
+   array['medical_assistant']::staff.job_role[],
+   $json$
+   {
+     "standard": "Refrigerated vaccine 2-8 degC (36-46 degF). Frozen vaccine -50 to -15 degC. Record the current, minimum and maximum from the continuous monitor at each reading. An excursion means quarantine and call the manufacturer or the immunization program BEFORE discarding anything.",
+     "fields": [
+       { "id": "unit", "label": "Storage unit", "type": "select",
+         "options": ["Refrigerator", "Freezer"] },
+       { "id": "current_c", "label": "Current", "type": "number",
+         "unit": "degC", "min": 2, "max": 8, "step": 0.1,
+         "presets": [3.0, 4.0, 5.0, 6.0, 7.0],
+         "help": "Freezer units are outside this range by design — record the reading and add the corrective-action note explaining the unit type if it flags." },
+       { "id": "min_c", "label": "Minimum since last check", "type": "number",
+         "unit": "degC", "step": 0.1 },
+       { "id": "max_c", "label": "Maximum since last check", "type": "number",
+         "unit": "degC", "step": 0.1 },
+       { "id": "monitor_ok", "label": "Continuous monitor reading and in date", "type": "boolean",
+         "expected": true,
+         "help": "A digital data logger with a current calibration certificate. A dial thermometer is not sufficient for publicly funded stock." },
+       { "id": "reset", "label": "Min/max reset after reading", "type": "boolean", "expected": true }
+     ]
+   }
+   $json$),
+
+  -- NEUROTOXIN AND FILLER LOT TRACKING. The record that answers "which
+  -- vial went into which patient" when a manufacturer issues a recall.
+  -- Patient identity is deliberately NOT collected here — the chart has
+  -- it; this is the inventory side.
+  ('product-lot',
+   'Injectable lot and expiry',
+   'Lot, expiry and reconstitution for each vial opened.',
+   'clinical', 'daily', array[]::text[], 24,
+   array['provider']::staff.job_role[],
+   $json$
+   {
+     "standard": "Every vial opened is recorded with its lot and expiry before use. A recall notice names lots, and a practice that cannot say which lots it holds has to contact everybody.",
+     "fields": [
+       { "id": "product", "label": "Product", "type": "text",
+         "placeholder": "e.g. neurotoxin A, 100 unit vial" },
+       { "id": "lot", "label": "Lot number", "type": "text" },
+       { "id": "expiry", "label": "Expiry", "type": "date" },
+       { "id": "storage_ok", "label": "Stored per manufacturer instructions until opened", "type": "boolean",
+         "expected": true },
+       { "id": "reconstituted_at", "label": "Reconstituted or opened", "type": "text",
+         "required": false, "placeholder": "time, and by whom" },
+       { "id": "discard_by", "label": "Discard by", "type": "date",
+         "help": "Per the manufacturer's beyond-use time after reconstitution, not the vial expiry." },
+       { "id": "units_used", "label": "Units drawn", "type": "number", "min": 0, "step": 1,
+         "required": false },
+       { "id": "disposed", "label": "Remainder disposed of per policy", "type": "boolean",
+         "expected": true, "required": false }
+     ]
+   }
+   $json$),
+
+  -- LASER AND ENERGY DEVICE SAFETY. ANSI Z136 is the consensus standard
+  -- for safe use of lasers in health care; the specific operator
+  -- credential requirement is set by STATE law and varies enormously, so
+  -- this asks whether the operator meets it rather than asserting what
+  -- it is.
+  ('laser-safety',
+   'Laser and energy device safety',
+   'Pre-treatment safety check for each device in use.',
+   'clinical', 'daily', array['am'], 26,
+   array['provider']::staff.job_role[],
+   $json$
+   {
+     "standard": "ANSI Z136 practice: controlled area, correct eyewear for the wavelength in use, key control, and a trained operator. Who may operate a device, and under what supervision, is set by state law — confirm yours.",
+     "fields": [
+       { "id": "device", "label": "Device", "type": "text",
+         "placeholder": "e.g. 1064 nm Nd:YAG" },
+       { "id": "wavelength_eyewear", "label": "Eyewear present and rated for this wavelength", "type": "boolean",
+         "expected": true,
+         "help": "Eyewear for the wrong wavelength is worse than none, because it is worn with confidence." },
+       { "id": "eyewear_count", "label": "Pairs available", "type": "number", "min": 1, "step": 1,
+         "presets": [2, 3, 4],
+         "help": "One per person in the room, including the patient." },
+       { "id": "signage", "label": "Warning signage posted and door controlled", "type": "boolean",
+         "expected": true },
+       { "id": "key_secured", "label": "Key removed and secured when not in use", "type": "boolean",
+         "expected": true },
+       { "id": "operator_qualified", "label": "Operator meets this state's requirement for this device", "type": "boolean",
+         "expected": true },
+       { "id": "test_fire", "label": "Test fire and calibration check passed", "type": "select",
+         "options": ["Pass", "Fail", "Not required today"], "failing": ["Fail"] },
+       { "id": "smoke_evac", "label": "Plume evacuation working where required", "type": "boolean",
+         "expected": true, "required": false }
+     ]
+   }
+   $json$),
+
+  -- MALIGNANT HYPERTHERMIA CART. MHAUS guidance is the reference every
+  -- ASC surveyor uses. Dantrolene stock is the item that matters and the
+  -- one most often found expired.
+  ('mh-cart',
+   'Malignant hyperthermia cart',
+   'Dantrolene stock, cold saline, and the adjuncts.',
+   'clinical', 'weekly', array[]::text[], 28,
+   array['provider','medical_assistant']::staff.job_role[],
+   $json$
+   {
+     "standard": "MHAUS recommends a full treatment dose of dantrolene be immediately available wherever triggering agents are used. Check the stock, not the seal — an expired vial behind an intact seal is the finding.",
+     "fields": [
+       { "id": "seal_intact", "label": "Cart seal intact", "type": "boolean", "expected": true },
+       { "id": "dantrolene_vials", "label": "Dantrolene vials on hand", "type": "number",
+         "min": 0, "step": 1,
+         "help": "Count the formulation you actually stock — the vial count for a full dose differs between the traditional and concentrated preparations." },
+       { "id": "dantrolene_expiry", "label": "Earliest dantrolene expiry", "type": "date" },
+       { "id": "sterile_water", "label": "Sterile water for reconstitution present and in date", "type": "boolean",
+         "expected": true,
+         "help": "Preservative-free. The volume needed is substantial and is the thing people run short of." },
+       { "id": "cold_saline", "label": "Cold saline available", "type": "boolean", "expected": true },
+       { "id": "adjuncts", "label": "Adjunct drugs present and in date", "type": "boolean",
+         "expected": true },
+       { "id": "poster", "label": "Treatment protocol posted with the cart", "type": "boolean",
+         "expected": true },
+       { "id": "hotline", "label": "Emergency hotline number posted", "type": "boolean",
+         "expected": true }
+     ]
+   }
+   $json$),
+
+  -- STERILE PROCESSING. The biological indicator is the only one of
+  -- these that proves sterility; the others prove the cycle ran.
+  ('sterile-processing',
+   'Sterile processing',
+   'Load records, indicators and the weekly spore test.',
+   'clinical', 'daily', array['am'], 29,
+   array['medical_assistant']::staff.job_role[],
+   $json$
+   {
+     "standard": "Every load is recorded and every load carries a chemical indicator. A biological indicator is run at least weekly and with every implant load. Growth means the load is not sterile and everything back to the last negative test is recalled.",
+     "fields": [
+       { "id": "load_number", "label": "Load number", "type": "text" },
+       { "id": "cycle_type", "label": "Cycle", "type": "select",
+         "options": ["Steam - wrapped", "Steam - unwrapped", "Chemical vapour", "Dry heat"] },
+       { "id": "physical_ok", "label": "Time, temperature and pressure within parameters", "type": "boolean",
+         "expected": true },
+       { "id": "chemical_ok", "label": "Chemical indicator passed", "type": "boolean", "expected": true },
+       { "id": "bi_run", "label": "Biological indicator in this load", "type": "boolean",
+         "expected": true, "required": false },
+       { "id": "bi_result", "label": "Biological indicator result", "type": "select",
+         "options": ["No growth (pass)", "Growth (fail)", "Not yet read"],
+         "failing": ["Growth (fail)"], "required": false },
+       { "id": "implant_load", "label": "Load contains an implant", "type": "boolean",
+         "expected": false, "required": false,
+         "help": "An implant load is quarantined until the biological indicator is read." },
+       { "id": "released", "label": "Load released for use", "type": "boolean", "expected": true }
+     ]
+   }
+   $json$),
+
+  -- SEDATION AND NITROUS. Scope varies by state and by permit level, so
+  -- this records the check rather than asserting who may sedate.
+  ('sedation-check',
+   'Sedation and nitrous safety',
+   'Scavenging, monitors, reversal agents and the emergency kit.',
+   'clinical', 'daily', array['am'], 30,
+   array['provider','medical_assistant']::staff.job_role[],
+   $json$
+   {
+     "standard": "Sedation is only as safe as the monitoring and the rescue. Permit level and who may administer are set by the state dental board — this records that the equipment for the level you hold is present and working.",
+     "fields": [
+       { "id": "scavenging", "label": "Nitrous scavenging system working", "type": "boolean",
+         "expected": true,
+         "help": "Waste gas is an occupational exposure for the whole team, not a patient issue." },
+       { "id": "o2_flush", "label": "Oxygen flush and fail-safe tested", "type": "boolean", "expected": true },
+       { "id": "o2_psi", "label": "Oxygen cylinder", "type": "number", "unit": "PSI",
+         "min": 1000, "max": 2400, "step": 10, "presets": [2000, 1800, 1500] },
+       { "id": "pulse_ox", "label": "Pulse oximeter working", "type": "boolean", "expected": true },
+       { "id": "capnography", "label": "Capnography working where required for this permit level", "type": "boolean",
+         "expected": true, "required": false },
+       { "id": "suction", "label": "High-volume suction working", "type": "boolean", "expected": true },
+       { "id": "reversal_agents", "label": "Reversal agents present and in date", "type": "boolean",
+         "expected": true, "required": false },
+       { "id": "emergency_kit", "label": "Emergency kit checked and in date", "type": "boolean",
+         "expected": true }
+     ]
+   }
+   $json$),
+
+  -- AMALGAM SEPARATOR. EPA's dental effluent guidelines, 40 CFR Part 441,
+  -- require a separator and its maintenance per manufacturer instructions
+  -- for most practices that place or remove amalgam.
+  ('amalgam-separator',
+   'Amalgam separator',
+   'Inspection and canister level.',
+   'operations', 'monthly', array[]::text[], 31,
+   array['medical_assistant']::staff.job_role[],
+   $json$
+   {
+     "standard": "40 CFR Part 441 requires an amalgam separator and operation per the manufacturer's instructions, with records retained. A canister allowed to fill past its mark stops separating.",
+     "fields": [
+       { "id": "canister_pct", "label": "Canister full", "type": "number", "unit": "%",
+         "min": 0, "max": 95, "step": 5, "presets": [25, 50, 75, 90],
+         "help": "Replace at the level the manufacturer states, not when it is full." },
+       { "id": "replaced", "label": "Canister replaced this check", "type": "boolean",
+         "expected": false, "required": false },
+       { "id": "lines_flushed", "label": "Vacuum lines cleaned with a non-bleach cleaner", "type": "boolean",
+         "expected": true,
+         "help": "Bleach and oxidising cleaners dissolve mercury and defeat the separator." },
+       { "id": "recycler", "label": "Waste consigned to a licensed recycler", "type": "boolean",
+         "expected": true, "required": false },
+       { "id": "manifest_filed", "label": "Recycling manifest filed", "type": "boolean",
+         "expected": true, "required": false }
+     ]
+   }
+   $json$)
+
+) as t(slug, name, description, category, frequency, slots, sort_order, job_roles, schema_json)
+where not exists (
+  select 1 from staff.form_templates f
+   where f.org_slug = '_library' and f.slug = t.slug
+);
+
+
+-- ---------- 5. Seeding a clinic ----------
+
+-- Copies the template set for an org's facility type out of the library.
+-- Idempotent per template, so calling it again after an administrator has
+-- deactivated one does NOT resurrect it.
+create or replace function staff.seed_facility(p_org text)
+returns integer
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+declare
+  ftype text;
+  n integer;
+begin
+  select facility_type into ftype from staff.orgs where slug = p_org;
+  if ftype is null then return 0; end if;
+
+  insert into staff.form_templates
+    (org_slug, slug, name, description, category, frequency, slots,
+     sort_order, job_roles, schema_json)
+  select p_org, l.slug, l.name, l.description, l.category, l.frequency,
+         l.slots, l.sort_order, l.job_roles, l.schema_json
+    from staff.form_templates l
+    join staff.facility_templates ft
+      on ft.template_slug = l.slug and ft.facility_type = ftype
+   where l.org_slug = '_library'
+     and not exists (
+       select 1 from staff.form_templates x
+        where x.org_slug = p_org and x.slug = l.slug
+     );
+
+  get diagnostics n = row_count;
+  return n;
+end $$;
+
+revoke all on function staff.seed_facility(text) from public;
+grant execute on function staff.seed_facility(text) to staff_app;
+
+
+-- ---------- 6. Provisioning, fixed ----------
+
+-- DROP THE OLD FOUR-ARGUMENT OVERLOAD FIRST.
+--
+-- `create or replace function` replaces a function with the SAME
+-- signature. Adding a defaulted argument makes a DIFFERENT signature, so
+-- this created a second function beside the first rather than replacing
+-- it — and a four-argument call then matched both and failed with
+-- "function staff.provision_trial(unknown, unknown, unknown, integer) is
+-- not unique". The comment that used to sit here claimed the opposite,
+-- and production 500ed on every signup until the duplicate was dropped.
+--
+-- Dropped rather than left in place: the old one predates facility types
+-- and seeds no logs, so a clinic that reached it would land on an empty
+-- board.
+drop function if exists staff.provision_trial(text, text, text, int);
+
+-- Now takes a facility type and SEEDS THE CLINIC. A four-argument call
+-- still works and gets urgent_care — but only because the old overload
+-- is dropped immediately above.
+create or replace function staff.provision_trial(
+  p_slug text, p_name text, p_email text, p_days int default 14,
+  p_facility text default 'urgent_care'
+) returns text
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+declare final_slug text; n int := 1;
+begin
+  select org_slug into final_slug
+    from staff.org_invites where lower(email) = lower(p_email) limit 1;
+  if found then return final_slug; end if;
+
+  final_slug := p_slug;
+  while exists (select 1 from staff.orgs where slug = final_slug) loop
+    n := n + 1;
+    final_slug := p_slug || '-' || n;
+  end loop;
+
+  insert into staff.orgs (slug, name, plan, subscription_status,
+                          is_read_only, trial_ends_on, billing_email,
+                          facility_type)
+  values (final_slug, p_name, 'trial', 'trialing',
+          false, current_date + p_days, lower(p_email),
+          coalesce(p_facility, 'urgent_care'));
+
+  insert into staff.org_invites (org_slug, email, role)
+  values (final_slug, lower(p_email), 'org_admin');
+
+  -- The line whose absence meant every trial landed on an empty board.
+  perform staff.seed_facility(final_slug);
+
+  return final_slug;
+end $$;
+
+revoke all on function staff.provision_trial(text, text, text, int, text) from public;
+grant execute on function staff.provision_trial(text, text, text, int, text) to staff_app;
+
+
+-- ---------- 7. Adding another clinic to an owner ----------
+
+-- No franchise vocabulary: this is "add a clinic". The group is created
+-- lazily on the second one, because an owner with a single site should
+-- never have to think about groups at all.
+create or replace function staff.add_clinic(
+  p_owner_email text, p_slug text, p_name text, p_facility text
+) returns text
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+declare
+  home_slug text;
+  home_group uuid;
+  final_slug text;
+  n int := 1;
+  owner_id uuid;
+begin
+  -- The caller must already own a clinic. Without this, add_clinic is an
+  -- unauthenticated way to create organizations.
+  select u.org_slug, u.id into home_slug, owner_id
+    from staff.users u
+   where lower(u.email) = lower(p_owner_email)
+     and u.role in ('org_admin', 'platform_super_admin')
+     and u.active
+   limit 1;
+  if home_slug is null then
+    raise exception 'no owning account for %', p_owner_email
+      using errcode = 'insufficient_privilege';
+  end if;
+
+  final_slug := p_slug;
+  while exists (select 1 from staff.orgs where slug = final_slug) loop
+    n := n + 1;
+    final_slug := p_slug || '-' || n;
+  end loop;
+
+  -- Group the existing clinic and the new one together, creating the
+  -- group on first use.
+  select group_id into home_group from staff.orgs where slug = home_slug;
+  if home_group is null then
+    insert into staff.org_groups (name)
+    select coalesce(o.name, home_slug) from staff.orgs o where o.slug = home_slug
+    returning id into home_group;
+    update staff.orgs set group_id = home_group where slug = home_slug;
+  end if;
+
+  insert into staff.orgs (slug, name, plan, subscription_status, is_read_only,
+                          billing_email, facility_type, group_id)
+  select final_slug, p_name, o.plan, o.subscription_status, o.is_read_only,
+         o.billing_email, coalesce(p_facility, 'urgent_care'), home_group
+    from staff.orgs o where o.slug = home_slug;
+
+  -- The owner reaches the new clinic as an administrator; their home org
+  -- is unchanged, so their session still opens where it always did.
+  insert into staff.user_orgs (user_id, org_slug, role, granted_by)
+  values (owner_id, final_slug, 'org_admin', owner_id)
+  on conflict do nothing;
+
+  insert into staff.org_invites (org_slug, email, role)
+  values (final_slug, lower(p_owner_email), 'org_admin')
+  on conflict do nothing;
+
+  perform staff.seed_facility(final_slug);
+
+  return final_slug;
+end $$;
+
+revoke all on function staff.add_clinic(text, text, text, text) from public;
+grant execute on function staff.add_clinic(text, text, text, text) to staff_app;
+
+
+-- ---------- 8. Backfill ----------
+
+-- Every real clinic that was provisioned before this file existed and is
+-- therefore sitting on an empty board. Excludes the library, and only
+-- touches orgs with no templates at all, so a clinic that has curated its
+-- own set is left alone.
+do $$
+declare r record;
+begin
+  for r in
+    select o.slug from staff.orgs o
+     where not o.is_library
+       and not exists (
+         select 1 from staff.form_templates t where t.org_slug = o.slug
+       )
+  loop
+    perform staff.seed_facility(r.slug);
+  end loop;
+end $$;
+
+
+-- ========== staff-audio-audit.sql ==========
+
+-- ============================================================
+-- SOUND OFF DURING CLINIC HOURS, AND OFF-SITE FILINGS IN THE DIGEST
+--
+-- Run AFTER supabase/staff-geofence.sql. Idempotent.
+--
+-- ---------------------------------------------------------------
+-- WHY THE MUTE TOGGLE IS NOT REMOVED
+-- ---------------------------------------------------------------
+-- The request was to lock audio ON during operating hours and take the
+-- toggle away. It is not built that way, for three reasons, and the
+-- first two mean the lock would not work even if it were.
+--
+-- A BROWSER CANNOT BE MADE TO PLAY SOUND. Every autoplay policy requires
+-- a genuine user gesture before an AudioContext will resume. A toggle
+-- pinned to "on" changes a boolean; it does not produce a noise. The app
+-- already unlocks on the first pointer, key or touch event precisely
+-- because that is the only thing that works — and a person who never
+-- touches the screen hears nothing however the flag is set.
+--
+-- THE DEVICE WINS ANYWAY. An iPad on the hardware silent switch, or with
+-- its volume at zero, is silent. No web application can read either
+-- state, let alone override it. "Mandatory audio" would therefore be a
+-- claim the software cannot keep on the exact device the claim is aimed
+-- at.
+--
+-- AND SILENCE IS SOMETIMES CORRECT. A workstation in a room with a
+-- distressed patient, a provider on the phone to a specialist, a
+-- consultation in progress. Software that cannot be silenced for ninety
+-- seconds during a difficult conversation is software that gets closed,
+-- and a closed app files no logs at all.
+--
+-- WHAT IS BUILT INSTEAD is the same bet the geofence and the corrective
+-- action make, and it is the one that works: the choice stays available,
+-- and it is ON THE RECORD. Turning sound off during clinic hours is
+-- logged with who and when, appears on the medical director's digest
+-- while it is off, and clears itself when sound comes back on. Nobody
+-- can quietly run a shift in silence; anybody can silence a room.
+-- ============================================================
+
+
+-- ---------- 1. When sound was turned off ----------
+
+alter table staff.users
+  add column if not exists audio_muted_at timestamptz;
+
+-- Set and cleared by the toggle route. Held on the user rather than in a
+-- separate event table because the question the digest asks is "who has
+-- it off RIGHT NOW", not "how many times has anyone ever". The history
+-- is in staff.audit_log, which already records the toggle.
+comment on column staff.users.audio_muted_at is
+  'When this person last turned shift sound off. Null when sound is on.';
+
+-- Everyone currently silent, with how long for. security_invoker so it
+-- reads under the caller''s RLS.
+drop view if exists staff.audio_off_now cascade;
+create view staff.audio_off_now
+with (security_invoker = true)
+as
+select u.id,
+       u.org_slug,
+       u.legal_name,
+       u.email,
+       u.job_role::text as job_role,
+       u.audio_muted_at,
+       -- Whole minutes. An owner reading "off for 340 minutes" learns
+       -- something a timestamp does not tell them at a glance.
+       (extract(epoch from (now() - u.audio_muted_at)) / 60)::integer as minutes_off,
+       staff.within_operating_hours(u.org_slug) as during_hours
+  from staff.users u
+ where u.active
+   and not u.audio_alerts_enabled
+   and u.audio_muted_at is not null;
+
+grant select on staff.audio_off_now to staff_app;
+
+
+-- ---------- 2. Off-site filings, today ----------
+
+-- The digest reports what happened today; staff.off_site_filings covers
+-- all time. This is the window the 9am and 5pm mails actually need, and
+-- keeping it separate means neither query grows a date filter the other
+-- does not want.
+drop view if exists staff.off_site_today cascade;
+create view staff.off_site_today
+with (security_invoker = true)
+as
+select r.org_slug,
+       t.name as form_name,
+       u.legal_name as filed_by,
+       r.location_status,
+       round(r.filed_distance_m)::integer as distance_m,
+       r.location_note,
+       r.submitted_at
+  from staff.form_responses r
+  join staff.form_instances i on i.id = r.instance_id
+  join staff.form_templates t on t.id = i.template_id
+  left join staff.users u on u.id = r.submitted_by
+ where i.due_date = (now() at time zone coalesce(
+         (select o.timezone from staff.orgs o where o.slug = r.org_slug),
+         'America/New_York'))::date
+   and r.location_status in ('off_site', 'denied')
+ order by r.submitted_at;
+
+grant select on staff.off_site_today to staff_app;
+
+
+-- ============================================================
+-- 40. SIGNUP IS FOR OWNERS. STAFF ARE INVITED, NEVER SELF-SERVE.
+--
+-- /start provisions a clinic. Nothing stopped a medical assistant at an
+-- already-onboarded clinic typing their clinic's name into it and
+-- getting a SECOND workspace: same clinic, same staff, two boards, two
+-- sets of logs, and a surveyor eventually shown the emptier one.
+--
+-- The existing guard only caught the case where the person already held
+-- an invite. Somebody with no invite — which is precisely the person who
+-- should not be here — sailed through.
+--
+-- WHY THE EMAIL DOMAIN. A clinic's staff share a mail domain and almost
+-- nothing else that is knowable before authentication. Matching on
+-- clinic NAME would refuse "Riverside Urgent Care" in two states, which
+-- are genuinely different customers.
+--
+-- FREE MAIL IS EXEMPT, and has to be: two unrelated owners on gmail.com
+-- are not the same clinic, and blocking the second would be refusing a
+-- customer to prevent a typo.
+-- ============================================================
+
+create or replace function staff.domain_taken(p_email text)
+returns table (org_slug text, org_name text)
+language sql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  with d as (
+    select lower(split_part(p_email, '@', 2)) as dom
+  )
+  select o.slug, o.name
+    from d
+    join staff.org_invites i
+      on lower(split_part(i.email, '@', 2)) = d.dom
+    join staff.orgs o on o.slug = i.org_slug
+   where d.dom <> ''
+     and d.dom not in (
+       'gmail.com', 'googlemail.com', 'yahoo.com', 'ymail.com',
+       'outlook.com', 'hotmail.com', 'live.com', 'msn.com',
+       'icloud.com', 'me.com', 'mac.com', 'aol.com',
+       'proton.me', 'protonmail.com', 'pm.me',
+       'gmx.com', 'mail.com', 'zoho.com', 'yandex.com'
+     )
+   limit 1;
+$$;
+
+revoke all on function staff.domain_taken(text) from public;
+grant execute on function staff.domain_taken(text) to staff_app;
+
+
+-- ========== staff-invites.sql ==========
+
+-- ============================================================
+-- ADMIN-ISSUED INVITATIONS
+--
+-- Until this migration, staff.org_invites could only be written by SQL
+-- functions and by hand in the SQL editor. The schema said so in a
+-- comment: "Add the first invite — insert into staff.org_invites ...".
+-- That is fine for the founding owner, whose invite provision_trial
+-- writes. It is not a product for the owner who then has to add six
+-- medical assistants on a Monday morning.
+--
+-- WHAT THIS IS NOT: a shared join code. A code passed around a clinic is
+-- a bearer secret — it gets texted, written on the break-room whiteboard,
+-- and keeps working after the person is gone. There is no per-person
+-- revocation and the audit trail cannot say who used it.
+--
+-- WHAT THIS IS: one link, minted for one address, mailed to that address,
+-- dead after 72 hours or one use, revocable by an administrator at any
+-- moment before that. The address is still the identity; the link only
+-- proves the person reading the mailbox is the person invited.
+--
+-- WHY 72 HOURS. The sign-in code is ten minutes because the person is
+-- standing at the screen having just asked for it. An invitation is
+-- different: it arrives while a new hire is mid-shift, or on a Friday
+-- before two days off. Ten minutes would mean every invitation needing a
+-- resend, and an administrator who resends five times a day stops reading
+-- what they click. Three days covers a weekend and still expires well
+-- inside a notice period.
+-- ============================================================
+
+alter table staff.org_invites
+  add column if not exists token_hash  text,
+  add column if not exists expires_at  timestamptz,
+  add column if not exists accepted_at timestamptz,
+  add column if not exists job_role    text,
+  add column if not exists sent_at     timestamptz,
+  add column if not exists sent_count  int not null default 0;
+
+-- THE TOKEN IS NEVER STORED. Only its SHA-256, exactly as the surveyor
+-- links and the sign-in codes do it. A stolen database backup must not
+-- be a set of working invitations.
+do $$ begin
+  alter table staff.org_invites
+    add constraint staff_invite_token_is_a_hash
+    check (token_hash is null or token_hash ~ '^[0-9a-f]{64}$');
+exception when duplicate_object then null;
+end $$;
+
+-- A DOMAIN INVITE CANNOT CARRY A LINK. Mailing "everyone at
+-- buchmedical.com" has no address to send to, and a link that admits
+-- anyone at a domain is the shared code this migration exists to avoid.
+do $$ begin
+  alter table staff.org_invites
+    add constraint staff_invite_link_needs_an_address
+    check (token_hash is null or email is not null);
+exception when duplicate_object then null;
+end $$;
+
+-- An accepted or expired invitation must not be findable by token. The
+-- partial index is the lookup path and deliberately excludes both.
+create index if not exists staff_invites_by_token
+  on staff.org_invites (token_hash)
+  where token_hash is not null
+    and revoked_at is null
+    and accepted_at is null;
+
+-- One live invitation per address per org. Re-inviting somebody replaces
+-- the previous link rather than leaving two valid ones in two mailboxes.
+create unique index if not exists staff_invites_one_live_per_email
+  on staff.org_invites (org_slug, lower(email))
+  where email is not null
+    and revoked_at is null
+    and accepted_at is null;
+
+-- ------------------------------------------------------------
+-- What an administrator sees
+-- ------------------------------------------------------------
+drop view if exists staff.pending_invites cascade;
+create view staff.pending_invites
+with (security_invoker = true) as
+select i.id,
+       i.org_slug,
+       i.email,
+       i.role::text            as role,
+       i.job_role,
+       i.created_at,
+       i.expires_at,
+       i.sent_at,
+       i.sent_count,
+       (i.expires_at <= now()) as expired,
+       u.name                  as invited_by_name
+  from staff.org_invites i
+  left join staff.users u on u.id = i.invited_by
+ where i.email is not null
+   and i.revoked_at is null
+   and i.accepted_at is null
+ order by i.created_at desc;
+
+grant select on staff.pending_invites to staff_app;
+
+-- ------------------------------------------------------------
+-- Termination closes the door in both places
+-- ------------------------------------------------------------
+--
+-- Deactivating somebody who has signed in sets staff.users.active =
+-- false. That alone is not enough: if their original invitation is still
+-- live they can walk back in through the link in their mailbox and get a
+-- fresh user row. So deactivation revokes the invitation too.
+--
+-- A trigger rather than application code, because there is more than one
+-- route to active = false and the one that forgets is the one that
+-- matters.
+create or replace function staff.revoke_invites_on_deactivate()
+returns trigger
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+begin
+  if old.active and not new.active then
+    update staff.org_invites
+       set revoked_at = now()
+     where org_slug = new.org_slug
+       and lower(email) = lower(new.email)
+       and revoked_at is null
+       and accepted_at is null;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists staff_users_deactivate_revokes_invite on staff.users;
+create trigger staff_users_deactivate_revokes_invite
+  after update of active on staff.users
+  for each row
+  execute function staff.revoke_invites_on_deactivate();
+
+-- ------------------------------------------------------------
+-- RLS and privileges
+-- ------------------------------------------------------------
+--
+-- staff-schema.sql sets ALTER DEFAULT PRIVILEGES granting DELETE on
+-- future tables in this schema. org_invites predates that, but the
+-- revoke is restated here so a re-run cannot leave DELETE behind: an
+-- invitation is revoked, never deleted, so that "who let this person in"
+-- still has an answer a year later.
+revoke delete on staff.org_invites from staff_app;
+grant select, insert, update on staff.org_invites to staff_app;

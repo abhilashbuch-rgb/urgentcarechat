@@ -1,6 +1,5 @@
+import BrandLockup from "@/app/components/BrandLockup";
 import Link from "next/link";
-import BrandIcon from "@/app/components/BrandIcon";
-import Wordmark from "@/app/components/Wordmark";
 import { PRODUCT_NAME, OPERATOR, contactMailto } from "@/lib/site";
 
 export const metadata = {
@@ -19,10 +18,7 @@ export default function SecurityPage() {
       <header className="lp-nav">
         <div className="lp-nav-inner">
           <Link className="lp-brand" href="/" style={{ textDecoration: "none" }}>
-            <BrandIcon />
-            <span>
-              <Wordmark tldClass="lp-tld" />
-            </span>
+            <BrandLockup />
           </Link>
           <nav className="lp-nav-links">
             <Link href="/privacy">Privacy</Link>

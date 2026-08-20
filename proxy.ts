@@ -1,11 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getTenantBySlug } from "@/lib/tenants";
-import { ROOT_DOMAIN, domainOf, isRootHost } from "@/lib/site";
+import { ROOT_DOMAIN, domainOf, isRootHost, isRetiredHost } from "@/lib/site";
 
 // ============================================================
 // Subdomain routing for branded tenant portals (e.g.
-// afc.urgentcare.chat). Root urgentcare.chat and any host that isn't a
-// recognized *.urgentcare.chat subdomain pass through untouched — most
+// afc.medicin.io). Root medicin.io and any host that isn't a
+// recognized *.medicin.io subdomain pass through untouched — most
 // requests (root traffic, local dev, Vercel preview URLs) take this path.
 // A recognized subdomain gets its page requests rewritten to /t/[tenant]
 // and every request (pages and API alike) tagged with an x-tenant-slug
@@ -33,6 +33,17 @@ const RESERVED_ROOT_PATHS = new Set([
   "terms",
   "widget",
   "embed",
+  // Root-only pages that a TENANT SLUG COULD OTHERWISE SHADOW. This is
+  // not hypothetical: /start derives a slug from the clinic name via
+  // slugFrom(), so a clinic that signs up as "Demo" or "Start" claims
+  // that slug and its portal then swallows the page that created it.
+  // /verify is the worst of the three to lose — it is the QR target
+  // printed on every exported binder, so a collision breaks documents
+  // already in a surveyor's hands, years after the fact.
+  "demo",
+  "start",
+  "verify",
+  "report",
 ]);
 
 // Conservative slug shape — also keeps files (anything with a dot, e.g.
@@ -41,7 +52,7 @@ const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{1,31}$/;
 
 // Tenants whose subdomain is confirmed working — comma-separated slugs in
 // TENANT_CANONICAL_SUBDOMAIN_SLUGS, e.g. "afc". Only these redirect from
-// urgentcare.chat/<slug> to <slug>.urgentcare.chat.
+// medicin.io/<slug> to <slug>.medicin.io.
 //
 // Per-tenant rather than a single on/off switch, because a subdomain only
 // works after someone adds it in Vercel. The wildcard domain cannot issue
@@ -72,8 +83,8 @@ const ROOT_ONLY_PATHS = new Set([
   "widget",
 ]);
 
-// Path-based tenant portals on the root domain: urgentcare.chat/afc serves
-// the same page as afc.urgentcare.chat.
+// Path-based tenant portals on the root domain: medicin.io/afc serves
+// the same page as afc.medicin.io.
 //
 // This is not just a fallback for tenants whose DNS isn't set up yet — it
 // means a tenant portal is shareable the moment the row exists, with no
@@ -88,7 +99,7 @@ const ROOT_ONLY_PATHS = new Set([
 // set, so going fully live means unsetting one env var.
 //
 // Deliberately applied on BOTH routes a portal is reachable through — the
-// subdomain and urgentcare.chat/<slug>. Gating only the subdomain would
+// subdomain and medicin.io/<slug>. Gating only the subdomain would
 // have left the path URL wide open, which is exactly the kind of hole that
 // makes a "private preview" not private.
 //
@@ -160,7 +171,7 @@ async function handleRootDomain(request: NextRequest, headers: Headers) {
 
   // The subdomain is the canonical home for a tenant portal, so the path
   // URL redirects to it rather than serving a duplicate. Held back until
-  // afc.urgentcare.chat had a valid certificate — redirecting here while
+  // afc.medicin.io had a valid certificate — redirecting here while
   // HTTPS was failing would have pointed every visitor at a TLS error.
   //
   // The path route still exists and still matters: it is what works on day
@@ -191,9 +202,54 @@ async function handleRootDomain(request: NextRequest, headers: Headers) {
 export async function proxy(request: NextRequest) {
   const hostname = (request.headers.get("host") || "").split(":")[0];
 
-  // Recognised under the current domain AND the legacy one, so the
-  // white-label patient portals already live on urgentcare.chat keep
-  // working through the rename.
+  // A retired domain points at the product; it does not serve it. This
+  // has to run BEFORE tenant resolution, because afc.medicin.io
+  // would otherwise still resolve a real tenant and serve their portal
+  // under the dead name.
+  //
+  // 308 rather than 307: the move is permanent, and 308 is the one that
+  // preserves the method AND tells caches and search engines to stop
+  // asking. The path is carried across so a deep link lands where it
+  // meant to rather than dumping everyone on the homepage.
+  if (isRetiredHost(hostname)) {
+    return NextResponse.redirect(
+      new URL(request.nextUrl.pathname + request.nextUrl.search, `https://${ROOT_DOMAIN}`),
+      308
+    );
+  }
+
+  // A surveyor link's TOKEN IS ITS PATH, which makes the URL itself the
+  // credential. Two headers stop it travelling:
+  //
+  //   Referrer-Policy: no-referrer — without it, any click from this
+  //   page sends the full URL, token included, to the destination in a
+  //   Referer header. The page has no outbound links today; this is here
+  //   so that adding one later cannot quietly leak an inspector's key.
+  //
+  //   X-Robots-Tag — belt and braces with the route's own metadata. A
+  //   surveyor link in a search index is a clinic's compliance record in
+  //   a search index.
+  //
+  // Cache-Control because these are per-inspector documents and must not
+  // sit in a shared cache keyed only on the path.
+  // Same treatment for a scheduled report link: its token is its path,
+  // so the URL is the credential and must not leak through a Referer
+  // header, a search index, or a shared cache. See the surveyor note
+  // below — the reasoning is identical and deliberately not duplicated.
+  if (
+    request.nextUrl.pathname.startsWith("/surveyor/") ||
+    request.nextUrl.pathname.startsWith("/report/")
+  ) {
+    const res = NextResponse.next();
+    res.headers.set("Referrer-Policy", "no-referrer");
+    res.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+    res.headers.set("Cache-Control", "no-store, max-age=0");
+    return res;
+  }
+
+  // Recognised under the current domain. LEGACY_DOMAINS is empty now, so
+  // this only ever matches medicin.io — the shape is kept because the
+  // next rename should be one line again.
   const parent = domainOf(hostname);
   const isRootDomain = isRootHost(hostname);
   const subdomain =
@@ -277,7 +333,7 @@ export async function proxy(request: NextRequest) {
   // make this "/t/afc/". Next normalizes that with a 308 to "/t/afc" — and
   // because the redirect is visible to the browser, the next request comes
   // back through here and gets prefixed AGAIN into /t/afc/t/afc. That is
-  // why afc.urgentcare.chat served a 404 the moment DNS started resolving.
+  // why afc.medicin.io served a 404 the moment DNS started resolving.
   const suffix = pathname === "/" ? "" : pathname;
   const rewrittenUrl = new URL(`/t/${tenant.slug}${suffix}`, request.url);
   rewrittenUrl.search = request.nextUrl.search;

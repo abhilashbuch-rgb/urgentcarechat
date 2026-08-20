@@ -24,9 +24,17 @@ export const ROOT_DOMAIN = "medicin.io";
 /** Canonical origin for links, metadata, and sitemaps. */
 export const ROOT_URL = `https://${ROOT_DOMAIN}`;
 
-/** The name shown to people. Separate from the domain on purpose — give
- *  the product a real name and only this line changes. */
-export const PRODUCT_NAME = "medicin.io";
+/** The name shown to people. Separate from the domain on purpose, and
+ *  now actually different from it: the product is Medicin Binder, which
+ *  lives at medicin.io. Both halves are load-bearing — "binder" is the
+ *  thing this replaces, and saying so in the name does more work than a
+ *  tagline does. */
+export const PRODUCT_NAME = "Medicin Binder";
+
+/** The two halves, for the stacked lockup. Split here rather than in the
+ *  component so the mark and the metadata can never disagree about what
+ *  the product is called. */
+export const PRODUCT_WORDS = ["medicin", "binder"] as const;
 
 /** Who operates it — appears in footers and structured data. */
 export const OPERATOR = "Medicin.io LLC";
@@ -49,19 +57,40 @@ export function contactMailto(subject: string): string {
 }
 
 /**
- * Domains this deployment still answers for, beyond the current one.
+ * Domains this deployment answers for beyond the current one.
  *
- * urgentcare.chat is NOT retired. It is a genuinely good name for a
- * patient symptom chat, which is what still lives on it: afc.urgentcare.chat
- * is a working white-label patient portal that has been shown to people,
- * and silently breaking it to rename the staff product would be trading
- * someone else's live thing for our tidiness.
+ * EMPTY, DELIBERATELY. urgentcare.chat was kept resolving through the
+ * rename so the live AFC patient portal would not break mid-move. It is
+ * now retired at the owner's instruction: the product is medicin.io, and
+ * a second domain that silently still works is a second domain to keep
+ * certificates, redirects and OAuth callbacks straight on forever.
  *
- * Tenant subdomains resolve under any of these. The staff area redirects
- * to ROOT_DOMAIN from all of them, so there is still exactly one staff
- * door and one OAuth callback.
+ * CONSEQUENCE, stated plainly because it is not reversible by editing
+ * this file alone: afc.urgentcare.chat stops resolving to a portal. Any
+ * printed card, QR code or link pointing at it is dead. Point the old
+ * domain's DNS at a redirect, or accept the breakage.
  */
-export const LEGACY_DOMAINS = ["urgentcare.chat"] as const;
+export const LEGACY_DOMAINS: readonly string[] = [];
+
+/**
+ * Domains that used to serve this product and now only point at it.
+ *
+ * Different from LEGACY_DOMAINS: a legacy domain SERVES the app, a
+ * retired one REDIRECTS to it. Retiring without this list would leave
+ * urgentcare.chat rendering a second, unbranded copy of the site — the
+ * host is still pointed at the deployment, so "removing" it from the
+ * code just makes it an unrecognised host that falls through to the
+ * homepage. That is worse than either alternative: two domains serving
+ * identical content, neither canonical.
+ */
+export const RETIRED_DOMAINS = ["urgentcare.chat"] as const;
+
+/** True for a retired domain or any subdomain of one. */
+export function isRetiredHost(hostname: string): boolean {
+  return RETIRED_DOMAINS.some(
+    (d) => hostname === d || hostname.endsWith(`.${d}`)
+  );
+}
 
 /** True for the apex or www of any domain this deployment answers for. */
 export function isRootHost(hostname: string): boolean {

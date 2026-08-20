@@ -1,11 +1,10 @@
+import BrandLockup from "@/app/components/BrandLockup";
 import Link from "next/link";
-import BrandIcon from "@/app/components/BrandIcon";
 import HealthMonitor from "@/app/components/HealthMonitor";
 import { getTodaysReads } from "@/lib/health-reads";
 import { fetchFluSeries, type FluSeries } from "@/lib/cdc-flu";
 import { fetchHealthNews, countBySource, type NewsItem } from "@/lib/medlineplus-news";
 import { type HealthTopic } from "@/lib/medlineplus";
-import Wordmark from "@/app/components/Wordmark";
 import { PRODUCT_NAME, OPERATOR } from "@/lib/site";
 
 export const metadata = {
@@ -43,10 +42,7 @@ export default async function MonitorPage() {
       <header className="lp-nav">
         <div className="lp-nav-inner">
           <Link className="lp-brand" href="/" style={{ textDecoration: "none" }}>
-            <BrandIcon />
-            <span>
-              <Wordmark tldClass="lp-tld" />
-            </span>
+            <BrandLockup />
           </Link>
           <nav className="lp-nav-links">
             <Link href="/reads">Health Reads</Link>

@@ -5,7 +5,7 @@ import { z } from "zod";
 //
 // A tenant's page is not a fixed copy of the root site — it's assembled
 // from this config, stored as `tenants.config` (jsonb). Changing what
-// afc.urgentcare.chat looks like is a SQL update, not a deploy.
+// afc.medicin.io looks like is a SQL update, not a deploy.
 //
 // Everything here arrives from the database, which means it is data, not
 // trusted markup. So: no HTML is ever accepted (prose is plain text,
@@ -169,7 +169,7 @@ export type TenantConfig = z.infer<typeof tenantConfigSchema>;
 export type TenantSection = z.infer<typeof sectionSchema>;
 
 // A tenant with no config at all still gets a real page: their chat, their
-// locations, and health reads. This is what "afc.urgentcare.chat exists"
+// locations, and health reads. This is what "afc.medicin.io exists"
 // means before anyone writes a line of config for them.
 export const DEFAULT_CONFIG: TenantConfig = {
   sections: [

@@ -5,7 +5,7 @@ import { PRODUCT_NAME } from "@/lib/site";
 
 // Validates the tenant slug for everything under /t/[tenant] — reached
 // either directly, or via proxy.ts rewriting a request to
-// afc.urgentcare.chat into /t/afc. An unknown/inactive slug here means
+// afc.medicin.io into /t/afc. An unknown/inactive slug here means
 // proxy's own lookup is stale (its cache is short-lived) or someone
 // hit this path directly; either way, 404 rather than guessing.
 export async function generateMetadata({

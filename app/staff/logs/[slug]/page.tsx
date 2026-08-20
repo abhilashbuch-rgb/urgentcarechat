@@ -7,6 +7,7 @@ import { getProfile } from "@/lib/staff/compliance";
 import { SLOT_LABELS, currentSlot } from "@/lib/staff/forms";
 import { CATEGORY_LABELS } from "@/lib/staff/labels";
 import LogForm from "@/app/components/staff/LogForm";
+import type { GeofenceMode, OrgGeofence } from "@/lib/staff/geo";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,23 @@ export default async function LogPage({
   const data = await withSession(session, async (sql) => ({
     template: await loadTemplate(sql, slug),
     profile: await getProfile(sql, session.uid),
+    // Where the clinic is, so the form can tell the person whether they
+    // are at it before they file rather than after. The radius and mode
+    // are the clinic's own settings — see supabase/staff-geofence.sql for
+    // why this records rather than blocks.
+    geo: (
+      await sql<
+        {
+          latitude: number | null;
+          longitude: number | null;
+          geofence_radius_m: number;
+          geofence_mode: GeofenceMode;
+        }[]
+      >`
+        select latitude, longitude, geofence_radius_m, geofence_mode
+          from staff.orgs where slug = ${session.org}
+      `
+    )[0],
   }));
 
   if (!data.template) notFound();
@@ -53,6 +71,15 @@ export default async function LogPage({
     timeZone: "America/New_York",
   });
 
+  // A clinic row that predates the migration has no mode; treat that as
+  // off rather than as a reason to prompt everybody for location.
+  const geofence: OrgGeofence = {
+    lat: data.geo?.latitude ?? null,
+    lng: data.geo?.longitude ?? null,
+    radiusM: data.geo?.geofence_radius_m ?? 150,
+    mode: data.geo?.geofence_mode ?? "off",
+  };
+
   return (
     <div className="st-page st-page-narrow">
       <header className="st-onb-head">
@@ -73,6 +100,7 @@ export default async function LogPage({
         signedBy={data.profile.legal_name}
         todayLabel={todayLabel}
         slotLabel={SLOT_LABELS[slot] ?? "Today"}
+        geofence={geofence}
       />
     </div>
   );
