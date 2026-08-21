@@ -10379,6 +10379,34 @@ select o.slug, l.slug, l.name, l.description, l.category, l.frequency,
        );
 
 
+-- ---------- The other two that depend on equipment existing ----------
+--
+-- A clinic with no x-ray suite has no lead aprons to inspect, and a
+-- clinic with no laser has no laser to log. Both were already scoped by
+-- facility type — aprons to the types that usually have a suite, the
+-- laser log to med spas — but facility type is a guess about a category,
+-- and a third of primary-care offices that "usually" have x-ray do not.
+-- Marking them optional lets the clinic answer for itself.
+--
+-- Both stay ON by default where they are offered, which is the opposite
+-- default from the autoclave. The difference is what a wrong default
+-- costs: a clinic that has aprons and does not see the log stops
+-- inspecting them, while a clinic with no aprons sees one row it can
+-- switch off in a second. Where the two errors are asymmetric, default
+-- to the one that fails safe.
+update staff.form_templates
+   set optional = true
+ where slug in ('radiation-apron', 'laser-safety');
+
+-- WHAT IS DELIBERATELY NOT ON THAT LIST. The narcotics count, the crash
+-- cart, the fridge, the front desk close. A clinic that stocks no
+-- controlled substances genuinely does not need a count — but "we do not
+-- have any" is a claim that changes with one delivery, and a log the
+-- clinic switched off in March is not there to catch it in June. That
+-- one stays on and gets filed as "none on site", which is a record.
+-- Nothing above is switched off to save somebody thirty seconds.
+
+
 -- ============================================================
 -- THE SWITCH
 -- ============================================================

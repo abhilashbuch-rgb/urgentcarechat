@@ -1,34 +1,66 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import DemoBanner from "@/app/components/demo/DemoBanner";
 import DemoShift from "@/app/components/demo/DemoShift";
+import { decodeConfig } from "@/lib/demo/config";
 import { PRODUCT_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: `Demo: a medical assistant's shift — ${PRODUCT_NAME}`,
+  title: `Demo: a shift — ${PRODUCT_NAME}`,
   robots: { index: false, follow: false },
 };
 
-// WHAT THIS SCREEN USED TO BE. A log form, titled "Today's shift check".
-// It showed the one genuinely good thing about the product — a reading
-// entered with one tap — and skipped everything around it, so an
-// evaluator saw a nice input control and had to take the rest on trust.
+// The board the wizard's choices produce.
 //
-// The real Today screen is now the answer to two questions a medical
-// assistant has at seven in the morning: how much is left, and what is
-// next. That is what a buyer should see first, because it is the
-// difference between a compliance binder and a shift.
+// THE CONFIG TRAVELS IN THE URL. There is no session here to hold it and
+// no database to write it to — that is the demo's whole safety property.
+// A query string also means the salesperson can send somebody the exact
+// board they configured on a call, which a server-side session could not
+// do without becoming an account.
 
-export default function DemoToday() {
+export default async function DemoToday({
+  searchParams,
+}: {
+  searchParams: Promise<{ c?: string }>;
+}) {
+  const { c } = await searchParams;
+  const { archetype, on } = decodeConfig(c);
+  const active = archetype.modules.filter((m) => on.has(m.key));
+
   return (
     <div className="st-page st-page-narrow">
       <DemoBanner role="medical assistant" />
       <header className="st-page-head">
         <h1 className="st-h1">Today</h1>
         <p className="st-page-sub">
-          Signed in as dana@sample-clinic.com &middot; Staff
+          {archetype.label}
+          {" \u00b7 "}
+          signed in as dana@sample-clinic.com
         </p>
       </header>
-      <DemoShift />
+
+      {/* Says which of their choices is visible and which is not, because
+          a board that quietly omits something reads as a board that
+          forgot it. */}
+      <div className="demo-config-note">
+        <strong>Your configuration</strong>
+        <span>
+          {active.length > 0
+            ? `${active.map((m) => m.label).join(", ")} — on. `
+            : "Nothing optional switched on. "}
+          {archetype.modules
+            .filter((m) => !on.has(m.key))
+            .map((m) => m.label)
+            .join(", ")}
+          {archetype.modules.some((m) => !on.has(m.key)) &&
+            " — off, so they are not on this board at all."}
+        </span>
+        <Link href="/demo" className="demo-config-change">
+          Change it
+        </Link>
+      </div>
+
+      <DemoShift extras={active.map((m) => ({ key: m.key, name: m.label }))} />
     </div>
   );
 }

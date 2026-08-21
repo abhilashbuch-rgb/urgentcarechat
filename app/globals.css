@@ -5845,6 +5845,190 @@ body {
 .demo-role-title { font-size: 15px; font-weight: 650; }
 .demo-role-body { font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); }
 
+/* ---------- the demo set-up wizard ---------- */
+
+.demo-wiz { margin-top: 26px; }
+
+.demo-wiz-step {
+  border-top: 1px solid var(--rule);
+  padding-top: 22px;
+  margin-top: 22px;
+}
+.demo-wiz-step:first-child { border-top: none; padding-top: 0; margin-top: 0; }
+
+.demo-wiz-h {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 17px;
+  font-weight: 650;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+/* Numbered, because the sections all stay on screen at once and the
+   numbers are what say they are a sequence rather than a menu. */
+.demo-wiz-n {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.demo-wiz-b {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  margin-bottom: 14px;
+}
+.demo-wiz-sub {
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--ink);
+  margin: 22px 0 4px;
+}
+
+.demo-arch-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+}
+@media (max-width: 620px) {
+  .demo-arch-grid { grid-template-columns: 1fr; }
+}
+.demo-arch {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  text-align: left;
+  font: inherit;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 15px 16px;
+  cursor: pointer;
+  color: var(--ink);
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.demo-arch:hover { border-color: var(--rule-firm); }
+/* Selected reads as depth plus a heavier rule, not hue alone — the label
+   is already the answer and the ring only confirms it. */
+.demo-arch-on {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.demo-arch-label { font-size: 14.5px; font-weight: 650; }
+.demo-arch-blurb { font-size: 12px; line-height: 1.5; color: var(--ink-soft); }
+
+/* The required logs: listed, never switchable. Flat rows rather than
+   cards, so they read as a reference list and not as more choices. */
+.demo-fixed-list { list-style: none; margin: 12px 0 0; }
+.demo-fixed {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 7px 0;
+  border-top: 1px solid var(--rule);
+  font-size: 13px;
+}
+.demo-fixed:first-child { border-top: none; }
+.demo-fixed-label { color: var(--ink); font-weight: 600; }
+.demo-fixed-why {
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  text-align: right;
+}
+
+.demo-role-map { list-style: none; margin: 14px 0 0; }
+.demo-role-row {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 10px 0;
+  border-top: 1px solid var(--rule);
+  font-size: 13px;
+}
+.demo-role-row:first-child { border-top: none; }
+.demo-role-job {
+  flex: none;
+  width: 140px;
+  font-weight: 650;
+  color: var(--ink);
+}
+.demo-role-items { color: var(--ink-soft); line-height: 1.5; }
+@media (max-width: 480px) {
+  .demo-role-row { flex-direction: column; gap: 3px; }
+  .demo-role-job { width: auto; }
+}
+
+.demo-wiz-go {
+  display: block;
+  width: 100%;
+  margin-top: 26px;
+  padding: 14px 20px;
+  border-radius: 999px;
+  text-align: center;
+}
+.demo-wiz-foot {
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+  text-align: center;
+}
+
+/* Says which choices are visible on the board and which are absent — a
+   board that quietly omits something reads as one that forgot it. */
+.demo-config-note {
+  background: var(--bg-sunk);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 13px 16px;
+  margin-bottom: 16px;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+.demo-config-note strong { display: block; color: var(--ink); margin-bottom: 3px; }
+.demo-config-note span { color: var(--ink-soft); }
+.demo-config-change {
+  display: inline-block;
+  margin-top: 8px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.demo-alt {
+  border-top: 1px solid var(--rule);
+  margin-top: 34px;
+  padding-top: 8px;
+}
+.demo-alt-list { list-style: none; margin: 12px 0 0; }
+.demo-alt-list li { border-top: 1px solid var(--rule); }
+.demo-alt-list li:first-child { border-top: none; }
+.demo-alt-list a {
+  display: block;
+  padding: 13px 0;
+  text-decoration: none;
+  color: var(--ink);
+}
+.demo-alt-list a:hover strong { color: var(--accent); }
+.demo-alt-list strong { display: block; font-size: 14px; font-weight: 650; }
+.demo-alt-list span {
+  display: block;
+  margin-top: 2px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
 .demo-log-done {
   text-align: center;
   padding: 32px 22px;

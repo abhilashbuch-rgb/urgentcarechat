@@ -18,16 +18,28 @@ interface Check {
   slot: string | null;
 }
 
-// Four, and the first one is the fridge, because that is the one every
-// urgent care in the country already keeps on a clipboard.
-const DUE: Check[] = [
+// The fridge first, because that is the one every clinic in the country
+// already keeps on a clipboard. These four are on every board whatever
+// the wizard was told — they are the required half.
+const REQUIRED_CHECKS: Check[] = [
   { slug: "temp-fridge", name: "Refrigerator temperatures", slot: "Opening" },
   { slug: "crash-cart", name: "Crash cart & AED", slot: "Opening" },
   { slug: "narcotics-count", name: "Controlled substance count", slot: "Opening" },
   { slug: "sharps-containers", name: "Sharps containers", slot: null },
 ];
 
-export default function DemoShift() {
+export default function DemoShift({
+  extras = [],
+}: {
+  /** Whatever the wizard switched on, appended after the required four
+   *  so the required ones are what somebody sees first. */
+  extras?: { key: string; name: string }[];
+}) {
+  const DUE: Check[] = [
+    ...REQUIRED_CHECKS,
+    ...extras.map((e) => ({ slug: e.key, name: e.name, slot: null })),
+  ];
+
   const [doneCount, setDoneCount] = useState(0);
   const [running, setRunning] = useState(false);
   const [lastFiled, setLastFiled] = useState<{
