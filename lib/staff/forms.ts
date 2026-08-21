@@ -37,6 +37,16 @@ export const fieldSchema = z.discriminatedUnion("type", [
     presets: z.array(z.number()).max(6).optional(),
   }),
   z.object({ ...baseField, type: z.literal("text"), placeholder: z.string().max(80).optional() }),
+  /** A sentence or a paragraph rather than a value: how an injury
+   *  happened, what a patient said, what was done about it. Never
+   *  checked against an expectation — prose has no out-of-range, and a
+   *  narrative field that could flag would push people towards writing
+   *  the answer that does not. */
+  z.object({
+    ...baseField,
+    type: z.literal("textarea"),
+    placeholder: z.string().max(120).optional(),
+  }),
   z.object({ ...baseField, type: z.literal("date") }),
   z.object({
     ...baseField,
@@ -128,6 +138,7 @@ export function evaluate(schema: FormSchema, answers: Answers): Evaluation {
         if (f.failing.includes(String(v))) flag(f);
         break;
       case "text":
+      case "textarea":
       case "date":
         break;
     }
@@ -148,6 +159,12 @@ export function coerce(field: Field, raw: unknown): AnswerValue {
     }
     case "boolean":
       return raw === true || raw === "true" || raw === "yes";
+    // A narrative gets room. 500 characters is about four sentences,
+    // and quietly cutting an account of how somebody was stuck with a
+    // needle off mid-sentence would leave a record that reads as if the
+    // writer stopped caring.
+    case "textarea":
+      return String(raw).slice(0, 4000);
     default:
       return String(raw).slice(0, 500);
   }

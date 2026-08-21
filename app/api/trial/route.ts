@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { modulesFromConfig } from "@/lib/demo/config";
 import { withOrg, isDatabaseConfigured } from "@/lib/staff/db";
 import { slugFrom } from "@/lib/staff/stripe";
 
@@ -32,7 +33,12 @@ const FACILITY_TYPES = new Set([
 ]);
 
 export async function POST(req: NextRequest) {
-  let body: { clinic?: string; email?: string; facility?: string };
+  let body: {
+    clinic?: string;
+    email?: string;
+    facility?: string;
+    demo?: string;
+  };
   try {
     body = await req.json();
   } catch {
@@ -99,6 +105,42 @@ export async function POST(req: NextRequest) {
       `;
       return rows[0].provision_trial;
     });
+
+    // WHAT THEY ALREADY CHOSE IN THE DEMO.
+    //
+    // provision_trial has just run seed_facility, so the clinic holds the
+    // templates its facility type gets, each at the library's default.
+    // This applies the handful of switches the visitor moved before they
+    // decided — so somebody who told the demo they have no autoclave does
+    // not sign in to find one on the board and have to say it twice.
+    //
+    // UNTRUSTED, TWICE OVER. The string came out of a URL. modulesFromConfig
+    // drops anything outside the archetype's own module list, and
+    // set_log_enabled refuses any template not marked optional beneath
+    // that — so a request naming sharps-containers changes nothing by
+    // either route.
+    //
+    // NEVER FAILS THE SIGNUP. A clinic that exists with default logs is a
+    // working clinic; losing the account because a preference could not
+    // be applied is not a trade worth making. Logged, not raised.
+    const wanted = modulesFromConfig(
+      typeof body.demo === "string" ? body.demo : undefined
+    );
+    if (wanted.length > 0) {
+      try {
+        await withOrg(slug, "platform_super_admin", async (sql) => {
+          for (const m of wanted) {
+            await sql`select staff.set_log_enabled(${slug}, ${m.slug}, ${m.on})`;
+          }
+        });
+      } catch (err) {
+        console.error(
+          "[trial] demo configuration not applied for",
+          slug,
+          err instanceof Error ? err.message : err
+        );
+      }
+    }
 
     // The slug is returned so the next screen can name the workspace back
     // to them. It is not a credential — signing in still requires Google

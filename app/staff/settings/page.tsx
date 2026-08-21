@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireStaff } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
@@ -70,6 +71,14 @@ export default async function SettingsPage({
       select cadence, email from staff.report_subscriptions
        where org_slug = ${org} and active
     `,
+    // Only the count. Which logs this clinic runs is set on its own
+    // page, because the centre admin can do it and this page is
+    // owner-only.
+    optionalCount: (
+      await sql<{ n: string }[]>`
+        select count(*)::text as n from staff.optional_logs
+      `
+    )[0].n,
   }));
 
   const s = data.settings;
@@ -257,6 +266,25 @@ export default async function SettingsPage({
           Save settings
         </button>
       </form>
+
+      {/* NOT ON THIS PAGE, AND NOT AN OVERSIGHT. Whether the clinic has an
+          autoclave is a fact about the building that the centre admin
+          knows, and most centre admins hold the plain staff role. Putting
+          it here, behind org_admin, would leave the decision with the one
+          person who is not standing in the room. */}
+      {Number(data.optionalCount) > 0 && (
+        <section className="st-set-block">
+          <h2 className="st-set-h">Which logs this clinic runs</h2>
+          <p className="st-set-b">
+            Optional logs &mdash; the ones that depend on what equipment is
+            in the building &mdash; are switched on separately, and your
+            centre admin can do it too.
+          </p>
+          <Link className="st-btn" href="/staff/settings/logs">
+            Open clinic logs
+          </Link>
+        </section>
+      )}
     </div>
   );
 }
