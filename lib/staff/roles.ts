@@ -116,6 +116,10 @@ export const NAV: NavItem[] = [
     note: "Approve or flag submitted logs.",
   },
   { href: "/staff/activity", label: "Activity", minRole: "org_admin" },
+  // Last in the nav and administrator-only. Nothing here is touched on a
+  // shift; it is set once when the clinic is created and revisited when
+  // somebody's address changes.
+  { href: "/staff/settings", label: "Settings", minRole: "org_admin" },
   { href: "/staff/accreditation", label: "Accreditation", minRole: "org_admin" },
   { href: "/staff/surveyor", label: "Inspection", minRole: "org_admin" },
   { href: "/staff/team", label: "Team", minRole: "org_admin" },
