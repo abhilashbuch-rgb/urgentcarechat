@@ -4,49 +4,55 @@ import { requireStaff } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
 import { getProfile, outstandingFor } from "@/lib/staff/compliance";
 import { summary, type ObligationSummary } from "@/lib/staff/obligations";
-import { navFor, ROLE_LABELS } from "@/lib/staff/roles";
+import { ROLE_LABELS, atLeast } from "@/lib/staff/roles";
+import { shiftState, myCredentialWarnings, type ShiftState, type ExpiringCredential } from "@/lib/staff/shift";
 
-// The staff landing screen.
+// The staff landing screen — one shift, from the point of view of the
+// person working it.
 //
-// Phase 0 has no compliance forms yet, so rather than mock them this
-// shows what is genuinely working: the session, the org it resolved to,
-// and a count read back through row-level security. If the org context
-// weren't being set, that count would come back as zero rather than as
-// somebody else's number — which is the behaviour worth being able to see.
+// It used to show the org's name, the size of the team, and a row count
+// read back through row-level security: a demonstration that the plumbing
+// worked, printed on the screen of somebody who came to log a fridge
+// temperature before the doors open. What is here now is what they owe
+// this shift, one tap to the next of it, and anything expiring that is
+// theirs rather than the clinic's.
 
 export const dynamic = "force-dynamic";
 
 interface Overview {
-  orgName: string;
-  teamCount: number;
   outstanding: number;
   needsOnboarding: boolean;
-  obligations: ObligationSummary;
+  // Null for anyone who cannot open the register — the query is not run
+  // at all rather than run and discarded.
+  obligations: ObligationSummary | null;
+  shift: ShiftState;
+  credentials: ExpiringCredential[];
 }
 
 export default async function StaffHome() {
   const { session, org } = await requireStaff();
+
+  // Obligations moved off the staff nav: renewing the CLIA certificate is
+  // not a medical assistant's job and a register they cannot act on is
+  // noise on the one screen that has to stay short. The callouts below
+  // follow the nav rather than contradicting it — pointing somebody at a
+  // page they were just removed from is worse than not mentioning it.
+  const seesObligations = atLeast(session.role, "clinical_lead");
 
   let overview: Overview | null = null;
   let dbError: string | null = null;
 
   try {
     overview = await withSession(session, async (sql) => {
-      const orgs = await sql<{ name: string }[]>`
-        select name from staff.orgs where slug = ${org}
-      `;
-      const users = await sql<{ count: string }[]>`
-        select count(*)::text as count from staff.users where active
-      `;
       const profile = await getProfile(sql, session.uid);
       const outstanding = await outstandingFor(sql, session.uid);
       return {
-        orgName: orgs[0]?.name ?? org,
-        teamCount: Number(users[0]?.count ?? 0),
+        shift: await shiftState(sql, profile?.job_role ?? null),
+        credentials: await myCredentialWarnings(sql, session.uid),
         outstanding: outstanding.length,
         needsOnboarding:
           !profile?.esign_consented_at || !profile?.legal_name,
-        obligations: await summary(sql, org),
+        obligations: seesObligations ? await summary(sql, org) : null,
       };
     });
   } catch (err) {
@@ -58,8 +64,6 @@ export default async function StaffHome() {
   // or signed anything has nothing to look at here yet, and a banner they
   // can dismiss is exactly how "we never knew" happens.
   if (overview?.needsOnboarding) redirect("/staff/onboarding");
-
-  const upcoming = navFor(session.role).filter((item) => item.placeholder);
 
   return (
     <div className="st-page">
@@ -104,7 +108,7 @@ export default async function StaffHome() {
           already a finding rather than a task. It sits above the cards
           for that reason, and it names the count rather than showing a
           dot, because a dot is something you stop seeing. */}
-      {overview && overview.obligations.overdue > 0 && (
+      {overview?.obligations && overview.obligations.overdue > 0 && (
         <Link className="st-callout st-callout-warn" href="/staff/obligations">
           <span className="st-callout-title">
             {overview.obligations.overdue === 1
@@ -115,7 +119,7 @@ export default async function StaffHome() {
         </Link>
       )}
 
-      {overview &&
+      {overview?.obligations &&
         overview.obligations.overdue === 0 &&
         overview.obligations.due_soon > 0 && (
           <Link className="st-callout" href="/staff/obligations">
@@ -128,49 +132,74 @@ export default async function StaffHome() {
           </Link>
         )}
 
-      <section className="st-cards">
-        <article className="st-card">
-          <p className="st-card-label">Organization</p>
-          <p className="st-card-value">{overview?.orgName ?? org}</p>
-          <p className="st-card-note">
-            Resolved from this hostname, not from your session &mdash; so a
-            stale cookie can never choose which clinic you&rsquo;re looking at.
+      {/* THE SHIFT, NOT THE ORGANIZATION.
+          What stood here was three cards explaining the software to the
+          person using it — how the hostname resolves, how row-level
+          security scopes a query. True, and written for whoever was
+          building this rather than for a medical assistant at seven in
+          the morning. */}
+      {overview && overview.shift.due + overview.shift.done > 0 && (
+        <section className="st-shift">
+          <p className="st-shift-count">
+            {overview.shift.due === 0
+              ? "Everything due this shift is filed."
+              : overview.shift.due === 1
+                ? "1 check left this shift"
+                : `${overview.shift.due} checks left this shift`}
           </p>
-        </article>
+          {overview.shift.done > 0 && (
+            <p className="st-shift-done">
+              {overview.shift.done} already filed
+              {overview.shift.flagged > 0 &&
+                ` · ${overview.shift.flagged} out of range`}
+            </p>
+          )}
 
-        <article className="st-card">
-          <p className="st-card-label">Your access</p>
-          <p className="st-card-value">{ROLE_LABELS[session.role]}</p>
-          <p className="st-card-note">
-            Set by your invitation. Roles are enforced in the database, not
-            just in this menu.
-          </p>
-        </article>
+          {/* One tap to the next one. Today, then Logs, then find the
+              row, then open it was four taps before a number could be
+              typed — on a screen whose whole claim is fifteen seconds. */}
+          {overview.shift.next && (
+            <Link
+              className="st-primary st-shift-go"
+              href={`/staff/logs/${overview.shift.next.slug}${
+                overview.shift.next.slot
+                  ? `?slot=${overview.shift.next.slot}`
+                  : ""
+              }`}
+            >
+              Start: {overview.shift.next.name}
+            </Link>
+          )}
+        </section>
+      )}
 
-        <article className="st-card">
-          <p className="st-card-label">Active team members</p>
-          <p className="st-card-value">
-            {overview ? overview.teamCount : "—"}
-          </p>
-          <p className="st-card-note">
-            Read through row-level security scoped to {org}. Other
-            organizations&rsquo; staff are not merely filtered out of this
-            query &mdash; they are invisible to it.
-          </p>
-        </article>
-      </section>
-
-      {upcoming.length > 0 && (
-        <section className="st-next">
-          <h2 className="st-h2">Coming next</h2>
-          <ul className="st-next-list">
-            {upcoming.map((item) => (
-              <li key={item.href}>
-                <span className="st-next-name">{item.label}</span>
-                <span className="st-next-note">{item.note}</span>
+      {/* THEIRS, NOT THE CLINIC'S.
+          The one thing on this screen that serves the person reading it:
+          their card, their licence, their problem if it lapses. Silent
+          when nothing is approaching, because a permanent green row is
+          another thing to stop seeing. */}
+      {overview && overview.credentials.length > 0 && (
+        <section className="st-mycreds">
+          <h2 className="st-h2">Your credentials</h2>
+          <ul className="st-mycred-list">
+            {overview.credentials.map((c) => (
+              <li key={c.kind_label} className={`st-mycred st-mycred-${c.status}`}>
+                <span className="st-mycred-kind">{c.kind_label}</span>
+                <span className="st-mycred-state">
+                  {c.status === "missing"
+                    ? "Not on file"
+                    : c.status === "expired"
+                      ? "Expired"
+                      : c.days_left === 1
+                        ? "Expires tomorrow"
+                        : `Expires in ${c.days_left} days`}
+                </span>
               </li>
             ))}
           </ul>
+          <Link className="st-mycred-go" href="/staff/documents">
+            Update your documents
+          </Link>
         </section>
       )}
 

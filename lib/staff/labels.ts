@@ -10,6 +10,10 @@ export const CATEGORY_LABELS: Record<string, string> = {
   operations: "Operations",
 };
 
+// One timezone for every rendered timestamp. The stored value is always
+// UTC; this is only how it is shown.
+const RECORD_TZ = "America/New_York";
+
 /** Dates in a compliance record are read by people checking whether
  *  something was done in time, so they get an unambiguous format rather
  *  than the locale's. */
@@ -23,8 +27,21 @@ export function formatSignedAt(iso: string | null): string {
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
-    timeZone: "America/New_York",
+    timeZone: RECORD_TZ,
     timeZoneName: "short",
+  });
+}
+
+/** Just the clock time, for a confirmation read seconds after the thing
+ *  happened. The date is "today" and saying so adds nothing. */
+export function formatTimeOnly(iso: string | null): string {
+  if (!iso) return "\u2014";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "\u2014";
+  return d.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: RECORD_TZ,
   });
 }
 

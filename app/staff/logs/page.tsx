@@ -5,7 +5,7 @@ import { getProfile } from "@/lib/staff/compliance";
 import { billingState, paymentLink } from "@/lib/staff/billing";
 import { SLOT_LABELS, currentSlot } from "@/lib/staff/forms";
 import { atLeast } from "@/lib/staff/roles";
-import { formatSignedAt } from "@/lib/staff/labels";
+import { formatSignedAt, formatTimeOnly } from "@/lib/staff/labels";
 
 // Today's board.
 //
@@ -38,6 +38,15 @@ export default async function LogsBoard({
   const pay = billing.is_read_only ? paymentLink() : null;
 
   const outstanding = rows.filter((r) => !r.response_id).length;
+  // The row that was just filed, so the confirmation can name it and say
+  // the time it went in. Coming back to this URL later with the query
+  // string still attached shows nothing rather than a stale "saved" —
+  // the row has to actually be filed for the line to appear.
+  const justFiled = done
+    ? rows
+        .filter((r) => r.slug === done && r.submitted_at)
+        .sort((a, b) => (a.submitted_at! < b.submitted_at! ? 1 : -1))[0] ?? null
+    : null;
   const flagged = rows.filter((r) => r.has_out_of_range).length;
 
   return (
@@ -78,10 +87,23 @@ export default async function LogsBoard({
         </div>
       )}
 
-      {done && (
+      {justFiled && (
         <div className="st-notice" role="status">
-          <strong>Saved.</strong>
-          <span>Filed under today with your name and the time.</span>
+          {/* NAMES THE THING AND CLOSES IT OUT.
+              "Saved" answers a question about the software. What the
+              person wants to know is that the fridge is handled and
+              nobody is going to ask them about it again this shift. */}
+          <strong>
+            Filed {formatTimeOnly(justFiled.submitted_at)}.{" "}
+            {justFiled.name} is covered for this shift.
+          </strong>
+          <span>
+            {outstanding === 0
+              ? "That was the last one due today."
+              : outstanding === 1
+                ? "One check left this shift."
+                : `${outstanding} checks left this shift.`}
+          </span>
         </div>
       )}
 
