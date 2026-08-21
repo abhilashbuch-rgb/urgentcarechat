@@ -3833,6 +3833,82 @@ body {
 .st-callout-title { display: block; font-size: 14px; font-weight: 600; color: var(--ink); }
 .st-callout-sub { display: block; font-size: 12.5px; color: var(--accent); margin-top: 2px; }
 
+/* ---------- the shift, on the Today screen ---------- */
+
+/* One line, then one button. What stood here was three cards describing
+   the software's plumbing to somebody who came to log a fridge before
+   the doors open. */
+.st-shift {
+  background: var(--bg-card);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 18px 18px 16px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+}
+.st-shift-count {
+  font-size: 19px;
+  font-weight: 650;
+  color: var(--ink);
+  line-height: 1.25;
+}
+.st-shift-done {
+  font-size: 12.5px;
+  color: var(--ink-faint);
+  margin-top: 4px;
+}
+/* Full width and thumb-height: this is tapped one-handed, holding a
+   thermometer in the other. */
+.st-shift-go {
+  display: block;
+  margin-top: 14px;
+  padding: 13px 18px;
+  text-align: center;
+  text-decoration: none;
+  border-radius: 999px;
+}
+
+/* ---------- your credentials ---------- */
+
+.st-mycreds {
+  background: var(--bg-sunk);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+.st-mycred-list { list-style: none; margin: 0; }
+.st-mycred {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-top: 1px solid var(--rule);
+  font-size: 13.5px;
+}
+.st-mycred:first-child { border-top: none; }
+.st-mycred-kind { font-weight: 600; color: var(--ink); }
+.st-mycred-state { color: var(--ink-soft); text-align: right; }
+/* State is carried by the words, not by the colour — "Expired" reads the
+   same to somebody who cannot see the difference between these two
+   blues, and prints the same in black and white. */
+.st-mycred-expired .st-mycred-state,
+.st-mycred-missing .st-mycred-state {
+  font-weight: 650;
+  color: var(--warn);
+}
+.st-mycred-expiring .st-mycred-state { color: var(--ink-soft); }
+.st-mycred-go {
+  display: inline-block;
+  margin-top: 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+.st-mycred-go:hover { text-decoration: underline; }
+
 /* ---------- the compliance record ---------- */
 
 .st-record-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }

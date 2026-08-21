@@ -258,7 +258,7 @@ $json$::jsonb),
 
 -- ---------- Manufacturer IFU; 42 CFR 493.1254 ----------
 ('_library', 'equipment-calibration', 'Equipment calibration & maintenance',
- 'The registry flagged as not built when the module shipped.',
+ 'Function checks at the interval the manufacturer sets, and what was done.',
  'clinical', 'monthly', array[]::text[], 360,
 $json$
 {
@@ -331,3 +331,15 @@ select o.slug, t.slug, t.name, t.description, t.category, t.frequency,
          select 1 from staff.form_templates x
           where x.org_slug = o.slug and x.slug = t.slug
        );
+
+-- One repair, not a general overwrite. The description this template
+-- shipped with was a note to whoever was building it rather than a
+-- sentence for the person filling it in, and it reached every clinic
+-- seeded before that was noticed. The backfill above deliberately skips
+-- a slug the clinic already has, so it cannot correct this; matching on
+-- the exact old text does, and leaves alone any clinic that has since
+-- written its own.
+update staff.form_templates
+   set description = 'Function checks at the interval the manufacturer sets, and what was done.'
+ where slug = 'equipment-calibration'
+   and description = 'The registry flagged as not built when the module shipped.';

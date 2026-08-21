@@ -13,8 +13,28 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-PARTS=(staff-schema staff-onboarding staff-onboarding-seed staff-logs staff-logs-seed staff-security staff-single-domain staff-billing staff-trial staff-obligations staff-obligations-seed staff-job-roles staff-job-roles-seed staff-credentials staff-credentials-seed staff-scope staff-scope-seed staff-rounds staff-rounds-seed staff-onboarding-wizard staff-onboarding-wizard-seed staff-documents staff-protocols staff-protocols-seed staff-emergency staff-emergency-seed staff-avatars staff-corrective-action staff-alerts staff-alerts-sms staff-surveyor staff-log-photos staff-email-auth staff-log-presets staff-eod-close staff-geofence staff-ethics staff-ops-manual staff-reports staff-facility staff-audio-audit)
+PARTS=(staff-schema staff-onboarding staff-onboarding-seed staff-logs staff-logs-seed staff-security staff-single-domain staff-billing staff-trial staff-obligations staff-obligations-seed staff-job-roles staff-job-roles-seed staff-credentials staff-credentials-seed staff-scope staff-scope-seed staff-rounds staff-rounds-seed staff-onboarding-wizard staff-onboarding-wizard-seed staff-documents staff-protocols staff-protocols-seed staff-emergency staff-emergency-seed staff-avatars staff-corrective-action staff-alerts staff-alerts-sms staff-surveyor staff-log-photos staff-email-auth staff-log-presets staff-eod-close staff-geofence staff-ethics staff-ops-manual staff-reports staff-facility staff-audio-audit staff-invites staff-signup-guard staff-immutability staff-amend staff-statutory-logs staff-credential-matrix staff-sharps-waste staff-provision-seed staff-org-settings staff-privacy-rules)
 OUT=supabase/staff-setup-all.sql
+
+# A generated file only cannot drift if the generator knows what it is
+# missing. Ten migrations had already been written and never added to the
+# list above, so the combined file — the one a customer actually pastes —
+# silently lacked them. Anything matching supabase/staff-*.sql that is not
+# named in PARTS is a build failure, not a comment somebody has to notice.
+missing=()
+for f in supabase/staff-*.sql; do
+  base=$(basename "$f" .sql)
+  [ "$base" = staff-setup-all ] && continue
+  listed=no
+  for p in "${PARTS[@]}"; do [ "$p" = "$base" ] && listed=yes && break; done
+  [ "$listed" = no ] && missing+=("$base")
+done
+if [ ${#missing[@]} -gt 0 ]; then
+  echo "error: these migrations exist but are not in PARTS, so they would be" >&2
+  echo "left out of $OUT. Add each one at its dependency position:" >&2
+  printf '  %s\n' "${missing[@]}" >&2
+  exit 1
+fi
 
 {
   sed -n '1,/^-- ====.*$/p' /dev/null   # placeholder so the heredoc below is the only header

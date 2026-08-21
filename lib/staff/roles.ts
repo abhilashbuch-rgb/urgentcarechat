@@ -89,7 +89,12 @@ export const NAV: NavItem[] = [
   // reference material behind a role is the wrong kind of tidiness.
   { href: "/staff/learning", label: "Emergencies", minRole: "staff" },
   { href: "/staff/documents", label: "Documents", minRole: "staff" },
-  { href: "/staff/obligations", label: "Obligations", minRole: "staff" },
+  // OSHA 300A postings and CLIA renewals are the administrator's
+  // register, not a medical assistant's. Carrying it at staff level put
+  // an item on every new hire's nav that they could open, could not act
+  // on, and had to learn to ignore — and a nav you learn to ignore is
+  // how the useful items lose their meaning too.
+  { href: "/staff/obligations", label: "Obligations", minRole: "clinical_lead" },
   // Clinical protocol search. Gated by JOB as well as role inside the
   // page and the route — a provider or centre admin gets it, and so
   // does a clinical lead, and nobody else. Listed for everyone at

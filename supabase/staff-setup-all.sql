@@ -8416,58 +8416,6 @@ select r.org_slug,
 grant select on staff.off_site_today to staff_app;
 
 
--- ============================================================
--- 40. SIGNUP IS FOR OWNERS. STAFF ARE INVITED, NEVER SELF-SERVE.
---
--- /start provisions a clinic. Nothing stopped a medical assistant at an
--- already-onboarded clinic typing their clinic's name into it and
--- getting a SECOND workspace: same clinic, same staff, two boards, two
--- sets of logs, and a surveyor eventually shown the emptier one.
---
--- The existing guard only caught the case where the person already held
--- an invite. Somebody with no invite — which is precisely the person who
--- should not be here — sailed through.
---
--- WHY THE EMAIL DOMAIN. A clinic's staff share a mail domain and almost
--- nothing else that is knowable before authentication. Matching on
--- clinic NAME would refuse "Riverside Urgent Care" in two states, which
--- are genuinely different customers.
---
--- FREE MAIL IS EXEMPT, and has to be: two unrelated owners on gmail.com
--- are not the same clinic, and blocking the second would be refusing a
--- customer to prevent a typo.
--- ============================================================
-
-create or replace function staff.domain_taken(p_email text)
-returns table (org_slug text, org_name text)
-language sql
-stable
-security definer
-set search_path = pg_catalog, public
-as $$
-  with d as (
-    select lower(split_part(p_email, '@', 2)) as dom
-  )
-  select o.slug, o.name
-    from d
-    join staff.org_invites i
-      on lower(split_part(i.email, '@', 2)) = d.dom
-    join staff.orgs o on o.slug = i.org_slug
-   where d.dom <> ''
-     and d.dom not in (
-       'gmail.com', 'googlemail.com', 'yahoo.com', 'ymail.com',
-       'outlook.com', 'hotmail.com', 'live.com', 'msn.com',
-       'icloud.com', 'me.com', 'mac.com', 'aol.com',
-       'proton.me', 'protonmail.com', 'pm.me',
-       'gmx.com', 'mail.com', 'zoho.com', 'yandex.com'
-     )
-   limit 1;
-$$;
-
-revoke all on function staff.domain_taken(text) from public;
-grant execute on function staff.domain_taken(text) to staff_app;
-
-
 -- ========== staff-invites.sql ==========
 
 -- ============================================================
@@ -8618,241 +8566,58 @@ revoke delete on staff.org_invites from staff_app;
 grant select, insert, update on staff.org_invites to staff_app;
 
 
--- ============================================================
--- migration: staff-immutability.sql
--- ============================================================
+-- ========== staff-signup-guard.sql ==========
 
 -- ============================================================
--- APPEND-ONLY, ENFORCED — and a hash chain over the result
+-- 40. SIGNUP IS FOR OWNERS. STAFF ARE INVITED, NEVER SELF-SERVE.
 --
--- The schema always said corrections create a new row pointing at the
--- one it supersedes. The database never enforced it: line 299 of
--- staff-schema.sql grants select, insert, update, delete on every table
--- in the schema to staff_app, sixteen tables take DELETE back, and the
--- two that matter most — the shift logs and the signatures — took back
--- nothing. So "nothing can be backdated or deleted", which this product
--- says on its homepage, was a property of the application code rather
--- than of the database. That is exactly the assurance an auditor
--- discounts, and rightly.
+-- /start provisions a clinic. Nothing stopped a medical assistant at an
+-- already-onboarded clinic typing their clinic's name into it and
+-- getting a SECOND workspace: same clinic, same staff, two boards, two
+-- sets of logs, and a surveyor eventually shown the emptier one.
 --
--- Three layers here, weakest to strongest:
---   1. Grants     — staff_app loses UPDATE and DELETE.
---   2. Triggers   — refused even if a later migration re-grants.
---   3. Hash chain — tampering by someone who can bypass both is still
---                   DETECTABLE, which is the only property that
---                   survives an attacker with database access.
+-- The existing guard only caught the case where the person already held
+-- an invite. Somebody with no invite — which is precisely the person who
+-- should not be here — sailed through.
 --
--- WHAT LAYER 3 DOES AND DOES NOT BUY. A superuser can disable a trigger
--- and rewrite rows. What they cannot do cheaply is rewrite them
--- consistently: every row commits to the one before it, so changing an
--- entry from March means recomputing every row since. And because the
--- daily report already emails the chain head to the owner, breaking it
--- silently means also reaching into a mailbox outside this database.
--- That is the difference between "trust us" and "here is something you
--- can check".
+-- WHY THE EMAIL DOMAIN. A clinic's staff share a mail domain and almost
+-- nothing else that is knowable before authentication. Matching on
+-- clinic NAME would refuse "Riverside Urgent Care" in two states, which
+-- are genuinely different customers.
+--
+-- FREE MAIL IS EXEMPT, and has to be: two unrelated owners on gmail.com
+-- are not the same clinic, and blocking the second would be refusing a
+-- customer to prevent a typo.
 -- ============================================================
 
--- ---------- 1. Corrections have to say why ----------
-alter table staff.form_responses
-  add column if not exists correction_reason text;
-
-do $$ begin
-  alter table staff.form_responses
-    add constraint staff_response_correction_has_a_reason
-    -- `correction_reason is not null` is not redundant with the length
-    -- test. A CHECK passes when it evaluates to NULL, and
-    -- length(btrim(NULL)) >= 20 is NULL, not false — so without this the
-    -- one case the constraint exists to forbid, a correction filed with
-    -- no reason at all, was accepted silently. Caught by testing it.
-    check (
-      (supersedes_id is null and correction_reason is null)
-      or
-      (supersedes_id is not null
-       and correction_reason is not null
-       and length(btrim(correction_reason)) >= 20)
-    );
-exception when duplicate_object then null;
-end $$;
-
-comment on column staff.form_responses.correction_reason is
-  'Why this entry supersedes another. Twenty characters minimum, for the '
-  'same reason corrective_action has a floor: "typo" is not a reason a '
-  'surveyor can evaluate three years later.';
-
--- ---------- 2. The hash chain ----------
-alter table staff.form_responses
-  add column if not exists prev_hash text,
-  add column if not exists row_hash  text;
-
-do $$ begin
-  alter table staff.form_responses
-    add constraint staff_response_hash_shape
-    check (row_hash is null or row_hash ~ '^[0-9a-f]{64}$');
-exception when duplicate_object then null;
-end $$;
-
--- ONE CHAIN PER CLINIC, not one global chain. A shared chain would make
--- every clinic's verification depend on every other clinic's writes, and
--- would leak the fact of one org's activity into another's records.
-create index if not exists staff_responses_chain
-  on staff.form_responses (org_slug, submitted_at, id);
-
-create or replace function staff.chain_form_response()
-returns trigger
-language plpgsql
-security definer
-set search_path = pg_catalog, public
-as $$
-declare
-  prev text;
-begin
-  -- SERIALIZE PER ORG. Two concurrent inserts reading the same head
-  -- would both commit to it and the chain would fork — a fork is
-  -- indistinguishable from a deletion when you walk it later. The lock
-  -- is transaction-scoped and per-org, so one clinic's morning rush
-  -- never waits on another's.
-  perform pg_advisory_xact_lock(hashtext('staff.chain:' || new.org_slug));
-
-  select row_hash into prev
-    from staff.form_responses
-   where org_slug = new.org_slug and row_hash is not null
-   order by submitted_at desc, id desc
-   limit 1;
-
-  new.prev_hash := prev;
-
-  -- Everything that would matter to a surveyor goes into the digest.
-  -- coalesce throughout: in Postgres, concatenating a NULL yields NULL,
-  -- and a NULL digest input would silently produce the same hash for
-  -- every row that has one empty field.
-  new.row_hash := encode(
-    sha256(convert_to(
-      coalesce(prev, '')                             || '|' ||
-      new.id::text                                   || '|' ||
-      new.org_slug                                   || '|' ||
-      new.instance_id::text                          || '|' ||
-      new.submitted_by::text                         || '|' ||
-      to_char(new.submitted_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.USOF') || '|' ||
-      new.answers_json::text                         || '|' ||
-      coalesce(new.status, '')                       || '|' ||
-      coalesce(new.corrective_action, '')            || '|' ||
-      coalesce(new.supersedes_id::text, '')          || '|' ||
-      coalesce(new.correction_reason, '')            || '|' ||
-      coalesce(new.location_status, '')              || '|' ||
-      coalesce(new.filed_distance_m::text, '')       || '|' ||
-      coalesce(new.location_note, '')
-    , 'UTF8')),
-  'hex');
-
-  return new;
-end $$;
-
-drop trigger if exists staff_form_responses_chain on staff.form_responses;
-create trigger staff_form_responses_chain
-  before insert on staff.form_responses
-  for each row execute function staff.chain_form_response();
-
--- ---------- 3. Refuse UPDATE and DELETE outright ----------
-create or replace function staff.refuse_mutation()
-returns trigger
-language plpgsql
-as $$
-begin
-  raise exception
-    'staff.% is append-only: % is refused. Corrections insert a new row '
-    'with supersedes_id and correction_reason set.',
-    tg_table_name, tg_op
-    using errcode = 'restrict_violation';
-end $$;
-
-drop trigger if exists staff_form_responses_append_only on staff.form_responses;
-create trigger staff_form_responses_append_only
-  before update or delete on staff.form_responses
-  for each row execute function staff.refuse_mutation();
-
-drop trigger if exists staff_attestations_append_only on staff.attestations;
-create trigger staff_attestations_append_only
-  before update or delete on staff.attestations
-  for each row execute function staff.refuse_mutation();
-
--- The grants, so the refusal happens before a statement is even planned.
-revoke update, delete on staff.form_responses from staff_app;
-revoke update, delete on staff.attestations   from staff_app;
-
--- ---------- 4. Walking the chain ----------
--- Returns nothing when the chain is intact. Any row it returns is a row
--- whose stored hash disagrees with its contents, or whose link to the
--- previous row is broken — which is what tampering looks like after the
--- fact.
-create or replace function staff.verify_log_chain(p_org text)
-returns table (
-  response_id  uuid,
-  submitted_at timestamptz,
-  problem      text
-)
-language plpgsql
-security definer
-set search_path = pg_catalog, public
-as $$
-declare
-  r        record;
-  expected text;
-  prev     text := null;
-begin
-  for r in
-    select * from staff.form_responses
-     where org_slug = p_org and row_hash is not null
-     order by submitted_at, id
-  loop
-    expected := encode(sha256(convert_to(
-      coalesce(prev, '')                          || '|' ||
-      r.id::text                                  || '|' ||
-      r.org_slug                                  || '|' ||
-      r.instance_id::text                         || '|' ||
-      r.submitted_by::text                        || '|' ||
-      to_char(r.submitted_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.USOF') || '|' ||
-      r.answers_json::text                        || '|' ||
-      coalesce(r.status, '')                      || '|' ||
-      coalesce(r.corrective_action, '')           || '|' ||
-      coalesce(r.supersedes_id::text, '')         || '|' ||
-      coalesce(r.correction_reason, '')           || '|' ||
-      coalesce(r.location_status, '')             || '|' ||
-      coalesce(r.filed_distance_m::text, '')      || '|' ||
-      coalesce(r.location_note, '')
-    , 'UTF8')), 'hex');
-
-    if r.prev_hash is distinct from prev then
-      response_id := r.id; submitted_at := r.submitted_at;
-      problem := 'link broken: a row before this one was altered or removed';
-      return next;
-    elsif r.row_hash <> expected then
-      response_id := r.id; submitted_at := r.submitted_at;
-      problem := 'contents altered after filing';
-      return next;
-    end if;
-
-    prev := r.row_hash;
-  end loop;
-end $$;
-
-revoke all on function staff.verify_log_chain(text) from public;
-grant execute on function staff.verify_log_chain(text) to staff_app;
-
--- The current head, for the daily report to carry into somebody's inbox.
-create or replace function staff.log_chain_head(p_org text)
-returns text
+create or replace function staff.domain_taken(p_email text)
+returns table (org_slug text, org_name text)
 language sql
 stable
 security definer
 set search_path = pg_catalog, public
 as $$
-  select row_hash from staff.form_responses
-   where org_slug = p_org and row_hash is not null
-   order by submitted_at desc, id desc limit 1;
+  with d as (
+    select lower(split_part(p_email, '@', 2)) as dom
+  )
+  select o.slug, o.name
+    from d
+    join staff.org_invites i
+      on lower(split_part(i.email, '@', 2)) = d.dom
+    join staff.orgs o on o.slug = i.org_slug
+   where d.dom <> ''
+     and d.dom not in (
+       'gmail.com', 'googlemail.com', 'yahoo.com', 'ymail.com',
+       'outlook.com', 'hotmail.com', 'live.com', 'msn.com',
+       'icloud.com', 'me.com', 'mac.com', 'aol.com',
+       'proton.me', 'protonmail.com', 'pm.me',
+       'gmx.com', 'mail.com', 'zoho.com', 'yandex.com'
+     )
+   limit 1;
 $$;
 
-revoke all on function staff.log_chain_head(text) from public;
-grant execute on function staff.log_chain_head(text) to staff_app;
+revoke all on function staff.domain_taken(text) from public;
+grant execute on function staff.domain_taken(text) to staff_app;
 
 
 -- ========== staff-immutability.sql ==========
@@ -9364,92 +9129,6 @@ where l.response_id is null
 grant select on staff.overdue_today to staff_app;
 
 
--- ========== staff-credential-matrix.sql ==========
-
--- ============================================================
--- THE CREDENTIALING MATRIX
---
--- Everything this needs already exists: staff.credentials holds one row
--- per person per credential with an expiry, and
--- staff.job_credential_requirements says which kinds each job must
--- carry. What was missing is the shape an administrator actually reads —
--- a grid of people against credentials where the colour of a cell is the
--- whole answer.
---
--- THE ROW THAT MATTERS IS THE MISSING ONE. A per-person document shelf
--- shows what somebody HAS; it cannot show what they have not got, and
--- "the x-ray tech never uploaded an ARRT card" is precisely the finding a
--- surveyor writes up. So this starts from the REQUIREMENT and left-joins
--- the credential, not the other way round.
---
--- Ninety days because that is roughly a renewal cycle for BLS and ACLS:
--- long enough to book a class, short enough that the warning still means
--- something when it appears.
--- ============================================================
-
-drop view if exists staff.credential_matrix cascade;
-create view staff.credential_matrix
-with (security_invoker = true) as
-select
-  u.org_slug,
-  u.id                as user_id,
-  u.name              as staff_name,
-  u.legal_name,
-  u.job_role,
-  req.kind::text      as kind,
-  coalesce(req.label, req.kind::text) as kind_label,
-  req.required,
-  req.sort_order,
-  c.id                as credential_id,
-  c.expires_on,
-  (c.expires_on - current_date) as days_left,
-  case
-    when c.id is null                                      then 'missing'
-    -- A credential with no expiry date is a credential nobody can
-    -- evidence the currency of. Treated as present but unverifiable
-    -- rather than silently counted as fine.
-    when c.expires_on is null                              then 'undated'
-    when c.expires_on < current_date                       then 'expired'
-    when c.expires_on <= current_date + 90                 then 'expiring'
-    else 'current'
-  end as status
-from staff.users u
-join staff.job_credential_requirements req
-  on req.org_slug = u.org_slug
- and req.job_role = u.job_role
- and req.active
-left join lateral (
-  -- The furthest-out valid card wins when somebody has renewed early and
-  -- both the old and new are on file. Picking the newest by created_at
-  -- would show the old one whenever the renewal was uploaded first.
-  select c2.id, c2.expires_on
-    from staff.credentials c2
-   where c2.user_id = u.id
-     and c2.kind = req.kind
-     and c2.active
-   order by c2.expires_on desc nulls last
-   limit 1
-) c on true
-where u.active
-  and u.job_role is not null;
-
-grant select on staff.credential_matrix to staff_app;
-
--- The one number an owner wants without reading the grid.
-drop view if exists staff.credential_gaps cascade;
-create view staff.credential_gaps
-with (security_invoker = true) as
-select org_slug,
-       count(*) filter (where status = 'expired'  and required) as expired_required,
-       count(*) filter (where status = 'missing'  and required) as missing_required,
-       count(*) filter (where status = 'expiring' and required) as expiring_required,
-       count(*) filter (where status = 'undated'  and required) as undated_required
-  from staff.credential_matrix
- group by org_slug;
-
-grant select on staff.credential_gaps to staff_app;
-
-
 -- ========== staff-statutory-logs.sql ==========
 
 -- ============================================================
@@ -9712,7 +9391,7 @@ $json$::jsonb),
 
 -- ---------- Manufacturer IFU; 42 CFR 493.1254 ----------
 ('_library', 'equipment-calibration', 'Equipment calibration & maintenance',
- 'The registry flagged as not built when the module shipped.',
+ 'Function checks at the interval the manufacturer sets, and what was done.',
  'clinical', 'monthly', array[]::text[], 360,
 $json$
 {
@@ -9785,6 +9464,104 @@ select o.slug, t.slug, t.name, t.description, t.category, t.frequency,
          select 1 from staff.form_templates x
           where x.org_slug = o.slug and x.slug = t.slug
        );
+
+-- One repair, not a general overwrite. The description this template
+-- shipped with was a note to whoever was building it rather than a
+-- sentence for the person filling it in, and it reached every clinic
+-- seeded before that was noticed. The backfill above deliberately skips
+-- a slug the clinic already has, so it cannot correct this; matching on
+-- the exact old text does, and leaves alone any clinic that has since
+-- written its own.
+update staff.form_templates
+   set description = 'Function checks at the interval the manufacturer sets, and what was done.'
+ where slug = 'equipment-calibration'
+   and description = 'The registry flagged as not built when the module shipped.';
+
+
+-- ========== staff-credential-matrix.sql ==========
+
+-- ============================================================
+-- THE CREDENTIALING MATRIX
+--
+-- Everything this needs already exists: staff.credentials holds one row
+-- per person per credential with an expiry, and
+-- staff.job_credential_requirements says which kinds each job must
+-- carry. What was missing is the shape an administrator actually reads —
+-- a grid of people against credentials where the colour of a cell is the
+-- whole answer.
+--
+-- THE ROW THAT MATTERS IS THE MISSING ONE. A per-person document shelf
+-- shows what somebody HAS; it cannot show what they have not got, and
+-- "the x-ray tech never uploaded an ARRT card" is precisely the finding a
+-- surveyor writes up. So this starts from the REQUIREMENT and left-joins
+-- the credential, not the other way round.
+--
+-- Ninety days because that is roughly a renewal cycle for BLS and ACLS:
+-- long enough to book a class, short enough that the warning still means
+-- something when it appears.
+-- ============================================================
+
+drop view if exists staff.credential_matrix cascade;
+create view staff.credential_matrix
+with (security_invoker = true) as
+select
+  u.org_slug,
+  u.id                as user_id,
+  u.name              as staff_name,
+  u.legal_name,
+  u.job_role,
+  req.kind::text      as kind,
+  coalesce(req.label, req.kind::text) as kind_label,
+  req.required,
+  req.sort_order,
+  c.id                as credential_id,
+  c.expires_on,
+  (c.expires_on - current_date) as days_left,
+  case
+    when c.id is null                                      then 'missing'
+    -- A credential with no expiry date is a credential nobody can
+    -- evidence the currency of. Treated as present but unverifiable
+    -- rather than silently counted as fine.
+    when c.expires_on is null                              then 'undated'
+    when c.expires_on < current_date                       then 'expired'
+    when c.expires_on <= current_date + 90                 then 'expiring'
+    else 'current'
+  end as status
+from staff.users u
+join staff.job_credential_requirements req
+  on req.org_slug = u.org_slug
+ and req.job_role = u.job_role
+ and req.active
+left join lateral (
+  -- The furthest-out valid card wins when somebody has renewed early and
+  -- both the old and new are on file. Picking the newest by created_at
+  -- would show the old one whenever the renewal was uploaded first.
+  select c2.id, c2.expires_on
+    from staff.credentials c2
+   where c2.user_id = u.id
+     and c2.kind = req.kind
+     and c2.active
+   order by c2.expires_on desc nulls last
+   limit 1
+) c on true
+where u.active
+  and u.job_role is not null;
+
+grant select on staff.credential_matrix to staff_app;
+
+-- The one number an owner wants without reading the grid.
+drop view if exists staff.credential_gaps cascade;
+create view staff.credential_gaps
+with (security_invoker = true) as
+select org_slug,
+       count(*) filter (where status = 'expired'  and required) as expired_required,
+       count(*) filter (where status = 'missing'  and required) as missing_required,
+       count(*) filter (where status = 'expiring' and required) as expiring_required,
+       count(*) filter (where status = 'undated'  and required) as undated_required
+  from staff.credential_matrix
+ group by org_slug;
+
+grant select on staff.credential_gaps to staff_app;
 
 
 -- ========== staff-sharps-waste.sql ==========
@@ -10123,3 +9900,202 @@ revoke all on function staff.update_org_settings(
 grant execute on function staff.update_org_settings(
   text, text, double precision, double precision, integer, text, text, text
 ) to staff_app;
+
+
+-- ========== staff-privacy-rules.sql ==========
+
+-- ============================================================
+-- PRIVACY AND PATIENT INTERACTION, AS STANDING RULES
+--
+-- HIPAA already lives in the policy packet, which is signed once on a
+-- first morning and never opened again. That is the wrong shape for the
+-- knowledge somebody needs while a patient's brother is standing at the
+-- counter asking whether she is here.
+--
+-- staff.scope_items is the right shape and already exists: a prohibited
+-- item cannot be inserted without the sanctioned alternative beside it,
+-- enforced by a CHECK rather than by good intentions. So privacy joins
+-- scope of practice on /staff/rules, in the same two columns.
+--
+-- WRITTEN AS WHAT TO SAY, NOT AS WHAT NOT TO DO. A list that scolds gets
+-- skimmed once. A list that solves the awkward moment at the desk gets
+-- remembered, and the difference is entirely in whether the right-hand
+-- column contains a sentence somebody can actually use out loud.
+--
+-- SCOPED BY JOB, because the situations are not shared. The front desk
+-- meets the relative at the counter several times a week; a provider
+-- meets the records request; an x-ray tech meets the corridor
+-- conversation. Giving every rule to everybody is how a list becomes
+-- long enough to ignore.
+--
+-- CITATIONS ARE EXACT OR ABSENT. Where 45 CFR 164 says a thing, it is
+-- cited. Where this is the clinic's own judgement about what is
+-- sensible, the citation is null and the page prints it as clinic
+-- policy, which is honest and is also what a surveyor would rather see
+-- than a fabricated authority.
+-- ============================================================
+
+-- A FUNCTION AND A TRIGGER, NOT A ONE-OFF INSERT. Written as a plain
+-- backfill, these rules would reach every clinic that existed the day the
+-- migration ran and no clinic that signed up after it — so the second
+-- customer would open /staff/rules and find the scope of practice there
+-- and the privacy half missing. Every other seed in this schema is a
+-- function plus an after-insert trigger for exactly that reason; this one
+-- matches them.
+create or replace function staff.seed_privacy(p_slug text)
+returns integer language plpgsql as $$
+declare n integer;
+begin
+  insert into staff.scope_items
+    (org_slug, key, job_role, kind, item, instead, citation, sort_order)
+  select p_slug, v.key, v.job_role::staff.job_role, v.kind, v.item, v.instead,
+         v.citation, v.sort_order
+    from (values
+
+-- ---------- Front desk ----------
+-- The counter is where almost all of this happens, and where the person
+-- asking is usually not being difficult. They are worried.
+('priv-fd-presence', 'front_desk', 'prohibited',
+ 'Confirm or deny that a particular person is here, to anyone who asks',
+ 'Say: "I''m not able to confirm whether anyone is here. If they''ve told us it''s alright to talk to you, I can check that - what''s your name?" Then look for a release on file.',
+ '45 CFR 164.510(b) - disclosure to family and others requires the patient''s agreement or an opportunity to object',
+ 200),
+
+('priv-fd-phone', 'front_desk', 'prohibited',
+ 'Discuss a patient with a caller on the telephone',
+ 'Say: "I can''t go through patient details over the phone. If you''re with them, they''re welcome to call you from here." A voice on a telephone cannot be identified.',
+ null,
+ 201),
+
+('priv-fd-signin', 'front_desk', 'prohibited',
+ 'Leave a paper sign-in sheet, a chart or a screen where the next person in the queue can read it',
+ 'Turn the screen, invert the sheet, or hand the clipboard over face down. A sign-in list is permitted; a list of everyone''s reason for coming is not.',
+ '45 CFR 164.530(c) - reasonable safeguards against incidental disclosure',
+ 202),
+
+('priv-fd-records', 'front_desk', 'prohibited',
+ 'Hand over records, imaging or results because somebody has asked at the counter',
+ 'Say: "Records go through a written request - let me give you the form and tell you how long it usually takes." Then pass it to whoever handles releases.',
+ '45 CFR 164.524 - right of access, on request, within 30 days',
+ 203),
+
+('priv-fd-name', 'front_desk', 'authorized',
+ 'Call a patient by first name and last initial in the waiting room',
+ null, null, 204),
+
+-- ---------- Medical assistant ----------
+('priv-ma-corridor', 'medical_assistant', 'prohibited',
+ 'Discuss a patient in a corridor, at the desk, or anywhere the waiting room can hear',
+ 'Move it into a room and close the door, or hold it until you can. If somebody starts the conversation in the open, say: "Let''s step in here."',
+ '45 CFR 164.530(c) - reasonable safeguards',
+ 210),
+
+('priv-ma-colleague', 'medical_assistant', 'prohibited',
+ 'Look at, or talk about, the record of a patient you are not caring for',
+ 'Say: "I''m not on that one - you''d want to ask whoever is." Curiosity about a neighbour or a colleague is the most common way access gets audited and lost.',
+ '45 CFR 164.502(b) - minimum necessary',
+ 211),
+
+-- The one this product itself creates. CameraProof asks staff to
+-- photograph a fridge display or a crash cart seal, so the rule belongs
+-- here rather than only in the component.
+('priv-ma-photo', 'medical_assistant', 'prohibited',
+ 'Photograph equipment without checking what else is in the frame',
+ 'Before you tap the shutter, look at the edges: a monitor with a name on it, a whiteboard, a chart on the counter. Move the chart or change the angle. The log needs the thermometer, not the room.',
+ '45 CFR 164.530(c)',
+ 212),
+
+('priv-ma-social', 'medical_assistant', 'prohibited',
+ 'Post about the shift where it could identify a patient - including "you would not believe today"',
+ 'Nothing about a patient goes online, even without a name. A small town recognises a description faster than a name.',
+ null,
+ 213),
+
+('priv-ma-family', 'medical_assistant', 'authorized',
+ 'Speak with a family member who is in the room, when the patient has not objected',
+ null, null, 214),
+
+-- ---------- X-ray tech ----------
+('priv-xr-images', 'xray_tech', 'prohibited',
+ 'Show an image to anyone other than the ordering provider and the patient',
+ 'Say: "The provider will go through the images with you." An image is a record, and a phone screenshot of one leaves the building.',
+ '45 CFR 164.502(b)',
+ 220),
+
+('priv-xr-corridor', 'xray_tech', 'prohibited',
+ 'Call out a finding or a body part across the department',
+ 'Take it to the provider directly, or write it. "Room 3''s films are up" carries no clinical information; the alternative does.',
+ '45 CFR 164.530(c)',
+ 221),
+
+-- ---------- Provider ----------
+('priv-pr-police', 'provider', 'prohibited',
+ 'Release information to law enforcement on the strength of a request at the desk',
+ 'Say: "I''ll need to take that through our medical director." Some disclosures to law enforcement are permitted and many are not, and the difference turns on the paperwork rather than on the urgency in the room.',
+ '45 CFR 164.512(f) - specific conditions, not a general permission',
+ 230),
+
+('priv-pr-minimum', 'provider', 'prohibited',
+ 'Send a whole record when a specific answer was asked for',
+ 'Send the part that answers the question. A full chart in reply to "was she seen on Tuesday" is a disclosure nobody needed.',
+ '45 CFR 164.502(b) - minimum necessary',
+ 231),
+
+('priv-pr-emergency', 'provider', 'authorized',
+ 'Share what is needed for treatment, with another treating clinician, without a signed release',
+ null,
+ '45 CFR 164.506(c) - treatment, payment and operations',
+ 232),
+
+-- ---------- Centre administrator ----------
+('priv-ca-breach', 'center_admin', 'prohibited',
+ 'Decide alone that a disclosure was too small to matter',
+ 'File it under Record an event the same day and take it to the medical director. The clock on a breach notification starts at discovery, not at the point somebody concludes it was serious.',
+ '45 CFR 164.404(b) - notification without unreasonable delay and within 60 days',
+ 240),
+
+('priv-ca-access', 'center_admin', 'prohibited',
+ 'Leave an account active for somebody who has left',
+ 'Deactivate them in Team the day they finish. It ends their sessions immediately and revokes any invitation still sitting in their mailbox.',
+ '45 CFR 164.308(a)(3)(ii)(C) - termination procedures',
+ 241),
+
+('priv-ca-request', 'center_admin', 'authorized',
+ 'Give a patient a copy of their own record on written request',
+ null,
+ '45 CFR 164.524',
+ 242)
+
+) as v(key, job_role, kind, item, instead, citation, sort_order)
+   where not exists (
+           select 1 from staff.scope_items x
+            where x.org_slug = p_slug and x.key = v.key
+         );
+
+  get diagnostics n = row_count;
+  return n;
+end $$;
+
+grant execute on function staff.seed_privacy(text) to staff_app;
+
+create or replace function staff.privacy_seed_new_org()
+returns trigger language plpgsql as $$
+begin
+  perform staff.seed_privacy(new.slug);
+  return null;
+end $$;
+
+drop trigger if exists staff_orgs_seed_privacy on staff.orgs;
+create trigger staff_orgs_seed_privacy
+  after insert on staff.orgs
+  for each row execute function staff.privacy_seed_new_org();
+
+-- And the clinics that already exist. The library org is skipped: it
+-- holds templates, not people, and has no front desk to give rules to.
+do $$
+declare o record;
+begin
+  for o in select slug from staff.orgs where not is_library and active loop
+    perform staff.seed_privacy(o.slug);
+  end loop;
+end $$;
