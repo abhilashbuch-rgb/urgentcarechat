@@ -5924,6 +5924,61 @@ body {
   .st-rec-go { align-self: flex-start; }
 }
 
+/* ---------- clinic settings ---------- */
+
+.st-set-block { padding: 22px 0; border-top: 1px solid var(--rule); }
+.st-set-block:first-of-type { border-top: 0; padding-top: 6px; }
+.st-set-h { font-size: 16px; font-weight: 600; color: var(--ink); }
+.st-set-b { font-size: 13px; line-height: 1.6; color: var(--ink-soft); margin: 6px 0 14px; max-width: 62ch; }
+
+/* Radios and checkboxes with their explanation attached, because the
+   difference between Record and Require is not conveyable in one word. */
+.st-set-radios { border: 0; padding: 0; margin: 4px 0 0; display: grid; gap: 8px; }
+.st-set-radio, .st-set-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 13px;
+  border: 1px solid var(--rule);
+  border-radius: 9px;
+  cursor: pointer;
+}
+.st-set-radio:hover, .st-set-check:hover { border-color: var(--rule-firm); }
+.st-set-radio input, .st-set-check input { margin-top: 3px; flex: 0 0 auto; }
+.st-set-radio span, .st-set-check span { display: flex; flex-direction: column; gap: 2px; }
+.st-set-radio strong, .st-set-check strong { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.st-set-radio em, .st-set-check em { font-style: normal; font-size: 12px; line-height: 1.5; color: var(--ink-soft); }
+.st-set-checks { display: grid; gap: 8px; margin-top: 4px; }
+
+/* Address lookup */
+.st-geo { display: grid; gap: 12px; }
+.st-geo-row { display: flex; gap: 8px; align-items: stretch; }
+.st-geo-row .st-input { flex: 1 1 auto; min-width: 0; }
+.st-geo-row .st-btn { flex: 0 0 auto; white-space: nowrap; }
+.st-geo-hits { list-style: none; display: grid; gap: 6px; margin: 0; padding: 0; }
+.st-geo-hit {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 9px;
+  background: var(--bg-card);
+  cursor: pointer;
+}
+.st-geo-hit:hover { border-color: var(--rule-firm); }
+.st-geo-hit-on { border-color: var(--volt-ink); box-shadow: inset 3px 0 0 var(--volt-ink); background: var(--volt-wash); }
+.st-geo-hit-label { font-size: 13px; color: var(--ink); }
+.st-geo-hit-coord { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+.st-geo-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+@media (max-width: 520px) {
+  .st-geo-pair { grid-template-columns: 1fr; }
+  .st-geo-row { flex-direction: column; }
+}
+
 /* ---------- contact ---------- */
 
 .ct-head { padding: 56px 0 8px; max-width: 62ch; }

@@ -9785,3 +9785,341 @@ select o.slug, t.slug, t.name, t.description, t.category, t.frequency,
          select 1 from staff.form_templates x
           where x.org_slug = o.slug and x.slug = t.slug
        );
+
+
+-- ========== staff-sharps-waste.sql ==========
+
+-- ============================================================
+-- REGULATED MEDICAL WASTE — the container, the pickup, the calendar
+--
+-- THREE PIECES, AND THEY BELONG TO DIFFERENT PEOPLE.
+--
+-- Sealing a full sharps container is clinical work done on a shift by
+-- whoever notices the fill line. Releasing that container to a hauler is
+-- a transfer of custody recorded against a tracking document. Filing
+-- them as one form would mean one signature covering both, which is the
+-- same mistake the front-desk close and the administrator's day sheet
+-- were split to avoid: the person who signs should be the person who
+-- did the thing.
+--
+-- So: a routine check for clinical staff, an event record for the
+-- administrator, and a recurring obligation carrying the date.
+--
+-- WHY NOT A CALENDAR WIDGET. staff.obligations already holds a due date,
+-- a repeat interval, who completed it and when, and an append-only
+-- history — and the alert engine already chases what is overdue in it.
+-- A second scheduling mechanism would be a second thing to keep correct.
+-- ============================================================
+
+insert into staff.form_templates
+  (org_slug, slug, name, description, category, frequency, slots, sort_order, schema_json)
+values
+
+-- ---------- Clinical staff: the container itself ----------
+-- OSHA does not set a fill percentage; it says containers are replaced
+-- routinely and not allowed to overfill. Three-quarters is the line the
+-- container manufacturers print and the one staff can actually see, so
+-- it is the number here — stated as this clinic's rule rather than as a
+-- federal one, because it is.
+('_library', 'sharps-containers', 'Sharps containers',
+ 'Fill level, seals, and the secure storage area.',
+ 'osha', 'daily', array[]::text[], 370,
+$json$
+{
+  "standard": "29 CFR 1910.1030(d)(4)(iii)(A) — containers shall be closable, puncture resistant, leakproof, and replaced routinely and not be allowed to overfill. The three-quarter line below is this clinic's own rule, not a federal one.",
+  "fields": [
+    { "id": "containers_checked", "label": "Containers checked", "type": "number",
+      "min": 1, "step": 1, "presets": [2, 3, 4, 5, 6] },
+    { "id": "any_over_three_quarters", "label": "Any container at or above three-quarters", "type": "boolean",
+      "expected": false,
+      "help": "Yes means it gets sealed and swapped now, not at the end of the shift." },
+    { "id": "sealed_and_replaced", "label": "Full containers sealed and replaced", "type": "select",
+      "options": ["None were full", "Yes — sealed and replaced", "No — still to do"],
+      "failing": ["No — still to do"] },
+    { "id": "mounts_secure", "label": "Wall mounts secure, lids working", "type": "boolean", "expected": true },
+    { "id": "storage_secured", "label": "Sealed containers in the locked storage area", "type": "boolean",
+      "expected": true,
+      "help": "Awaiting pickup, out of public reach." },
+    { "id": "awaiting_pickup", "label": "Sealed containers awaiting pickup", "type": "number",
+      "min": 0, "step": 1, "required": false,
+      "help": "The number here is what the administrator reconciles against the manifest." }
+  ]
+}
+$json$::jsonb),
+
+-- ---------- Administrator: the transfer of custody ----------
+-- An event, not a schedule: the hauler arrives when the hauler arrives,
+-- and a pickup that shows as due every day until it happens is a red row
+-- that teaches people to ignore red rows.
+('_library', 'waste-pickup', 'Waste pickup / manifest',
+ 'One entry per collection, with the tracking document.',
+ 'operations', 'on_event', array[]::text[], 380,
+$json$
+{
+  "standard": "Regulated medical waste transport is governed by state rules and, for shipping papers, 49 CFR Part 172. Most states require the generator to keep the signed tracking document for a set period — commonly three years. Check your own state's rule and set the retention accordingly.",
+  "fields": [
+    { "id": "pickup_date", "label": "Date collected", "type": "date" },
+    { "id": "hauler", "label": "Hauling company", "type": "text" },
+    { "id": "manifest_number", "label": "Manifest / tracking number", "type": "text",
+      "help": "The number on the document the driver leaves with you. This is the whole point of the record." },
+    { "id": "sharps_containers", "label": "Sharps containers released", "type": "number",
+      "min": 0, "step": 1, "presets": [1, 2, 3, 4] },
+    { "id": "other_rmw_containers", "label": "Other regulated waste containers released", "type": "number",
+      "min": 0, "step": 1, "required": false },
+    { "id": "matches_awaiting", "label": "Count matches what was awaiting pickup", "type": "boolean",
+      "expected": true,
+      "help": "Against the sharps container log. A mismatch means a container is unaccounted for, which is the finding worth catching on the day rather than at audit." },
+    { "id": "driver_name", "label": "Driver name on the document", "type": "text", "required": false },
+    { "id": "document_filed", "label": "Signed copy filed", "type": "boolean", "expected": true }
+  ]
+}
+$json$::jsonb)
+
+on conflict (org_slug, slug) where slug is not null do update set
+  name        = excluded.name,
+  description = excluded.description,
+  category    = excluded.category,
+  frequency   = excluded.frequency,
+  sort_order  = excluded.sort_order,
+  schema_json = excluded.schema_json;
+
+-- ---------- Who sees which ----------
+-- The container check goes to the people on the floor AND to the centre
+-- admin, because on a short-staffed afternoon the admin is the person on
+-- the floor. The pickup record is the admin's alone: it is a custody
+-- transfer signed against a document, and an MA should not be attesting
+-- to what a driver took away.
+update staff.form_templates
+   set job_roles = array['medical_assistant','xray_tech','center_admin']::staff.job_role[]
+ where slug = 'sharps-containers';
+
+update staff.form_templates
+   set job_roles = array['center_admin']::staff.job_role[]
+ where slug = 'waste-pickup';
+
+-- ---------- Everyone generates sharps ----------
+insert into staff.facility_templates (facility_type, template_slug)
+select f.t, s.slug
+  from (values ('urgent_care'),('primary_care'),('med_spa'),
+               ('ambulatory_surgery'),('dental')) as f(t)
+ cross join (values ('sharps-containers'),('waste-pickup')) as s(slug)
+on conflict do nothing;
+
+insert into staff.form_templates
+  (org_slug, slug, name, description, category, frequency, slots, sort_order, schema_json, active, job_roles)
+select o.slug, t.slug, t.name, t.description, t.category, t.frequency,
+       t.slots, t.sort_order, t.schema_json, true, t.job_roles
+  from staff.orgs o
+  join staff.facility_templates ft
+    on ft.facility_type = coalesce(o.facility_type, 'urgent_care')
+  join staff.form_templates t
+    on t.org_slug = '_library' and t.slug = ft.template_slug
+ where not o.is_library and o.active
+   and t.slug in ('sharps-containers','waste-pickup')
+   and not exists (
+         select 1 from staff.form_templates x
+          where x.org_slug = o.slug and x.slug = t.slug
+       );
+
+-- ---------- The calendar ----------
+-- A recurring obligation rather than a new scheduling table. When it is
+-- marked done, staff.obligations records who and when and rolls due_on
+-- forward by repeat_months, and the alert engine already chases what is
+-- overdue there.
+--
+-- ONE MONTH IS A STARTING GUESS, NOT A RULE. Collection intervals are a
+-- contract between the clinic and its hauler; a busy urgent care may be
+-- weekly and a small practice quarterly. Seeded monthly, and the owner
+-- changes it — repeat_months is an integer on the row.
+--
+-- Only for clinics that do not already have one, so re-running this does
+-- not reset a date somebody has already moved.
+insert into staff.obligations
+  (org_slug, key, title, detail, category, citation, source,
+   due_on, repeat_months, active, job_roles)
+select o.slug,
+       'rmw-pickup',
+       'Regulated medical waste collection',
+       'Confirm the hauler is booked, and file the manifest under '
+       'Record an event once the collection has happened. The interval '
+       'here is a starting guess — set it to whatever your contract says.',
+       'osha',
+       'State regulated medical waste rules; 49 CFR Part 172 for shipping papers',
+       'contract',
+       current_date + 30,
+       1,
+       true,
+       array['center_admin']::staff.job_role[]
+  from staff.orgs o
+ where not o.is_library and o.active
+   and not exists (
+         select 1 from staff.obligations x
+          where x.org_slug = o.slug and x.key = 'rmw-pickup'
+       );
+
+
+-- ========== staff-provision-seed.sql ==========
+
+-- ============================================================
+-- A CLINIC THAT PAID GETS A CLINIC
+--
+-- staff.provision_org creates the org and the first administrator's
+-- invite and stops. staff.provision_trial, since staff-facility.sql,
+-- also calls staff.seed_facility — so somebody who signs up at /start
+-- gets a working board and somebody who pays through the Stripe link
+-- gets an empty one. Same product, two doors, opposite outcomes, and the
+-- worse outcome belongs to the person who paid.
+--
+-- Confirmed in a live test rather than reasoned about: a test-mode
+-- checkout against the real webhook returned
+--   {"received": true, "provisioned": "test-clinic-admin"}
+-- and that clinic has no templates at all.
+--
+-- WHY THE FACILITY TYPE IS urgent_care HERE. A Payment Link cannot ask
+-- what kind of clinic you are — it collects a name and a card. The
+-- honest options were to guess or to leave the board empty, and an
+-- urgent-care board an owner prunes beats a blank page with no
+-- explanation. /start still asks properly, which is the door to prefer.
+-- ============================================================
+
+create or replace function staff.provision_org(
+  p_slug text, p_name text, p_customer text, p_subscription text, p_email text
+) returns text
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+declare final_slug text; n int := 1;
+begin
+  select slug into final_slug from staff.orgs
+   where stripe_customer_id = p_customer limit 1;
+  if found then return final_slug; end if;
+
+  final_slug := p_slug;
+  while exists (select 1 from staff.orgs where slug = final_slug) loop
+    n := n + 1;
+    final_slug := p_slug || '-' || n;
+  end loop;
+
+  insert into staff.orgs (slug, name, plan, stripe_customer_id,
+                          stripe_subscription_id, subscription_status,
+                          is_read_only, billing_email, facility_type)
+  values (final_slug, p_name, 'stripe', p_customer, p_subscription,
+          'active', false, p_email, 'urgent_care');
+
+  -- The person who paid is the first administrator. Without this they
+  -- would complete checkout and have nothing to sign into.
+  insert into staff.org_invites (org_slug, email, role)
+  values (final_slug, lower(p_email), 'org_admin');
+
+  -- The line whose absence meant a paying customer opened an empty board.
+  perform staff.seed_facility(final_slug);
+
+  return final_slug;
+end $$;
+
+revoke all on function staff.provision_org(text, text, text, text, text) from public;
+grant execute on function staff.provision_org(text, text, text, text, text) to staff_app;
+
+-- ---------- Repair anything already provisioned this way ----------
+-- Orgs created through checkout before this fix have no templates. Seed
+-- them now rather than leaving a customer to discover it. seed_facility
+-- skips slugs a clinic already has, so this is safe for orgs that were
+-- provisioned correctly.
+do $$
+declare r record;
+begin
+  for r in
+    select o.slug from staff.orgs o
+     where o.plan = 'stripe'
+       and not o.is_library
+       and not exists (
+             select 1 from staff.form_templates t where t.org_slug = o.slug
+           )
+  loop
+    update staff.orgs set facility_type = coalesce(facility_type, 'urgent_care')
+     where slug = r.slug;
+    perform staff.seed_facility(r.slug);
+    raise notice 'seeded templates for stripe-provisioned org %', r.slug;
+  end loop;
+end $$;
+
+
+-- ========== staff-org-settings.sql ==========
+
+-- ============================================================
+-- AN OWNER CAN SET THEIR CLINIC'S SETTINGS. ONLY THOSE.
+--
+-- staff.orgs carries two very different kinds of column on one row:
+--
+--   the clinic's own settings — timezone, coordinates, geofence, who to
+--   alert — which the owner must be able to change; and
+--
+--   the billing state — is_read_only, subscription_status, trial_ends_on,
+--   the Stripe ids — which only the signed webhook may write.
+--
+-- The RLS policy reflects that: USING lets an administrator READ their
+-- own org, WITH CHECK requires a super admin to WRITE it. Correct, and it
+-- is why /staff/settings failed with "new row violates row-level security
+-- policy for table orgs" the first time it was run against a real
+-- database as staff_app.
+--
+-- WIDENING THE POLICY WOULD BE THE WRONG FIX. Postgres row-level security
+-- is row-level, not column-level: a policy permissive enough to let an
+-- owner set their timezone would also let them set is_read_only = false
+-- and use the product for nothing. So the write goes through a function
+-- that can only reach the settings columns, and the billing columns stay
+-- unreachable from the application at all.
+-- ============================================================
+
+create or replace function staff.update_org_settings(
+  p_org        text,
+  p_timezone   text,
+  p_latitude   double precision,
+  p_longitude  double precision,
+  p_radius_m   integer,
+  p_mode       text,
+  p_owner_email text,
+  p_md_email    text
+) returns void
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+begin
+  -- Region/City only. 'EST' has no daylight-saving rule and every
+  -- reminder and report drifts by an hour for half the year.
+  if p_timezone !~ '^[A-Za-z]+/[A-Za-z0-9_+-]+$' then
+    raise exception 'timezone must be a Region/City name, not %', p_timezone
+      using errcode = 'check_violation';
+  end if;
+
+  -- Half a coordinate would place the clinic on the equator or the prime
+  -- meridian and stamp every filing thousands of miles from the door.
+  if (p_latitude is null) <> (p_longitude is null) then
+    raise exception 'latitude and longitude must both be set or both be null'
+      using errcode = 'check_violation';
+  end if;
+
+  update staff.orgs set
+    timezone                     = p_timezone,
+    latitude                     = p_latitude,
+    longitude                    = p_longitude,
+    geofence_radius_m            = p_radius_m,
+    geofence_mode                = p_mode,
+    owner_alert_email            = nullif(btrim(coalesce(p_owner_email, '')), ''),
+    medical_director_alert_email = nullif(btrim(coalesce(p_md_email, '')), '')
+  where slug = p_org;
+
+  if not found then
+    raise exception 'no such organization: %', p_org
+      using errcode = 'no_data_found';
+  end if;
+end $$;
+
+revoke all on function staff.update_org_settings(
+  text, text, double precision, double precision, integer, text, text, text
+) from public;
+grant execute on function staff.update_org_settings(
+  text, text, double precision, double precision, integer, text, text, text
+) to staff_app;
