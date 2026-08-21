@@ -114,25 +114,6 @@ export async function POST(req: NextRequest) {
         )
       `;
 
-      // WHICH OPTIONAL LOGS THIS CLINIC RUNS.
-      //
-      // An unchecked box is not submitted at all, so "off" cannot be read
-      // off the form — the set of switchable logs has to come from the
-      // database and each one compared against whether its box arrived.
-      // Reading the list from the request instead would let a crafted
-      // POST name any slug it liked; set_log_enabled refuses a
-      // non-optional template anyway, but the list belongs on the server
-      // regardless.
-      const switchable = await sql<{ slug: string; active: boolean }[]>`
-        select slug, active from staff.optional_logs
-      `;
-      for (const log of switchable) {
-        const wanted = form.get(`log_${log.slug}`) !== null;
-        if (wanted !== log.active) {
-          await sql`select staff.set_log_enabled(${org}, ${log.slug}, ${wanted})`;
-        }
-      }
-
       // Subscriptions are deactivated rather than deleted, so
       // last_period_end survives and turning a report back on does not
       // resend a month of history.
