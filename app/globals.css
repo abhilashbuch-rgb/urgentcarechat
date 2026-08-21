@@ -3833,6 +3833,27 @@ body {
 .st-callout-title { display: block; font-size: 14px; font-weight: 600; color: var(--ink); }
 .st-callout-sub { display: block; font-size: 12.5px; color: var(--accent); margin-top: 2px; }
 
+/* The refusal, when a corrective action is too short or is one of the
+   answers the field exists to catch. Inside the alert box rather than
+   under the button, because it is about what was typed. */
+.st-log-refused {
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--warn);
+  line-height: 1.45;
+}
+
+/* Demo only: a way back out of a log without filing it. The real form
+   has the nav for this; the demo runs the log in place. .st-btn is
+   inline-flex, so full width needs the flex sizing rather than display:
+   block. */
+.st-log-back {
+  width: 100%;
+  margin-top: 12px;
+  justify-content: center;
+}
+
 /* ---------- the shift, on the Today screen ---------- */
 
 /* One line, then one button. What stood here was three cards describing

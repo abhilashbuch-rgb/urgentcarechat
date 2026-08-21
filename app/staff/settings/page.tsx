@@ -280,7 +280,7 @@ export default async function SettingsPage({
             in the building &mdash; are switched on separately, and your
             centre admin can do it too.
           </p>
-          <Link className="st-secondary" href="/staff/settings/logs">
+          <Link className="st-btn" href="/staff/settings/logs">
             Open clinic logs
           </Link>
         </section>

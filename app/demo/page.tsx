@@ -27,7 +27,7 @@ const ROLES = [
     href: "/demo/today",
     icon: IconThermometer,
     title: "Medical assistant",
-    body: "The 15-second shift check: fridge temps and O2 pressure filled in with one tap, not typed.",
+    body: "A shift: what is left, one tap to the next check, and a 52 °F fridge that will not file without a corrective action.",
   },
   {
     href: "/demo/learning",
