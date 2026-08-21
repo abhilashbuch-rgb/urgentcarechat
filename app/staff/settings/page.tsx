@@ -37,6 +37,14 @@ const ERRORS: Record<string, string> = {
   forbidden: "Only an administrator can change the clinic's settings.",
 };
 
+interface OptionalLog {
+  slug: string;
+  name: string;
+  description: string | null;
+  frequency: string;
+  active: boolean;
+}
+
 interface OrgSettings {
   name: string;
   timezone: string;
@@ -69,6 +77,12 @@ export default async function SettingsPage({
     reports: await sql<{ cadence: string; email: string }[]>`
       select cadence, email from staff.report_subscriptions
        where org_slug = ${org} and active
+    `,
+    // Logs the clinic chooses. Everything else on the board is statutory
+    // or universal and does not appear here, because it is not a choice.
+    optional: await sql<OptionalLog[]>`
+      select slug, name, description, frequency, active
+        from staff.optional_logs
     `,
   }));
 
@@ -252,6 +266,48 @@ export default async function SettingsPage({
             ))}
           </div>
         </section>
+
+        {data.optional.length > 0 && (
+          <section className="st-set-block">
+            <h2 className="st-set-h">Logs this clinic runs</h2>
+            <p className="st-set-b">
+              Some equipment is not in every building. A clinic that
+              autoclaves nothing should not carry a sterilization log it can
+              never file &mdash; one permanent unfilled row is how a board
+              stops being read. Switch on what you actually have.
+            </p>
+            <p className="st-set-b">
+              Nothing statutory is on this list. The sharps containers, the
+              fire extinguishers and the exposure log are not optional and
+              are not shown here.
+            </p>
+
+            <div className="st-set-checks">
+              {data.optional.map((log) => (
+                <label className="st-set-check" key={log.slug}>
+                  <input
+                    type="checkbox"
+                    name={`log_${log.slug}`}
+                    defaultChecked={log.active}
+                  />
+                  <span>
+                    <strong>{log.name}</strong>
+                    <em>{log.description}</em>
+                  </span>
+                </label>
+              ))}
+            </div>
+            {/* Switching one off hides it from every board from the next
+                page load. It does NOT remove what was already filed —
+                those records stay in the compliance history and stay
+                exportable, which is the only behaviour that makes turning
+                one off a safe thing to try. */}
+            <p className="st-field-hint">
+              Turning one off hides it from today onwards. Anything already
+              filed under it stays on the record and stays exportable.
+            </p>
+          </section>
+        )}
 
         <button className="st-primary" type="submit">
           Save settings
