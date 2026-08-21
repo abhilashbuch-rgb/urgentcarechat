@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import DemoBanner from "@/app/components/demo/DemoBanner";
 import DemoShift from "@/app/components/demo/DemoShift";
-import { decodeConfig } from "@/lib/demo/config";
+import { decodeConfig, listPhrase } from "@/lib/demo/config";
 import { PRODUCT_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -61,6 +61,34 @@ export default async function DemoToday({
       </div>
 
       <DemoShift extras={active.map((m) => ({ key: m.key, name: m.label }))} />
+
+      {/* THE OFFER, AFTER THE THING RATHER THAN BEFORE IT.
+          No modal, no interstitial, nothing that has to be dismissed to
+          keep looking around. Somebody who wants to file six sample logs
+          and leave should be able to, and somebody who has decided
+          should not have to redo the two choices they just made. The
+          honest version of "convert" is a link at the bottom that
+          remembers. */}
+      <section className="demo-convert">
+        <h2 className="demo-convert-h">Start with this setup</h2>
+        <p className="demo-convert-b">
+          Your clinic would be created as {archetype.phrase} with{" "}
+          {active.length > 0
+            ? `${listPhrase(active.map((m) => m.label.toLowerCase()))} switched on`
+            : "nothing optional switched on"}
+          , plus everything required. You still enter the clinic name and
+          your email, and you can change any of it on the next screen or
+          afterwards.
+        </p>
+        <Link className="st-primary demo-convert-go" href={`/start?c=${encodeURIComponent(c ?? "")}`}>
+          Set this up for real &mdash; 14 days, no card
+        </Link>
+        <p className="demo-convert-foot">
+          Or keep looking: <Link href="/demo">change the setup</Link>,{" "}
+          <Link href="/demo/surveyor">see the inspection view</Link>, or{" "}
+          <Link href="/contact">ask a question first</Link>.
+        </p>
+      </section>
     </div>
   );
 }

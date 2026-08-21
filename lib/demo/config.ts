@@ -17,6 +17,11 @@
 
 export interface DemoModule {
   key: string;
+  /** The real staff.form_templates slug this stands for. THE ONE PLACE
+   *  the demo's vocabulary meets the product's — a visitor who converts
+   *  carries these keys to /start, and this is what turns them back into
+   *  templates. Anything not in this list is dropped rather than trusted. */
+  slug: string;
   label: string;
   /** What it is, in the words somebody buying would use. */
   blurb: string;
@@ -42,6 +47,7 @@ export interface Archetype {
 
 const AUTOCLAVE: DemoModule = {
   key: "autoclave",
+  slug: "autoclave-load",
   label: "Autoclave loads",
   blurb:
     "One record per cycle: contents, temperature, exposure, indicator. Off unless you actually sterilize instruments.",
@@ -51,6 +57,7 @@ const AUTOCLAVE: DemoModule = {
 
 const URINALYSIS: DemoModule = {
   key: "urinalysis",
+  slug: "urinalysis-qc",
   label: "Urinalysis controls & strips",
   blurb:
     "Both controls, plus the strip bottle itself — lot, expiry, desiccant, whether the cap was left open.",
@@ -60,6 +67,7 @@ const URINALYSIS: DemoModule = {
 
 const XRAY: DemoModule = {
   key: "xray",
+  slug: "radiation-apron",
   label: "Lead apron inspection",
   blurb:
     "Quarterly check of every apron and thyroid shield. Off if there is no x-ray suite.",
@@ -69,6 +77,7 @@ const XRAY: DemoModule = {
 
 const LASER: DemoModule = {
   key: "laser",
+  slug: "laser-safety",
   label: "Laser safety",
   blurb:
     "Key control, eyewear, warning signage and the treatment settings used.",
@@ -147,4 +156,65 @@ export function decodeConfig(raw: string | undefined): {
   const known = new Set(archetype.modules.map((m) => m.key));
   const on = new Set(parts.slice(1).filter((k) => known.has(k)));
   return { archetype, on };
+}
+
+/** Every module across every archetype, keyed by its demo key. Used when
+ *  a demo configuration is carried into a real signup. */
+export const ALL_MODULES: Record<string, DemoModule> = Object.fromEntries(
+  ARCHETYPES.flatMap((a) => a.modules).map((m) => [m.key, m])
+);
+
+/**
+ * Turns a demo config string into the template slugs to switch on and
+ * off after a clinic is provisioned.
+ *
+ * NOT TRUSTED. The string arrives in a URL a visitor can edit, so
+ * anything outside the archetype's own module list is dropped here — and
+ * staff.set_log_enabled() refuses a non-optional template underneath
+ * that anyway, so naming sharps-containers gets you nothing twice over.
+ */
+export function modulesFromConfig(
+  raw: string | undefined
+): { slug: string; on: boolean }[] {
+  const parts = (raw ?? "").split(".").filter(Boolean);
+  const archetype = ARCHETYPES.find((a) => a.key === parts[0]);
+  if (!archetype) return [];
+
+  const known = new Set(archetype.modules.map((m) => m.key));
+  const wanted = parts.slice(1);
+
+  // AN UNRECOGNISED KEY VOIDS THE WHOLE STRING, rather than being dropped
+  // on its own.
+  //
+  // Dropping it individually looks safer and is worse. "urgent_care" plus
+  // two keys this build has never heard of would read as "the archetype,
+  // with none of its modules on" — so a mangled or stale link would hand
+  // somebody a clinic with the lead apron inspection switched OFF, which
+  // is a worse starting point than never having opened the demo. A
+  // wizard link never contains an unknown key; a tampered or outdated one
+  // does, and for both of those the honest answer is the library
+  // defaults.
+  //
+  // The archetype on its own, with no module keys, is NOT this case: that
+  // is what the wizard produces when somebody switches everything off,
+  // and it is honoured.
+  if (wanted.some((k) => !known.has(k))) return [];
+
+  const on = new Set(wanted);
+  return archetype.modules.map((m) => ({ slug: m.slug, on: on.has(m.key) }));
+}
+
+/** The facility_type a demo archetype corresponds to. Same strings as
+ *  the CHECK on staff.orgs.facility_type, by construction. */
+export function facilityFromConfig(raw: string | undefined): string | null {
+  const key = (raw ?? "").split(".")[0];
+  return ARCHETYPES.some((a) => a.key === key) ? key : null;
+}
+
+/** "a", "a and b", "a, b and c" — no serial comma, matching the rest of
+ *  the product's copy. Shared so the demo's offer and the signup screen
+ *  describe the same choices in the same words. */
+export function listPhrase(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? "";
+  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 }

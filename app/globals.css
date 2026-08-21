@@ -6029,6 +6029,59 @@ body {
   color: var(--ink-soft);
 }
 
+/* The offer, at the bottom of a board somebody has been using. Framed
+   as a section rather than a banner: it does not interrupt, cannot be
+   dismissed because it never demands anything, and sits after the thing
+   it is asking about. */
+.demo-convert {
+  border-top: 1px solid var(--rule);
+  margin-top: 30px;
+  padding-top: 22px;
+}
+.demo-convert-h {
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+.demo-convert-b {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  margin-bottom: 16px;
+}
+.demo-convert-go {
+  display: block;
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: 999px;
+  text-align: center;
+  text-decoration: none;
+}
+.demo-convert-foot {
+  margin-top: 12px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink-faint);
+  text-align: center;
+}
+.demo-convert-foot a { color: var(--accent); font-weight: 600; }
+
+/* On /start: what was carried over from a demo, said rather than
+   silently applied. */
+.tr-carried {
+  background: var(--bg-sunk);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  padding: 12px 15px;
+  margin-bottom: 20px;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+.tr-carried strong { display: block; color: var(--ink); margin-bottom: 2px; }
+.tr-carried span { color: var(--ink-soft); }
+
 .demo-log-done {
   text-align: center;
   padding: 32px 22px;
