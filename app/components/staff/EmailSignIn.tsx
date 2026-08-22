@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 
-// Sign in with a code sent to your work email.
+// Sign in with a code sent to whichever address the administrator
+// invited. Not necessarily a work address — see TrialForm.
 //
 // FOR EVERY CLINIC THAT IS NOT ON GOOGLE WORKSPACE. Google stays the
 // better door where it exists — it brings the clinic's own hardware

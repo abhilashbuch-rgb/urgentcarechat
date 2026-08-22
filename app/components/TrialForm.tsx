@@ -174,7 +174,7 @@ export default function TrialForm({
       </fieldset>
 
       <label className="st-field">
-        <span className="st-field-label">Your work email</span>
+        <span className="st-field-label">Your email</span>
         <input
           className="st-input"
           type="email"
@@ -185,8 +185,16 @@ export default function TrialForm({
         />
         <span className="st-field-hint">
           You&rsquo;ll sign in as this address afterward &mdash; with Google
-          if it&rsquo;s on Google Workspace, or with an emailed code if not.
-          Microsoft 365 and any other mailbox work.
+          if it&rsquo;s a Google account, or with an emailed code if not.
+          {" "}
+          {/* NOT "work email". The person filling in this form is the owner
+              paying for the clinic, and plenty of them run the practice off
+              a Gmail address. Asking for a work email either turns them
+              away or gets them to invent one they never check — and the
+              address they enter here is the one every alert and every
+              billing notice goes to. */}
+          A personal address is fine; it is the one you will be signing in
+          with, so use whichever inbox you actually read.
         </span>
       </label>
 

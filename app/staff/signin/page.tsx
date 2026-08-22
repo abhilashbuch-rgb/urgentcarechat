@@ -26,13 +26,21 @@ const MESSAGES: Record<string, { title: string; body: string }> = {
   },
   no_invite: {
     title: "That account hasn't been invited",
-    body: "Sign-in is limited to people your administrator has invited. If you think that's you, ask them to add your work email — and check you picked the right Google account.",
+    body: "Sign-in is limited to people your administrator has invited. If you think that's you, ask them to add the exact address you're using — and check you picked the right Google account.",
   },
   revoked: {
     title: "Your session ended",
     body: "Your access was changed or your sessions were signed out. Sign in again — if that doesn't work, your account was deactivated and an administrator has to switch it back on.",
   },
   wrong_domain: {
+    // UNREACHABLE TODAY, AND KEPT ANYWAY. The check behind this message
+    // fires only when staff.orgs.google_hosted_domain is set, and nothing
+    // in the product sets it — no migration, no settings screen. It is a
+    // column waiting for a feature. So no clinic is domain-locked right
+    // now and an owner signing in from a personal Gmail is not refused,
+    // which is the correct default: the person paying chooses their own
+    // mailbox. If the feature ever ships, it ships opt-in and this
+    // wording is already right for that case.
     title: "Use your work Google account",
     body: "This organization only accepts sign-ins from its own Google Workspace domain. A personal Gmail account won't work here, even one that has been invited.",
   },
@@ -151,8 +159,9 @@ export default async function StaffSignIn({
         {!canSignIn && !message && (
           <p className="st-signin-fine">
             Google sign-in isn&rsquo;t configured on this deployment, so the
-            emailed code is the way in. It works with any work address &mdash;
-            Microsoft, Google or anything else.
+            emailed code is the way in. It works with any address at all
+            &mdash; Microsoft, Google, or the mailbox your practice has
+            always used.
           </p>
         )}
 
