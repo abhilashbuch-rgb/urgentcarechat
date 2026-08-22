@@ -4,6 +4,7 @@ import { withSession } from "@/lib/staff/db";
 import { teamStatus } from "@/lib/staff/compliance";
 import { atLeast, ROLE_LABELS, JOB_LABELS } from "@/lib/staff/roles";
 import { pending, INVITE_TTL_HOURS } from "@/lib/staff/invites";
+import { seatUsage, unassignedCount, type SeatRow } from "@/lib/staff/seats";
 import { formatSignedAt } from "@/lib/staff/labels";
 
 // Who has completed their packet and who hasn't.
@@ -45,10 +46,15 @@ export default async function Team({
   // not access control — someone who types the URL gets the same answer.
   if (!atLeast(session.role, "org_admin")) redirect("/staff");
 
-  const { team, invites } = await withSession(session, async (sql) => ({
-    team: await teamStatus(sql),
-    invites: await pending(sql, session.org ?? ""),
-  }));
+  const { team, invites, seats, unassigned } = await withSession(
+    session,
+    async (sql) => ({
+      team: await teamStatus(sql),
+      invites: await pending(sql, session.org ?? ""),
+      seats: await seatUsage(sql),
+      unassigned: await unassignedCount(sql),
+    })
+  );
   const active = team.filter((m) => m.active);
   const behind = active.filter((m) => m.outstanding_count > 0).length;
   const mfaGaps = active.filter((m) => m.mfa_required && !m.mfa_enrolled).length;
@@ -84,6 +90,64 @@ export default async function Team({
           address, mailed to that address, dead after 72 hours or one use.
           A code passed around a clinic outlives the people who were given
           it; a link tied to a mailbox does not. */}
+      {/* WHAT THE SUBSCRIPTION INCLUDES, AND WHAT IS IN IT.
+          Above the invite form on purpose: the moment to know a job is
+          full is before typing an address into it, not after the account
+          appears. Nothing here refuses anybody — see the note above
+          staff.seat_usage. A clinic that hires a sixth medical assistant
+          needs her filing the fridge log on her first shift, and a
+          billing dispute is not a reason to leave a gap in a compliance
+          record. */}
+      {seats.length > 0 && (
+        <section className="st-seats">
+          <h2 className="st-h2">What your plan includes</h2>
+          <p className="st-page-sub">
+            Per centre, by job. Going over does not stop anyone working
+            &mdash; it shows up here and on your invoice.
+          </p>
+
+          <ul className="st-seat-list">
+            {seats.map((s: SeatRow) => {
+              const full = s.included > 0 && s.in_use >= s.included;
+              return (
+                <li
+                  className={`st-seat${s.over_by > 0 ? " st-seat-over" : full ? " st-seat-full" : ""}`}
+                  key={s.job_role}
+                >
+                  <span className="st-seat-job">
+                    {JOB_LABELS[s.job_role] ?? s.job_role}
+                    {s.is_override && (
+                      <em className="st-seat-deal">your agreed number</em>
+                    )}
+                  </span>
+                  <span className="st-seat-count">
+                    {s.in_use} of {s.included}
+                  </span>
+                  <span className="st-seat-note">
+                    {s.over_by > 0
+                      ? `${s.over_by} over`
+                      : s.invited_not_yet_in > 0
+                        ? `${s.invited_not_yet_in} invited, not in yet`
+                        : full
+                          ? "full"
+                          : ""}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+
+          {unassigned > 0 && (
+            <p className="st-field-hint">
+              {unassigned === 1
+                ? "One person has no job set yet, so they count against nothing and see almost nothing on their board."
+                : `${unassigned} people have no job set yet, so they count against nothing and see almost nothing on their board.`}{" "}
+              Set it in the table below.
+            </p>
+          )}
+        </section>
+      )}
+
       <section className="st-invite">
         <h2 className="st-h2">Invite someone</h2>
         <p className="st-page-sub">

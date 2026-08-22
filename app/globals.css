@@ -3854,6 +3854,54 @@ body {
   justify-content: center;
 }
 
+/* ---------- seats, by job ---------- */
+
+.st-seats {
+  background: var(--bg-card);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow);
+}
+.st-seat-list { list-style: none; margin: 14px 0 0; }
+.st-seat {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: baseline;
+  gap: 14px;
+  padding: 10px 0;
+  border-top: 1px solid var(--rule);
+  font-size: 13.5px;
+}
+.st-seat:first-child { border-top: none; }
+.st-seat-job { font-weight: 600; color: var(--ink); }
+/* A negotiated number, marked so an administrator does not read it as
+   the standard plan and quote it to somebody else. */
+.st-seat-deal {
+  display: block;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-faint);
+  margin-top: 1px;
+}
+.st-seat-count { font-variant-numeric: tabular-nums; color: var(--ink-soft); }
+.st-seat-note {
+  min-width: 9ch;
+  text-align: right;
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+/* Over and full carry weight and a word, never hue alone — "2 over" is
+   the signal and the colour only confirms it. */
+.st-seat-full .st-seat-count { color: var(--ink); font-weight: 600; }
+.st-seat-over .st-seat-count,
+.st-seat-over .st-seat-note {
+  color: var(--warn);
+  font-weight: 650;
+}
+
 /* ---------- the shift, on the Today screen ---------- */
 
 /* One line, then one button. What stood here was three cards describing
