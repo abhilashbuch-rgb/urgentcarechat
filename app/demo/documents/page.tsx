@@ -4,7 +4,7 @@ import { PRODUCT_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: `Demo: my documents — ${PRODUCT_NAME}`,
-  robots: { index: false, follow: false },
+  robots: { index: false, follow: true },
 };
 
 const STATUS_LABELS: Record<string, string> = {

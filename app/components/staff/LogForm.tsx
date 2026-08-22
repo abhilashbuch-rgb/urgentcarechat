@@ -476,6 +476,18 @@ function FieldRow({
           />
         )}
 
+        {field.type === "textarea" && (
+          <textarea
+            data-field={field.id}
+            className="st-input st-textarea"
+            rows={4}
+            value={value === null || value === undefined ? "" : String(value)}
+            placeholder={field.placeholder}
+            onChange={(e) => onChange(e.target.value)}
+            autoFocus={autoFocus}
+          />
+        )}
+
         {field.type === "date" && (
           <input
             data-field={field.id}

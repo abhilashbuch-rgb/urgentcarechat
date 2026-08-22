@@ -13,7 +13,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-PARTS=(staff-schema staff-onboarding staff-onboarding-seed staff-logs staff-logs-seed staff-security staff-single-domain staff-billing staff-trial staff-obligations staff-obligations-seed staff-job-roles staff-job-roles-seed staff-credentials staff-credentials-seed staff-scope staff-scope-seed staff-rounds staff-rounds-seed staff-onboarding-wizard staff-onboarding-wizard-seed staff-documents staff-protocols staff-protocols-seed staff-emergency staff-emergency-seed staff-avatars staff-corrective-action staff-alerts staff-alerts-sms staff-surveyor staff-log-photos staff-email-auth staff-log-presets staff-eod-close staff-geofence staff-ethics staff-ops-manual staff-reports staff-facility staff-audio-audit staff-invites staff-signup-guard staff-immutability staff-amend staff-statutory-logs staff-credential-matrix staff-sharps-waste staff-provision-seed staff-org-settings staff-privacy-rules)
+PARTS=(staff-schema staff-onboarding staff-onboarding-seed staff-logs staff-logs-seed staff-security staff-single-domain staff-billing staff-trial staff-obligations staff-obligations-seed staff-job-roles staff-job-roles-seed staff-credentials staff-credentials-seed staff-scope staff-scope-seed staff-rounds staff-rounds-seed staff-onboarding-wizard staff-onboarding-wizard-seed staff-documents staff-protocols staff-protocols-seed staff-emergency staff-emergency-seed staff-avatars staff-corrective-action staff-alerts staff-alerts-sms staff-surveyor staff-log-photos staff-email-auth staff-log-presets staff-eod-close staff-geofence staff-ethics staff-ops-manual staff-reports staff-facility staff-audio-audit staff-invites staff-signup-guard staff-immutability staff-amend staff-statutory-logs staff-credential-matrix staff-sharps-waste staff-provision-seed staff-org-settings staff-privacy-rules staff-optional-logs staff-seats)
 OUT=supabase/staff-setup-all.sql
 
 # A generated file only cannot drift if the generator knows what it is
@@ -34,6 +34,20 @@ if [ ${#missing[@]} -gt 0 ]; then
   echo "left out of $OUT. Add each one at its dependency position:" >&2
   printf '  %s\n' "${missing[@]}" >&2
   exit 1
+fi
+
+# A template is JSON in a SQL file, so Postgres accepts anything. The
+# app then parses it with lib/staff/forms.ts, and a template that fails
+# THAT parse seeds perfectly, appears on the board with a "Fill in"
+# button, and 404s when somebody taps it. Four shipped that way. Nothing
+# gets bundled until every template parses with the schema the app uses.
+if command -v npx >/dev/null 2>&1; then
+  npx tsx scripts/verify-templates.ts || {
+    echo "error: refusing to build $OUT with a template the app cannot parse." >&2
+    exit 1
+  }
+else
+  echo "warning: npx not found — templates NOT verified against lib/staff/forms.ts" >&2
 fi
 
 {

@@ -50,6 +50,27 @@ export function atLeast(role: StaffRole, minimum: StaffRole): boolean {
   return RANK[role] >= RANK[minimum];
 }
 
+/**
+ * The people who run the building: an owner by ROLE, or the centre admin
+ * by JOB.
+ *
+ * The two axes come apart here more than anywhere else in the product. A
+ * centre administrator is the person who knows whether there is an
+ * autoclave in the back, which analyzer is on the counter, and what
+ * arrived in last week's delivery — and their account role is very often
+ * plain `staff`, because they do not administer billing. Gating "which
+ * logs does this clinic run" on role alone would put that decision with
+ * the one person who is not in the building.
+ *
+ * NOT the same as atLeast(role, "org_admin"). This deliberately does NOT
+ * open the alert-routing, geofence or billing settings — who gets
+ * telephoned when a vaccine fridge fails is the owner's decision and
+ * stays on /staff/settings.
+ */
+export function runsClinic(role: StaffRole, jobRole?: string | null): boolean {
+  return jobRole === "center_admin" || atLeast(role, "org_admin");
+}
+
 export interface NavItem {
   href: string;
   label: string;
@@ -62,6 +83,10 @@ export interface NavItem {
    *  axes and most providers hold the plain "staff" role, so gating this
    *  on role alone would hide it from exactly the people it is for. */
   clinicalOnly?: boolean;
+  /** Shown to whoever runs the building — see runsClinic(). Same reason
+   *  as clinicalOnly and a different audience: the centre admin, whose
+   *  account role is usually plain staff. */
+  operatorOnly?: boolean;
 }
 
 // One list, filtered by role. Hiding a link is a convenience, not a
@@ -124,6 +149,18 @@ export const NAV: NavItem[] = [
   // Last in the nav and administrator-only. Nothing here is touched on a
   // shift; it is set once when the clinic is created and revisited when
   // somebody's address changes.
+  // WHICH LOGS THIS CLINIC RUNS — separate from Settings, and reachable
+  // by the centre admin as well as the owner. Whether there is an
+  // autoclave in the back room is a fact about the building, known to
+  // the person standing in it. Alert routing and geofencing stay on
+  // Settings, owner-only, because those are decisions about who is
+  // accountable rather than about what equipment exists.
+  {
+    href: "/staff/settings/logs",
+    label: "Clinic logs",
+    minRole: "staff",
+    operatorOnly: true,
+  },
   { href: "/staff/settings", label: "Settings", minRole: "org_admin" },
   { href: "/staff/accreditation", label: "Accreditation", minRole: "org_admin" },
   { href: "/staff/surveyor", label: "Inspection", minRole: "org_admin" },
@@ -136,8 +173,12 @@ export function navFor(role: StaffRole, jobRole?: string | null): NavItem[] {
     jobRole === "center_admin" ||
     atLeast(role, "clinical_lead");
 
+  const operator = runsClinic(role, jobRole);
+
   return NAV.filter(
     (item) =>
-      atLeast(role, item.minRole) && (!item.clinicalOnly || clinical)
+      atLeast(role, item.minRole) &&
+      (!item.clinicalOnly || clinical) &&
+      (!item.operatorOnly || operator)
   );
 }

@@ -4,7 +4,7 @@ import { PRODUCT_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: `Demo: emergency guides — ${PRODUCT_NAME}`,
-  robots: { index: false, follow: false },
+  robots: { index: false, follow: true },
 };
 
 // The same four guides staff.emergency-seed.sql ships to a real clinic,
