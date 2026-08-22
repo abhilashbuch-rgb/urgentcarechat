@@ -24,5 +24,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${SITE_URL}/contact`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE_URL}/enterprise`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
     { url: `${SITE_URL}/start`, lastModified: now, changeFrequency: "monthly", priority: 0.9 },
+    // The demo wizard, at the same priority as the trial form — it is the
+    // top of the same funnel and, for anybody who has not heard of this
+    // product, the better first page: /start asks for a clinic name,
+    // /demo shows them what they would be signing up for.
+    //
+    // Only the wizard. The configured boards under /demo/today exist in
+    // as many variants as there are combinations of switches, and none of
+    // them is a page anyone searched for; they carry noindex and are
+    // absent here.
+    { url: `${SITE_URL}/demo`, lastModified: now, changeFrequency: "monthly", priority: 0.9 },
   ];
 }

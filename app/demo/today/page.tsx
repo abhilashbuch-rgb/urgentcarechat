@@ -7,7 +7,7 @@ import { PRODUCT_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: `Demo: a shift — ${PRODUCT_NAME}`,
-  robots: { index: false, follow: false },
+  robots: { index: false, follow: true },
 };
 
 // The board the wizard's choices produce.

@@ -5,7 +5,7 @@ import { PRODUCT_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: `Demo: surveyor vault — ${PRODUCT_NAME}`,
-  robots: { index: false, follow: false },
+  robots: { index: false, follow: true },
 };
 
 // Mirrors the real, no-session inspector view at app/surveyor/[token] —

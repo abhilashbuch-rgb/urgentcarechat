@@ -7,12 +7,24 @@ import type { Metadata } from "next";
 // underneath it to write to, and nothing a visitor does here can reach a
 // real clinic's records.
 //
-// Not indexed. It is a sales tool handed out as a link, not a page
-// meant to outrank the real product in search.
+// NOINDEX BY DEFAULT, FOLLOW ALWAYS.
+//
+// The default for this tree is still "do not index": a configured board
+// exists in as many variants as there are combinations of switches, and
+// a crawler is not the audience for any of them.
+//
+// But follow is now true, where it used to be false. These pages link to
+// /start, /contact and the wizard, and nofollow threw all of that away
+// for no benefit — the reason not to index a page is that it is a poor
+// search result, which says nothing about the pages it points at.
+//
+// /demo itself overrides this and IS indexed. It is the page that
+// answers "does this fit a clinic like mine", which is a question people
+// type into a search box.
 
 export const metadata: Metadata = {
   title: "Live demo",
-  robots: { index: false, follow: false },
+  robots: { index: false, follow: true },
 };
 
 export default function DemoLayout({ children }: { children: React.ReactNode }) {

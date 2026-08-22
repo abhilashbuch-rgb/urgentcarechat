@@ -5,10 +5,23 @@ import type { Metadata } from "next";
 import { PRODUCT_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: `Set up a demo clinic — ${PRODUCT_NAME}`,
+  title: `Try it on your own clinic — ${PRODUCT_NAME}`,
   description:
-    "Pick your facility type, switch off what you do not own, and open the shift board your clinic would actually get. No account.",
-  robots: { index: false, follow: false },
+    "Pick your facility type, switch off the equipment you do not have, and open the compliance board your clinic would actually get. No account, no card, nothing saved.",
+  // INDEXED, unlike the rest of the demo tree.
+  //
+  // The whole demo used to be noindex, which was right when it was four
+  // fixed screens you were handed a link to. It is now the page that
+  // answers the question somebody types into a search box — "does this
+  // thing fit a clinic like mine" — and it answers it by letting them
+  // build one. That is a landing page, so it is treated as one.
+  //
+  // Canonical without the query string: /demo?c=urgent_care.autoclave
+  // and its permutations are the same page with a different starting
+  // state, and letting a crawler treat each as its own URL would spend
+  // the crawl budget for this site on combinations nobody searched for.
+  robots: { index: true, follow: true },
+  alternates: { canonical: "/demo" },
 };
 
 // WHAT THIS PAGE WAS. Four role cards — medical assistant, provider, any
