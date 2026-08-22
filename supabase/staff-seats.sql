@@ -19,9 +19,20 @@
 -- WHY BY JOB AND NOT ONE HEADCOUNT. Five medical assistants and two
 -- providers is a normal urgent care; two medical assistants and five
 -- providers is not a clinic, it is a different business. A single
--- headcount cannot tell those apart, and it also cannot price them —
--- a provider seat is worth more than a front desk seat and everyone
--- involved knows it.
+-- headcount cannot tell those apart, so the ALLOWANCE is per job.
+--
+-- THE PRICE IS NOT. Every seat past the allowance is the same five
+-- dollars a month whatever the job, and that is a deliberate choice
+-- against the obvious one. Pricing a provider seat above a front desk
+-- seat is defensible and is also how you get an administrator quietly
+-- filing a nurse practitioner as "front desk" to save eleven dollars —
+-- which corrupts the job field that scope of practice, the credential
+-- matrix and every role-scoped board depend on. The saving is trivial
+-- and the damage is not. One price removes the incentive entirely.
+--
+-- It is also a sentence somebody can hold in their head: everyone past
+-- your allowance is five dollars. Nobody needs a table to understand
+-- their own invoice.
 --
 -- NOTHING HERE BLOCKS ANYBODY. See the note above seat_usage.
 -- ============================================================
@@ -36,30 +47,47 @@ create table if not exists staff.plan_seats (
   plan      text not null,
   job_role  staff.job_role not null,
   included  integer not null check (included >= 0),
+  -- Per seat per month, past the allowance. Cents, because money in a
+  -- float is a rounding error waiting to be argued about with a
+  -- customer. Flat across jobs today — see the header for why — but
+  -- stored per row so a single deal can move without a migration.
+  extra_seat_cents integer not null default 500 check (extra_seat_cents >= 0),
   primary key (plan, job_role)
 );
 
+-- Idempotent for databases that already ran the first version of this
+-- file, which had no price column.
+alter table staff.plan_seats
+  add column if not exists extra_seat_cents integer not null default 500;
+
 grant select on staff.plan_seats to staff_app;
 
-insert into staff.plan_seats (plan, job_role, included) values
-  ('standard', 'center_admin',      3),
-  ('standard', 'medical_assistant', 5),
-  ('standard', 'provider',          2),
-  ('standard', 'xray_tech',         3),
-  ('standard', 'front_desk',        2)
-on conflict (plan, job_role) do update set included = excluded.included;
+insert into staff.plan_seats (plan, job_role, included, extra_seat_cents) values
+  ('standard', 'center_admin',      3, 500),
+  ('standard', 'medical_assistant', 5, 500),
+  ('standard', 'provider',          2, 500),
+  ('standard', 'xray_tech',         3, 500),
+  ('standard', 'front_desk',        2, 500)
+on conflict (plan, job_role) do update
+  set included = excluded.included,
+      extra_seat_cents = excluded.extra_seat_cents;
 
 -- A trial is the standard plan. Somebody evaluating this should hit the
 -- same shape they would pay for — a trial with unlimited seats teaches
 -- them a number that is about to change.
-insert into staff.plan_seats (plan, job_role, included)
-select 'trial', job_role, included from staff.plan_seats where plan = 'standard'
-on conflict (plan, job_role) do update set included = excluded.included;
+insert into staff.plan_seats (plan, job_role, included, extra_seat_cents)
+select 'trial', job_role, included, extra_seat_cents
+  from staff.plan_seats where plan = 'standard'
+on conflict (plan, job_role) do update
+  set included = excluded.included,
+      extra_seat_cents = excluded.extra_seat_cents;
 
 -- The demo clinic and anything internal. Not a customer, not counted.
-insert into staff.plan_seats (plan, job_role, included)
-select 'internal', job_role, 9999 from staff.plan_seats where plan = 'standard'
-on conflict (plan, job_role) do update set included = excluded.included;
+insert into staff.plan_seats (plan, job_role, included, extra_seat_cents)
+select 'internal', job_role, 9999, 0 from staff.plan_seats where plan = 'standard'
+on conflict (plan, job_role) do update
+  set included = excluded.included,
+      extra_seat_cents = excluded.extra_seat_cents;
 
 
 -- ---------- Per-clinic exceptions ----------
@@ -134,7 +162,17 @@ select
     count(u.id) filter (where u.active)
       - coalesce(ov.included, ps.included, 0),
     0
-  )                                                  as over_by
+  )                                                  as over_by,
+  coalesce(ps.extra_seat_cents, 0)                   as extra_seat_cents,
+  -- What this job is adding to the invoice this month. Shown to the
+  -- administrator rather than left for them to work out from a rate and
+  -- a count — an overage nobody has multiplied out is an overage nobody
+  -- argues with until the card is charged.
+  greatest(
+    count(u.id) filter (where u.active)
+      - coalesce(ov.included, ps.included, 0),
+    0
+  ) * coalesce(ps.extra_seat_cents, 0)               as extra_cents
 from staff.orgs o
 cross join unnest(enum_range(null::staff.job_role)) as r(job_role)
 left join staff.plan_seats ps
@@ -151,7 +189,7 @@ left join staff.users u
 left join staff.org_invites i
        on i.org_slug = o.slug and i.job_role = r.job_role
 where not o.is_library
-group by o.slug, r.job_role, ov.included, ps.included;
+group by o.slug, r.job_role, ov.included, ps.included, ps.extra_seat_cents;
 
 grant select on staff.seat_usage to staff_app;
 
@@ -172,3 +210,21 @@ select org_slug, count(*) as unassigned
  group by org_slug;
 
 grant select on staff.seat_unassigned to staff_app;
+
+
+-- ---------- The one number an owner asks for ----------
+--
+-- "What am I paying beyond the plan." Summed here rather than in the
+-- page, so the invoice line and the screen cannot drift apart by
+-- somebody changing one and not the other.
+drop view if exists staff.seat_bill cascade;
+create view staff.seat_bill
+with (security_invoker = true)
+as
+select org_slug,
+       sum(over_by)::int      as extra_seats,
+       sum(extra_cents)::int  as extra_cents
+  from staff.seat_usage
+ group by org_slug;
+
+grant select on staff.seat_bill to staff_app;

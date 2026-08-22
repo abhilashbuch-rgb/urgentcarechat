@@ -3901,6 +3901,18 @@ body {
   color: var(--warn);
   font-weight: 650;
 }
+/* Wider, because the note now carries a count AND a price. */
+.st-seat-over .st-seat-note { min-width: 12ch; }
+
+.st-seat-total {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule-firm);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+.st-seat-total strong { color: var(--ink); }
 
 /* ---------- the shift, on the Today screen ---------- */
 

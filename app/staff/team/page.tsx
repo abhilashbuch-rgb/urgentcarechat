@@ -4,7 +4,7 @@ import { withSession } from "@/lib/staff/db";
 import { teamStatus } from "@/lib/staff/compliance";
 import { atLeast, ROLE_LABELS, JOB_LABELS } from "@/lib/staff/roles";
 import { pending, INVITE_TTL_HOURS } from "@/lib/staff/invites";
-import { seatUsage, unassignedCount, type SeatRow } from "@/lib/staff/seats";
+import { seatUsage, unassignedCount, seatBill, money, type SeatRow } from "@/lib/staff/seats";
 import { formatSignedAt } from "@/lib/staff/labels";
 
 // Who has completed their packet and who hasn't.
@@ -34,6 +34,30 @@ const NOTICES: Record<string, string> = {
   invite_failed: "The invitation could not be sent. Nothing was changed.",
 };
 
+/**
+ * One sentence, built in TypeScript rather than assembled from JSX
+ * fragments — a space between an expression and the text after it does
+ * not survive, which is how "$5a month" got rendered.
+ *
+ * It also only claims the price is uniform when it actually is. Every
+ * job is five dollars today, but a per-clinic deal can move one row, and
+ * a screen that says "the same for every job" while the table says
+ * otherwise is worse than one that says less.
+ */
+function seatPriceLine(seats: SeatRow[]): string {
+  const prices = [...new Set(seats.map((s) => s.extra_seat_cents))];
+  const base = "Per centre, by job. Going over never stops anyone working. ";
+  if (prices.length === 1) {
+    return (
+      base +
+      `Anyone past the allowance is ${money(prices[0])} a month — the same ` +
+      "for every job, so nobody has a reason to file a nurse practitioner " +
+      "as front desk."
+    );
+  }
+  return base + "Seats past the allowance are charged at the rate beside each job.";
+}
+
 export default async function Team({
   searchParams,
 }: {
@@ -46,13 +70,14 @@ export default async function Team({
   // not access control — someone who types the URL gets the same answer.
   if (!atLeast(session.role, "org_admin")) redirect("/staff");
 
-  const { team, invites, seats, unassigned } = await withSession(
+  const { team, invites, seats, unassigned, bill } = await withSession(
     session,
     async (sql) => ({
       team: await teamStatus(sql),
       invites: await pending(sql, session.org ?? ""),
       seats: await seatUsage(sql),
       unassigned: await unassignedCount(sql),
+      bill: await seatBill(sql),
     })
   );
   const active = team.filter((m) => m.active);
@@ -101,10 +126,7 @@ export default async function Team({
       {seats.length > 0 && (
         <section className="st-seats">
           <h2 className="st-h2">What your plan includes</h2>
-          <p className="st-page-sub">
-            Per centre, by job. Going over does not stop anyone working
-            &mdash; it shows up here and on your invoice.
-          </p>
+          <p className="st-page-sub">{seatPriceLine(seats)}</p>
 
           <ul className="st-seat-list">
             {seats.map((s: SeatRow) => {
@@ -125,7 +147,7 @@ export default async function Team({
                   </span>
                   <span className="st-seat-note">
                     {s.over_by > 0
-                      ? `${s.over_by} over`
+                      ? `${s.over_by} over · ${money(s.extra_cents)}`
                       : s.invited_not_yet_in > 0
                         ? `${s.invited_not_yet_in} invited, not in yet`
                         : full
@@ -136,6 +158,21 @@ export default async function Team({
               );
             })}
           </ul>
+
+          {/* The one number an owner asks for, multiplied out. An
+              overage nobody has done the arithmetic on is an overage
+              nobody argues with until the card is charged. */}
+          {bill.extra_seats > 0 && (
+            <p className="st-seat-total">
+              <strong>
+                {bill.extra_seats} extra{" "}
+                {bill.extra_seats === 1 ? "seat" : "seats"} &mdash;{" "}
+                {money(bill.extra_cents)} a month
+              </strong>{" "}
+              on top of the plan. Deactivate anyone who has left and it
+              comes off the next invoice.
+            </p>
+          )}
 
           {unassigned > 0 && (
             <p className="st-field-hint">
