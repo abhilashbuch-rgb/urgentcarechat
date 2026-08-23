@@ -50,10 +50,18 @@ export default async function MfaEnroll() {
       <div className="st-signin-card st-signin-card-wide">
         <p className="st-signin-eyebrow">{issuer}</p>
         <h1 className="st-signin-title">Set up two-step verification</h1>
+        {/* THE BUG THIS REPLACES: this line used to say "a password and
+            a Google account aren't enough on their own" — there is no
+            password anywhere in this product. Sign-in is Google or an
+            emailed code; someone arriving from the emailed-code path
+            had never seen a password screen and had nothing to
+            reconcile that sentence against. Said plainly instead. */}
         <p className="st-signin-sub">
-          Your role has access to other people&rsquo;s records, so a password
-          and a Google account aren&rsquo;t enough on their own. This takes a
-          minute and you only do it once.
+          Your role has access to other people&rsquo;s records, so signing in
+          alone isn&rsquo;t enough &mdash; you also need an authenticator app
+          on your phone (Google Authenticator, Authy, or similar). Scan a
+          code, enter what it shows you, and you are done. One minute,
+          once.
         </p>
         <MfaForm
           mode="enroll"

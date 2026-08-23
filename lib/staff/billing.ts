@@ -52,7 +52,16 @@ export async function billingState(
  * all, rather than send a clinic administrator to somebody else's page
  * with our wording around it.
  */
-export function paymentLink(): string | null {
+/**
+ * @param forSlug When set, appended as client_reference_id — the same
+ * Payment Link, aimed at a specific clinic rather than a new signup. The
+ * Stripe webhook already looks for this on checkout.session.completed to
+ * attach the resulting subscription to an EXISTING org slug instead of
+ * provisioning a new one (see app/api/webhooks/stripe/route.ts) — built
+ * for exactly this: an owner paying to activate a second clinic they
+ * just added, on the one price, no new Stripe object required.
+ */
+export function paymentLink(forSlug?: string): string | null {
   const raw = process.env.STRIPE_PAYMENT_LINK?.trim();
   if (!raw) return null;
   let url: URL;
@@ -64,5 +73,7 @@ export function paymentLink(): string | null {
   if (url.protocol !== "https:") return null;
   const host = url.hostname.toLowerCase();
   const ok = host === "buy.stripe.com" || host.endsWith(".stripe.com");
-  return ok ? url.toString() : null;
+  if (!ok) return null;
+  if (forSlug) url.searchParams.set("client_reference_id", forSlug);
+  return url.toString();
 }

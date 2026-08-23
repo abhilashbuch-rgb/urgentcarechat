@@ -267,6 +267,17 @@ export default async function SettingsPage({
         </button>
       </form>
 
+      <section className="st-set-block">
+        <h2 className="st-set-h">Clinics</h2>
+        <p className="st-set-b">
+          Running more than one location? Same login, one price per
+          clinic &mdash; add another and switch between them.
+        </p>
+        <Link className="st-btn" href="/staff/settings/clinics">
+          Manage clinics
+        </Link>
+      </section>
+
       {/* NOT ON THIS PAGE, AND NOT AN OVERSIGHT. Whether the clinic has an
           autoclave is a fact about the building that the centre admin
           knows, and most centre admins hold the plain staff role. Putting

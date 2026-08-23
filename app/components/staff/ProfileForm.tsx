@@ -11,15 +11,10 @@ import { useState } from "react";
 
 export default function ProfileForm({
   defaultLegalName,
-  defaultJobTitle,
-  orgName,
 }: {
   defaultLegalName: string;
-  defaultJobTitle: string;
-  orgName: string;
 }) {
   const [legalName, setLegalName] = useState(defaultLegalName);
-  const [jobTitle, setJobTitle] = useState(defaultJobTitle);
   const [startDate, setStartDate] = useState("");
   const [consent, setConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -37,7 +32,6 @@ export default function ProfileForm({
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         legalName: legalName.trim(),
-        jobTitle: jobTitle.trim(),
         startDate: startDate || undefined,
         consent: true,
       }),
@@ -68,15 +62,16 @@ export default function ProfileForm({
         </span>
       </label>
 
-      <label className="st-field">
-        <span className="st-field-label">Your role at {orgName}</span>
-        <input
-          className="st-input"
-          value={jobTitle}
-          onChange={(e) => setJobTitle(e.target.value)}
-          placeholder="e.g. Medical Assistant"
-        />
-      </label>
+      {/* NOT ASKED HERE, AND THAT IS DELIBERATE. This screen used to
+          carry a free-text "Your role at {org}" box, identically worded
+          for the founder who just paid and for a medical assistant on
+          their first shift — and it wrote to a cosmetic job_title
+          column, not the job_role that actually decides anything. The
+          real job is never a question: it is the invite's, confirmed
+          (not chosen) on the very next screen, with the scope of
+          practice that comes with it. Asking it twice, once as an open
+          text field and once as a real confirmation, taught nothing and
+          answered nothing. */}
 
       <label className="st-field">
         <span className="st-field-label">Start date (optional)</span>

@@ -3,6 +3,12 @@ import { resolve } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
 import { getProfile } from "@/lib/staff/compliance";
 import { onboardingState, recordCredentials } from "@/lib/staff/onboarding";
+import {
+  signSession,
+  STAFF_COOKIE,
+  STAFF_COOKIE_MAX_AGE,
+  type StaffRole,
+} from "@/lib/staff/session";
 
 // POST /api/staff/onboarding — the three wizard steps that are not the
 // profile form and not a document signature.
@@ -111,6 +117,46 @@ export async function POST(req: NextRequest) {
            set onboarded_at = coalesce(onboarded_at, now())
          where id = ${session.uid}
       `;
+
+      // MFA for this role was deferred at sign-in specifically so someone
+      // could get through onboarding without an authenticator app already
+      // asking for a username and password that don't exist yet — see
+      // auth/callback and auth/email/verify. This is the first moment it
+      // can be enforced, because it's the first moment onboarding is
+      // actually done. The session was minted "ok" only on that promise.
+      const [policy] = await sql<{ mfa_required_roles: StaffRole[] }[]>`
+        select mfa_required_roles from staff.orgs where slug = ${org}
+      `;
+      const [user] = await sql<{ mfa_enrolled: boolean }[]>`
+        select (totp_confirmed_at is not null) as mfa_enrolled
+          from staff.users where id = ${session.uid}
+      `;
+      const mfaRequired = (policy?.mfa_required_roles ?? []).includes(session.role);
+
+      if (mfaRequired) {
+        const token = await signSession({
+          uid: session.uid,
+          org,
+          role: session.role,
+          email: session.email,
+          name: session.name,
+          ep: session.ep,
+          mfa: "pending",
+        });
+        const res = NextResponse.json({
+          ok: true,
+          next: user?.mfa_enrolled ? "/staff/mfa" : "/staff/mfa/enroll",
+        });
+        res.cookies.set(STAFF_COOKIE, token, {
+          httpOnly: true,
+          secure: req.nextUrl.protocol === "https:",
+          sameSite: "lax",
+          path: "/",
+          maxAge: STAFF_COOKIE_MAX_AGE,
+        });
+        return res;
+      }
+
       return NextResponse.json({ ok: true });
     }
 

@@ -11,9 +11,10 @@ import LinkRedeemer from "@/app/components/staff/LinkRedeemer";
 // A GET that signs somebody in is a GET that mail scanners, link
 // previewers and corporate security appliances will fire on the
 // recipient's behalf — burning the single-use token before the human
-// ever clicks. Microsoft Defender for Office 365 does exactly this.
-// Rendering a page that then POSTs means the token survives the scanner
-// and is spent by a real browser.
+// ever clicks. Microsoft Defender for Office 365 does exactly this, and
+// does it from a real, JS-capable browser — so the POST in LinkRedeemer
+// is gated behind an actual button press, not fired automatically on
+// mount. A scanner renders this page; it does not click anything on it.
 
 export const dynamic = "force-dynamic";
 

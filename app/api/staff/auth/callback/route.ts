@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { callbackUrl, exchangeCode } from "@/lib/staff/google";
 import { isLocalRequest, redirectTo } from "@/lib/staff/http";
 import { withOrg } from "@/lib/staff/db";
+import { onboardingState, stepFor } from "@/lib/staff/onboarding";
 import {
   signSession,
   STAFF_COOKIE,
@@ -69,7 +70,7 @@ export async function GET(req: NextRequest) {
   if (!identity.emailVerified) return deny("unverified_email");
 
   let outcome:
-    | { user: UserRow; mfaRequired: boolean }
+    | { user: UserRow; mfaRequired: boolean; needsOnboarding: boolean }
     | { denied: "no_invite" | "deactivated" | "wrong_domain" | "ambiguous" };
   let org = "";
   try {
@@ -154,7 +155,17 @@ export async function GET(req: NextRequest) {
                  last_seen_at = now()
            where id = ${user.id}
         `;
-        return { user, mfaRequired: mfaRoles.includes(user.role) };
+        // Deferred, not skipped: someone still mid-onboarding has no
+        // authenticator app yet, so MFA for this role waits until the
+        // wizard's last step actually finishes (see the "orientation"
+        // action in /api/staff/onboarding).
+        const state = await onboardingState(sql, user.id);
+        const needsOnboarding = !state || stepFor(state) !== "done";
+        return {
+          user,
+          mfaRequired: mfaRoles.includes(user.role),
+          needsOnboarding,
+        };
       }
 
       // Scoped normally now that the org is known. The role still comes
@@ -205,9 +216,12 @@ export async function GET(req: NextRequest) {
         returning id, role, active, name, session_epoch,
                   (totp_confirmed_at is not null) as mfa_enrolled
       `;
+      const state = await onboardingState(sql, created[0].id);
+      const needsOnboarding = !state || stepFor(state) !== "done";
       return {
         user: created[0],
         mfaRequired: mfaRoles.includes(created[0].role),
+        needsOnboarding,
       };
     });
   } catch (err) {
@@ -220,7 +234,7 @@ export async function GET(req: NextRequest) {
 
   if ("denied" in outcome) return deny(outcome.denied);
 
-  const { user, mfaRequired } = outcome;
+  const { user, mfaRequired, needsOnboarding } = outcome;
 
   await withOrg(org, user.role, async (sql) => {
     await sql`
@@ -234,7 +248,9 @@ export async function GET(req: NextRequest) {
   });
 
   // A session that still owes a second factor is minted as "pending": it
-  // proves who you are and unlocks nothing but the MFA screens.
+  // proves who you are and unlocks nothing but the MFA screens. That's
+  // deferred while onboarding is still open — see needsOnboarding above.
+  const mfaPending = mfaRequired && !needsOnboarding;
   const token = await signSession({
     uid: user.id,
     org: user.role === "platform_super_admin" ? null : org,
@@ -242,11 +258,17 @@ export async function GET(req: NextRequest) {
     email: identity.email,
     name: user.name ?? identity.name,
     ep: user.session_epoch,
-    mfa: mfaRequired ? "pending" : "ok",
+    mfa: mfaPending ? "pending" : "ok",
   });
 
   const res = redirectTo(
-    !mfaRequired ? "/staff" : user.mfa_enrolled ? "/staff/mfa" : "/staff/mfa/enroll"
+    needsOnboarding
+      ? "/staff/onboarding"
+      : !mfaRequired
+        ? "/staff"
+        : user.mfa_enrolled
+          ? "/staff/mfa"
+          : "/staff/mfa/enroll"
   );
   res.cookies.set(STAFF_COOKIE, token, {
     httpOnly: true,

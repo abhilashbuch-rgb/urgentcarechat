@@ -136,8 +136,6 @@ export default async function Onboarding() {
           </p>
           <ProfileForm
             defaultLegalName={state.profile?.legal_name ?? state.profile?.name ?? ""}
-            defaultJobTitle={state.profile?.job_title ?? ""}
-            orgName={orgName}
           />
         </>
       ) : state.step === "job" && !state.gates?.job_unassigned && jobLabel && state.profile?.job_role ? (
