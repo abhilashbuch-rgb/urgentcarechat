@@ -108,7 +108,7 @@ export default function LandingPage() {
           </div>
           <nav className="lp-nav-links">
             <a href="/demo">See a live demo</a>
-            <a href="/staff/signin">Staff login</a>
+            <a href="/staff/signin">Login</a>
           </nav>
         </div>
       </header>
