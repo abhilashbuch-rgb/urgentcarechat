@@ -52,8 +52,7 @@ export default async function ClinicsPage() {
       <header className="st-page-head">
         <h1 className="st-h1">Clinics</h1>
         <p className="st-page-sub">
-          One login across every clinic you run. $149/month each, same
-          price, no discount for adding more.
+          One login across every clinic you run, $149/month each.
         </p>
       </header>
 
