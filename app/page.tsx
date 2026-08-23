@@ -177,7 +177,7 @@ export default function LandingPage() {
               negotiation. Groups are handled by adding clinics, each at
               the same price. */}
           <p className="mh-multi">
-            More than one clinic? Add them from inside the app — same price
+            More than one clinic? Add them from inside the app — $149/month
             each, one login across all of them.
           </p>
 
