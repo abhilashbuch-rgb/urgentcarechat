@@ -2977,8 +2977,15 @@ body {
   .lp-main > section,
   .lp-footer-note { padding-left: 18px; padding-right: 18px; }
 
-  .lp-nav-links { gap: 14px; font-size: 13px; }
-  .lp-nav-links a:not(.lp-nav-cta) { display: none; }
+  /* NOT display:none. This rule used to hide every nav link below 600px
+     except one carrying .lp-nav-cta — a class this page's own nav never
+     uses (it belongs to TenantPortal.tsx and /security's single-button
+     nav). On medicin.io's own homepage that left NOTHING in the header
+     on a phone: no demo, no sign-in, no way in at all — silently, since
+     both buttons already had a 44px touch target sized for exactly this
+     width. Tightened instead of removed. */
+  .lp-nav-links { gap: 8px; font-size: 13px; }
+  .lp-nav-links a { padding: 9px 14px; }
 
   .lp-hero { padding-top: 40px; padding-bottom: 48px; }
   .lp-lede { font-size: 16px; }
