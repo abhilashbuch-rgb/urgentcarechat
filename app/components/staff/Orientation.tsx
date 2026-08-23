@@ -71,7 +71,11 @@ export default function Orientation() {
       setError("That didn't save. Try again.");
       return;
     }
-    window.location.assign("/staff");
+    // A role that requires a second factor gets it enforced starting now
+    // — the server tells us where, so the redirect always matches
+    // whatever session it just minted.
+    const data = await res.json().catch(() => null);
+    window.location.assign(data?.next ?? "/staff");
   }
 
   return (

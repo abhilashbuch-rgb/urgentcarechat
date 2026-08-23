@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withOrg, isDatabaseConfigured } from "@/lib/staff/db";
 import { verifyChallenge, resolveInvite } from "@/lib/staff/email-auth";
+import { onboardingState, stepFor } from "@/lib/staff/onboarding";
 import {
   signSession,
   STAFF_COOKIE,
@@ -100,9 +101,18 @@ export async function POST(req: NextRequest) {
               ${sql.json({ method: "email" })})
     `;
 
+    // Someone still filling out onboarding has no authenticator app yet —
+    // asking for a TOTP code before the wizard even starts throws them for
+    // a loop. MFA for this role is still mandatory; it's just deferred
+    // until the moment onboarding actually finishes (see the "orientation"
+    // action in /api/staff/onboarding).
+    const state = await onboardingState(sql, user.id);
+    const needsOnboarding = !state || stepFor(state) !== "done";
+
     return {
       user,
       mfaRequired: (org?.mfa_required_roles ?? []).includes(user.role),
+      needsOnboarding,
     };
   });
 
@@ -110,7 +120,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: outcome.denied }, { status: 403 });
   }
 
-  const { user, mfaRequired } = outcome;
+  const { user, mfaRequired, needsOnboarding } = outcome;
+  const mfaPending = mfaRequired && !needsOnboarding;
 
   const session = await signSession({
     uid: user.id,
@@ -119,14 +130,16 @@ export async function POST(req: NextRequest) {
     email: result.email,
     name: user.name,
     ep: user.session_epoch,
-    mfa: mfaRequired ? "pending" : "ok",
+    mfa: mfaPending ? "pending" : "ok",
   });
 
-  const next = !mfaRequired
-    ? "/staff"
-    : user.mfa_enrolled
-      ? "/staff/mfa"
-      : "/staff/mfa/enroll";
+  const next = needsOnboarding
+    ? "/staff/onboarding"
+    : !mfaRequired
+      ? "/staff"
+      : user.mfa_enrolled
+        ? "/staff/mfa"
+        : "/staff/mfa/enroll";
 
   const res = NextResponse.json({ ok: true, next });
   res.cookies.set(STAFF_COOKIE, session, {
