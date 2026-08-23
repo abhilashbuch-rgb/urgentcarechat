@@ -20,6 +20,17 @@ import { shiftState, myCredentialWarnings, type ShiftState, type ExpiringCredent
 export const dynamic = "force-dynamic";
 
 interface Overview {
+  // False for a multi-site owner who has switched into a clinic they
+  // administer but have never worked a shift at — staff.user_orgs grants
+  // access without a staff.users row reachable through this session's
+  // identity, on purpose (see supabase/staff-multisite.sql): a shift
+  // board, credentials and onboarding all belong to somebody actually
+  // working there, not to whoever happens to be signed in as its
+  // administrator.
+  hasProfile: boolean;
+  /** Only fetched when !hasProfile — the one thing that view needs and
+   *  the normal one does not (it says "Today", not the clinic's name). */
+  orgName: string | null;
   outstanding: number;
   needsOnboarding: boolean;
   // Null for anyone who cannot open the register — the query is not run
@@ -45,13 +56,32 @@ export default async function StaffHome() {
   try {
     overview = await withSession(session, async (sql) => {
       const profile = await getProfile(sql, session.uid);
+      if (!profile) {
+        // Administering this clinic, not working in it — see the
+        // Overview.hasProfile comment. Nothing below the profile row
+        // means anything for this person in this org, so it isn't
+        // queried.
+        const orgRow = await sql<{ name: string }[]>`
+          select name from staff.orgs where slug = ${org}
+        `;
+        return {
+          hasProfile: false,
+          orgName: orgRow[0]?.name ?? org,
+          outstanding: 0,
+          needsOnboarding: false,
+          obligations: null,
+          shift: await shiftState(sql, null),
+          credentials: [],
+        };
+      }
       const outstanding = await outstandingFor(sql, session.uid);
       return {
-        shift: await shiftState(sql, profile?.job_role ?? null),
+        hasProfile: true,
+        orgName: null,
+        shift: await shiftState(sql, profile.job_role ?? null),
         credentials: await myCredentialWarnings(sql, session.uid),
         outstanding: outstanding.length,
-        needsOnboarding:
-          !profile?.esign_consented_at || !profile?.legal_name,
+        needsOnboarding: !profile.esign_consented_at || !profile.legal_name,
         obligations: seesObligations ? await summary(sql, org) : null,
       };
     });
@@ -64,6 +94,42 @@ export default async function StaffHome() {
   // or signed anything has nothing to look at here yet, and a banner they
   // can dismiss is exactly how "we never knew" happens.
   if (overview?.needsOnboarding) redirect("/staff/onboarding");
+
+  // Administering this clinic, not working a shift in it. Nobody files a
+  // log here under this identity, so a board framed around "what do I
+  // owe this shift" would be showing them somebody else's screen.
+  if (overview && !overview.hasProfile) {
+    return (
+      <div className="st-page">
+        <header className="st-page-head">
+          <h1 className="st-h1">{overview.orgName}</h1>
+          <p className="st-page-sub">
+            Signed in as {session.email} &middot; {ROLE_LABELS[session.role]}
+          </p>
+        </header>
+        <div className="st-notice" role="status">
+          <strong>You administer this clinic.</strong>
+          <span>
+            You haven&rsquo;t been invited to work a shift here, so there is
+            no board of your own to show &mdash; that&rsquo;s normal for a
+            second location you run but don&rsquo;t staff yourself. Add
+            people, set it up, or switch to another clinic below.
+          </span>
+        </div>
+        <div className="st-board-action" style={{ marginTop: 16 }}>
+          <Link className="st-board-btn" href="/staff/team">
+            Invite staff
+          </Link>
+          <Link className="st-board-btn st-board-btn-later" href="/staff/settings">
+            Clinic settings
+          </Link>
+          <Link className="st-board-btn st-board-btn-later" href="/staff/settings/clinics">
+            Your clinics
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="st-page">

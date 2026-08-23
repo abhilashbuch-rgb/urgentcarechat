@@ -61,15 +61,25 @@ export async function currentSession(): Promise<StaffSession | null> {
 }
 
 export interface LiveUser {
-  id: string;
-  org_slug: string | null;
   role: string;
   active: boolean;
   session_epoch: number;
   mfa_enrolled: boolean;
 }
 
-/** The current truth about a user. Cached per request, not across them. */
+/**
+ * The current truth about a user IN THIS ORG. Cached per request, not
+ * across them.
+ *
+ * ORG-AWARE, NOT JUST USER-AWARE. staff.session_checks (what this used to
+ * query) reads straight off staff.users, which carries exactly one home
+ * clinic per person — so a cookie claiming a second clinic a multi-site
+ * owner has been granted access to would find no matching row and get
+ * treated as forged. staff.session_check_for() resolves against BOTH the
+ * home clinic and anything in staff.user_orgs, and returns nothing at all
+ * for an org the person cannot reach — the same fail-closed shape,
+ * widened to the actual set of clinics a session's org claim may name.
+ */
 const liveUser = cache(async function liveUser(
   org: string,
   role: string,
@@ -78,8 +88,8 @@ const liveUser = cache(async function liveUser(
   try {
     const rows = await withOrg(org, role, (sql) =>
       sql<LiveUser[]>`
-        select id, org_slug, role, active, session_epoch, mfa_enrolled
-          from staff.session_checks where id = ${uid}
+        select role, active, session_epoch, mfa_enrolled
+          from staff.session_check_for(${uid}, ${org})
       `
     );
     return rows[0] ?? null;
@@ -147,15 +157,12 @@ export const resolvePending = cache(async function resolvePending(): Promise<
 
   const live = await liveUser(org, session.role, session.uid);
   // The cookie's org is a claim; this is where the database settles it.
-  // Deleted, deactivated, revoked, or moved to another org since the
-  // cookie was minted — each means the cookie is stale or forged, and
-  // each ends the session.
-  if (
-    !live ||
-    !live.active ||
-    live.session_epoch !== session.ep ||
-    live.org_slug !== org
-  ) {
+  // Deactivated, revoked, or an org the person no longer has any standing
+  // in (home or granted) since the cookie was minted — each means the
+  // cookie is stale or forged, and each ends the session. session_
+  // check_for() already returns no row at all for an org this uid cannot
+  // reach, so there is no separate org match to check here.
+  if (!live || !live.active || live.session_epoch !== session.ep) {
     return { ok: false, reason: "revoked" };
   }
 
