@@ -110,14 +110,18 @@ export default function LandingPage() {
             <a href="/demo">See a live demo</a>
             <a href="/staff/signin">Login</a>
             {/* SAME DESTINATION AS THE HERO CTA, REACHABLE WITHOUT
-                SCROLLING. "Install free" rather than "Start the 14-day
+                SCROLLING. "Install now" rather than "Start the 14-day
                 trial" here on purpose — the nav has room for four words,
                 not seven, and a first-time visitor on a phone should not
                 have to scroll past the hero to find the one button that
                 actually starts something. Same /start destination, same
-                no-card trial; this is wording, not a different funnel. */}
+                no-card trial; this is wording, not a different funnel.
+                Not "Install free": the trial is free, the product is
+                not, and "free" on the one button that starts a paid
+                relationship is a promise this page does not make
+                anywhere else on purpose. */}
             <a href="/start" className="lp-nav-install">
-              Install free
+              Install now
             </a>
           </nav>
         </div>
