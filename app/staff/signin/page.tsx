@@ -1,7 +1,9 @@
+import type { ReactNode } from "react";
 import BrandLockup from "@/app/components/BrandLockup";
 import { redirect } from "next/navigation";
 import { resolve } from "@/lib/staff/auth";
 import { isConfigured } from "@/lib/staff/google";
+import { contactMailto } from "@/lib/site";
 import EmailSignIn from "@/app/components/staff/EmailSignIn";
 
 // Sign-in, and every way sign-in can fail.
@@ -11,7 +13,7 @@ import EmailSignIn from "@/app/components/staff/EmailSignIn";
 // so the failure modes are named — including the ones that are the
 // operator's fault rather than the user's.
 
-const MESSAGES: Record<string, { title: string; body: string }> = {
+const MESSAGES: Record<string, { title: string; body: ReactNode }> = {
   no_org: {
     title: "Your account isn't attached to a clinic",
     body: "Sign-in worked, but your account has no organization. An administrator has to assign you to one before there's anything to show you.",
@@ -28,9 +30,34 @@ const MESSAGES: Record<string, { title: string; body: string }> = {
     title: "That account hasn't been invited",
     body: "Sign-in is limited to people your administrator has invited. If you think that's you, ask them to add the exact address you're using — and check you picked the right Google account.",
   },
+  // NOT "ask your administrator" AS THE LEAD. This fires for anyone
+  // reloading a page on a stale session — an MFA reset, a session
+  // revoke, or just a cookie old enough to predate a role change — and
+  // in every one of those cases the fix is simply signing in again: a
+  // fresh code mints a fresh session against whatever the account's
+  // state actually is right now. Telling someone to "ask an
+  // administrator" as the first line is actively wrong advice for the
+  // one person on this screen most likely to see it — the owner who
+  // pays for the account and has nobody above them to ask. A real
+  // deactivation gets its own message (see "deactivated" below) the
+  // moment they actually try to sign in, so this one leads with the
+  // thing that resolves it almost every time and only falls back to a
+  // real human for the rest.
   revoked: {
     title: "Your session ended",
-    body: "Your access was changed or your sessions were signed out. Sign in again — if that doesn't work, your account was deactivated and an administrator has to switch it back on.",
+    body: (
+      <>
+        Almost always a security event on the account, not a
+        deactivation — an MFA reset or a session revoke invalidates
+        whatever session was open at the time. Request a fresh code
+        below and sign in again; that fixes it nearly every time. Still
+        stuck, and you&rsquo;re the account&rsquo;s only administrator?{" "}
+        <a href={contactMailto("Locked out of my own account")}>
+          Email us directly
+        </a>{" "}
+        instead of hunting for someone else to ask.
+      </>
+    ),
   },
   wrong_domain: {
     // UNREACHABLE TODAY, AND KEPT ANYWAY. The check behind this message
