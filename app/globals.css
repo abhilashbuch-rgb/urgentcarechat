@@ -1612,6 +1612,19 @@ body {
   background: var(--volt-wash);
 }
 
+/* Install free trails, and it is the one that actually starts something.
+   --volt-ink, not --volt: the brand accent is dark-ground-only (see its
+   definition), and this nav sits on a light one. --volt-ink is the same
+   hue, already established elsewhere on this page as legible-on-white,
+   so this reads as the accent without breaking that rule. */
+.lp-nav-links a[href="/start"] {
+  background: var(--volt-ink);
+  color: #fff;
+  border: 1px solid var(--volt-ink);
+  font-weight: 600;
+}
+.lp-nav-links a[href="/start"]:hover { filter: brightness(0.9); }
+
 .lp-nav-cta {
   background: var(--l-navy);
   color: #fff !important;
@@ -2977,15 +2990,20 @@ body {
   .lp-main > section,
   .lp-footer-note { padding-left: 18px; padding-right: 18px; }
 
-  /* NOT display:none. This rule used to hide every nav link below 600px
-     except one carrying .lp-nav-cta — a class this page's own nav never
-     uses (it belongs to TenantPortal.tsx and /security's single-button
-     nav). On medicin.io's own homepage that left NOTHING in the header
-     on a phone: no demo, no sign-in, no way in at all — silently, since
-     both buttons already had a 44px touch target sized for exactly this
-     width. Tightened instead of removed. */
+  /* NOT display:none on everything. That was the earlier bug: a rule
+     hid every nav link below 600px except one carrying .lp-nav-cta — a
+     class this page's own nav never uses — leaving NOTHING in the
+     header on a phone. Fixed by making both buttons fit instead.
+     Now there are three, and three real pill buttons do not fit at
+     360-390px no matter how tight the padding gets — the third one
+     ran off the edge of the screen, unreadable, in testing. The demo
+     link is the one dropped here, deliberately: it is still the very
+     first thing in the hero immediately below, visible without
+     scrolling, so nothing becomes unreachable — the nav just stops
+     duplicating it on the one width where there isn't room for three. */
   .lp-nav-links { gap: 8px; font-size: 13px; }
   .lp-nav-links a { padding: 9px 14px; }
+  .lp-nav-links a[href="/demo"] { display: none; }
 
   .lp-hero { padding-top: 40px; padding-bottom: 48px; }
   .lp-lede { font-size: 16px; }
