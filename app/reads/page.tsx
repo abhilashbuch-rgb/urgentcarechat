@@ -27,9 +27,9 @@ export default async function ReadsPage() {
   return (
     <div className="reads-page">
       <header className="site-header">
-        <div className="brand">
+        <Link href="/" className="brand" style={{ textDecoration: "none" }}>
           <BrandLockup />
-        </div>
+        </Link>
       </header>
 
       <main className="reads-main">

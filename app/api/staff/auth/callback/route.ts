@@ -238,8 +238,8 @@ export async function GET(req: NextRequest) {
 
   await withOrg(org, user.role, async (sql) => {
     await sql`
-      insert into staff.audit_log (org_slug, actor_id, action, entity, entity_id)
-      values (${org}, ${user.id}, 'signin', 'user', ${user.id})
+      insert into staff.audit_log (org_slug, actor_id, action, entity, entity_id, detail)
+      values (${org}, ${user.id}, 'signin', 'user', ${user.id}, ${sql.json({ method: "google" })})
     `;
   }).catch(() => {
     // An audit write that fails must not strand someone at a sign-in

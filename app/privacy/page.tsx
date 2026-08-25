@@ -10,9 +10,9 @@ export default function PrivacyPage() {
   return (
     <div className="legal-page">
       <header className="site-header">
-        <div className="brand">
+        <Link href="/" className="brand" style={{ textDecoration: "none" }}>
           <BrandLockup />
-        </div>
+        </Link>
       </header>
 
       <main className="legal-main">

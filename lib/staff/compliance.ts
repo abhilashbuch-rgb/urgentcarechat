@@ -139,6 +139,7 @@ export interface TeamMember {
   assigned_count: number;
   outstanding_count: number;
   last_signed_at: string | null;
+  last_seen_at: string | null;
   active: boolean;
   mfa_enrolled: boolean;
   mfa_required: boolean;
@@ -156,6 +157,7 @@ export async function teamStatus(sql: StaffSql): Promise<TeamMember[]> {
            u.start_date::text as start_date,
            u.esign_consented_at::text as esign_consented_at,
            u.active,
+           u.last_seen_at::text as last_seen_at,
            (u.totp_confirmed_at is not null) as mfa_enrolled,
            (u.role = any (o.mfa_required_roles)) as mfa_required,
            coalesce(c.assigned_count, 0)::int as assigned_count,
