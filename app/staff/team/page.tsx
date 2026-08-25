@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { requireStaff } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
 import { teamStatus } from "@/lib/staff/compliance";
@@ -295,6 +296,7 @@ export default async function Team({
               <th className="st-num">Signed</th>
               <th>Status</th>
               <th>2FA</th>
+              <th>Last sign-in</th>
               <th>Access</th>
             </tr>
           </thead>
@@ -343,6 +345,12 @@ export default async function Team({
                     ) : (
                       <span className="st-pill st-pill-new">Off</span>
                     )}
+                  </td>
+
+                  <td>
+                    <Link className="st-cell-link" href={`/staff/team/${m.user_id}`}>
+                      {m.last_seen_at ? formatSignedAt(m.last_seen_at) : "Never"}
+                    </Link>
                   </td>
 
                   {/* Plain forms. Each is one POST that navigates, so

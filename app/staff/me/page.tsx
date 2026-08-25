@@ -1,10 +1,12 @@
 import { requireStaff } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
 import { getProfile, outstandingFor, signedBy } from "@/lib/staff/compliance";
+import { signinHistory } from "@/lib/staff/signins";
 import { ROLE_LABELS } from "@/lib/staff/roles";
 import { formatSignedAt, formatDate } from "@/lib/staff/labels";
 import { getTenantBySlug } from "@/lib/tenants";
 import AvatarUpload from "@/app/components/staff/AvatarUpload";
+import SigninHistory from "@/app/components/staff/SigninHistory";
 
 // One employee's complete compliance record — the artifact the whole
 // module exists to produce.
@@ -24,6 +26,7 @@ export default async function MyRecord() {
     profile: await getProfile(sql, session.uid),
     outstanding: await outstandingFor(sql, session.uid),
     signed: await signedBy(sql, session.uid),
+    signins: await signinHistory(sql, org, session.uid),
     theme: (
       await sql<{ brand_color: string }[]>`
         select brand_color from staff.org_theme where slug = ${org}
@@ -175,6 +178,15 @@ export default async function MyRecord() {
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="st-record-section st-no-print">
+        <h2 className="st-h2">Sign-in history</h2>
+        <p className="st-page-sub" style={{ marginBottom: 12 }}>
+          Every time you&rsquo;ve signed in, most recent first. An administrator
+          can see this same list.
+        </p>
+        <SigninHistory events={data.signins} />
       </section>
 
       <p className="st-foot">
