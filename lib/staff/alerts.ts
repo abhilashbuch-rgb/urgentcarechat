@@ -2,6 +2,7 @@ import type { StaffSql } from "@/lib/staff/db";
 import { isMailConfigured, send } from "@/lib/mail";
 import { isSmsConfigured, sendSms } from "@/lib/twilio";
 import { ROOT_URL } from "@/lib/site";
+import { missingRequiredPhotos } from "@/lib/staff/report";
 
 // Enqueueing alerts, and sweeping the queue.
 //
@@ -375,13 +376,23 @@ export async function digestFor(
      order by minutes_off desc
   `;
 
+  // Same non-blocking treatment as everything else on this digest: the
+  // reading was never withheld, but a required photo missing from it is
+  // exactly the kind of gap this summary exists to surface.
+  const [{ local_today }] = await sql<{ local_today: string }[]>`
+    select (now() at time zone timezone)::date::text as local_today
+      from staff.orgs where slug = ${org}
+  `;
+  const missingPhotos = await missingRequiredPhotos(sql, org, local_today, local_today);
+
   // The headline says the answer, not the numbers. Somebody reading this
   // on a phone at 9am wants to know whether to act, and a subject line
   // of "12 logs" makes them open the mail to find out.
   const clean =
     counts.outstanding === 0 &&
     counts.flagged === 0 &&
-    offSite.length === 0;
+    offSite.length === 0 &&
+    missingPhotos.length === 0;
   const subject = clean
     ? `${org}: all clear`
     : `${org}: ${
@@ -433,6 +444,13 @@ export async function digestFor(
   if (late.length > 0) {
     lines.push("", "Already late:");
     for (const l of late) lines.push(`  - ${l.name} (${l.slot})`);
+  }
+
+  if (missingPhotos.length > 0) {
+    lines.push("", "Filed without the required photo:");
+    for (const m of missingPhotos) {
+      lines.push(`  ${m.form_name} — ${m.filed_by ?? "unknown"}`);
+    }
   }
 
   return { subject, body: lines.join("\n") };

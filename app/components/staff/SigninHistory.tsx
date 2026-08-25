@@ -12,7 +12,15 @@ const METHOD_LABELS: Record<string, string> = {
   google: "Google",
 };
 
-export default function SigninHistory({ events }: { events: SigninEvent[] }) {
+export default function SigninHistory({
+  events,
+  timezone,
+}: {
+  events: SigninEvent[];
+  /** The clinic's own IANA zone. Omitting it falls back to Eastern —
+   *  see the note on formatSignedAt itself. */
+  timezone?: string;
+}) {
   if (events.length === 0) {
     return <p className="st-empty">No sign-ins on record yet.</p>;
   }
@@ -22,7 +30,7 @@ export default function SigninHistory({ events }: { events: SigninEvent[] }) {
       {events.map((e) => (
         <li key={e.id} className="st-record-row">
           <div className="st-record-main">
-            <span className="st-record-title">{formatSignedAt(e.created_at)}</span>
+            <span className="st-record-title">{formatSignedAt(e.created_at, timezone)}</span>
           </div>
           <span className="st-record-when">
             {e.method ? METHOD_LABELS[e.method] ?? e.method : "—"}

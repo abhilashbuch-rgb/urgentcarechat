@@ -1,7 +1,13 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { evaluate, type Answers, type Field, type FormSchema } from "@/lib/staff/forms";
+import {
+  evaluate,
+  REQUIRED_PHOTO_FORMS,
+  type Answers,
+  type Field,
+  type FormSchema,
+} from "@/lib/staff/forms";
 import CameraProof, { type Proof } from "@/app/components/staff/CameraProof";
 import LocationStamp, { type LocationResult } from "@/app/components/staff/LocationStamp";
 import type { OrgGeofence } from "@/lib/staff/geo";
@@ -11,7 +17,7 @@ import type { OrgGeofence } from "@/lib/staff/geo";
 // somebody photographed.
 const PHOTO_FORMS = new Set(["temp-fridge", "crash-cart", "poct-qc"]);
 const PHOTO_LABELS: Record<string, string> = {
-  "temp-fridge": "Photo of the min/max display (optional)",
+  "temp-fridge": "Photo of the min/max display (required)",
   "crash-cart": "Photo of the breakaway seal (optional)",
   "poct-qc": "Photo of the control read window (optional)",
 };
@@ -309,15 +315,29 @@ export default function LogForm({
         </div>
       )}
 
-      {/* Photo proof. Optional on every form — a log must never be
-          blocked on a camera. Offered on the three where a surveyor's
-          next question is "show me". */}
+      {/* Photo proof. NEVER BLOCKS SUBMISSION, on any form, including the
+          "required" one — a reading must never fail to save because a
+          camera did. temp-fridge is REQUIRED in the sense that filing it
+          without a photo is a tracked exception (see
+          lib/staff/forms.ts's REQUIRED_PHOTO_FORMS, read by the digest
+          and the EOD report) — the same treatment an out-of-range
+          reading already gets, not a submit-time gate. The other two are
+          offered because a surveyor's next question is "show me", with
+          no follow-up if skipped. */}
       {PHOTO_FORMS.has(slug) && (
-        <CameraProof
-          label={PHOTO_LABELS[slug] ?? "Photo proof (optional)"}
-          onChange={setProof}
-          disabled={submitting}
-        />
+        <>
+          <CameraProof
+            label={PHOTO_LABELS[slug] ?? "Photo proof (optional)"}
+            onChange={setProof}
+            disabled={submitting}
+          />
+          {REQUIRED_PHOTO_FORMS.has(slug) && !proof && (
+            <p className="st-field-hint">
+              Filing without a photo still saves the reading &mdash; it will
+              show up as needing a photo on today&rsquo;s summary.
+            </p>
+          )}
+        </>
       )}
 
       {showMissing && check.missing.length > 0 && (

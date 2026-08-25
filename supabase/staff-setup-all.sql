@@ -1858,7 +1858,7 @@ grant execute on function staff.provision_org(text, text, text, text, text) to s
 --
 -- Run AFTER supabase/staff-billing.sql. Idempotent.
 --
--- "Start a 14-day trial, no credit card" is the conversion mechanism, and
+-- "Start a 30-day trial, no credit card" is the conversion mechanism, and
 -- it needs an org to exist BEFORE Stripe has ever heard of the customer.
 --
 -- Expiry is COMPUTED, NOT SCHEDULED. A nightly job that flips expired
@@ -1904,7 +1904,7 @@ end $$;
 -- and anything stricter would block a real clinic whose manager typo'd
 -- their address the first time.
 create or replace function staff.provision_trial(
-  p_slug text, p_name text, p_email text, p_days int default 14
+  p_slug text, p_name text, p_email text, p_days int default 30
 ) returns text
 language plpgsql
 security definer
@@ -8175,7 +8175,7 @@ drop function if exists staff.provision_trial(text, text, text, int);
 -- still works and gets urgent_care — but only because the old overload
 -- is dropped immediately above.
 create or replace function staff.provision_trial(
-  p_slug text, p_name text, p_email text, p_days int default 14,
+  p_slug text, p_name text, p_email text, p_days int default 30,
   p_facility text default 'urgent_care'
 ) returns text
 language plpgsql
@@ -10759,7 +10759,7 @@ grant select on staff.seat_bill to staff_app;
 -- ============================================================
 
 create or replace function staff.provision_trial(
-  p_slug text, p_name text, p_email text, p_days int default 14,
+  p_slug text, p_name text, p_email text, p_days int default 30,
   p_facility text default 'urgent_care'
 ) returns text
 language plpgsql
@@ -10883,7 +10883,7 @@ update staff.users
 -- handled by adding clinics, each at the same price."
 --
 -- Fixed the same way a brand-new signup is priced: the new clinic gets
--- its own 14-day trial, same as provision_trial(). No new billing
+-- its own 30-day trial, same as provision_trial(). No new billing
 -- mechanism needed — staff.org_is_read_only() already flips a trial to
 -- read-only on read once trial_ends_on passes, and the Stripe webhook
 -- (app/api/webhooks/stripe/route.ts) already accepts a Payment Link
@@ -11035,7 +11035,7 @@ begin
   insert into staff.orgs (slug, name, plan, subscription_status, is_read_only,
                           trial_ends_on, billing_email, facility_type, group_id)
   values (final_slug, p_name, 'trial', 'trialing', false,
-          current_date + 14, home_billing_email,
+          current_date + 30, home_billing_email,
           coalesce(p_facility, 'urgent_care'), home_group);
 
   -- The owner reaches the new clinic as an administrator; their home org
@@ -11141,3 +11141,31 @@ $$;
 
 revoke all on function staff.list_my_orgs(uuid) from public;
 grant execute on function staff.list_my_orgs(uuid) to staff_app;
+
+
+-- ========== staff-eod-report.sql ==========
+
+-- ============================================================
+-- THE ADMIN'S END-OF-DAY REPORT, AND AN OPT-IN DIGEST FOR EVERYONE ELSE
+--
+-- Run AFTER supabase/staff-reports.sql. Idempotent.
+--
+-- staff-reports.sql built a report an owner subscribes an ARBITRARY
+-- ADDRESS to — the right shape for an accountant or a franchise manager
+-- with no staff account. It never automatically reaches the people who
+-- actually administer the clinic day to day, and it never reached staff
+-- at all. This file adds the other half: every active org_admin and
+-- platform_super_admin gets today's report automatically, no
+-- subscription required, and any employee can opt into the routine
+-- digest that used to be owner/medical-director only.
+--
+-- ONE COLUMN. wants_digest is deliberately not a JSONB bag of
+-- preferences — there is exactly one optional notification today (the
+-- AM/PM "what got done" digest), and a table of one boolean is honest
+-- about that. Urgent alerts (excursions, missed tasks) are unaffected:
+-- there is still no column to turn those off, for the reason already
+-- given in staff-alerts.sql.
+-- ============================================================
+
+alter table staff.users
+  add column if not exists wants_digest boolean not null default false;

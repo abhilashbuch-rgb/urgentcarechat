@@ -81,7 +81,7 @@ export default async function DemoToday({
           afterwards.
         </p>
         <Link className="st-primary demo-convert-go" href={`/start?c=${encodeURIComponent(c ?? "")}`}>
-          Set this up for real &mdash; 14 days, no card
+          Set this up for real &mdash; 30 days, no card
         </Link>
         <p className="demo-convert-foot">
           Or keep looking: <Link href="/demo">change the setup</Link>,{" "}

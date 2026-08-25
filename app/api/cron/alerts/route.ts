@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withOrg, isDatabaseConfigured } from "@/lib/staff/db";
 import { sweep, digestFor, enqueue, localStamp } from "@/lib/staff/alerts";
+import { isMailConfigured, send } from "@/lib/mail";
 
 // GET /api/cron/alerts — deliver queued alerts, and file the digests.
 //
@@ -102,6 +103,27 @@ export async function GET(req: NextRequest) {
                where org_slug = ${slug} and subject = ${d.subject}
                  and owner_sent_at is null and director_sent_at is null
             `;
+
+            // Anyone who opted in. Best-effort, not queued: this is the
+            // one notification in the whole module that IS a preference,
+            // so a single provider hiccup costs a reader one digest, not
+            // a retried alert somebody is relying on. sweep() below still
+            // owns the owner/director copy, with its usual retries.
+            if (isMailConfigured()) {
+              const optedIn = await sql<{ email: string }[]>`
+                select email from staff.users
+                 where org_slug = ${slug} and active and wants_digest
+              `;
+              for (const { email } of optedIn) {
+                await send({ to: email, subject: d.subject, text: d.body }).catch(
+                  (err) =>
+                    console.error(
+                      `[cron-alerts] digest to ${email} failed:`,
+                      err instanceof Error ? err.message : "Unknown"
+                    )
+                );
+              }
+            }
           }
         }
 

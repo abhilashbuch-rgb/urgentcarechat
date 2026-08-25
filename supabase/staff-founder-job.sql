@@ -25,7 +25,7 @@
 -- ============================================================
 
 create or replace function staff.provision_trial(
-  p_slug text, p_name text, p_email text, p_days int default 14,
+  p_slug text, p_name text, p_email text, p_days int default 30,
   p_facility text default 'urgent_care'
 ) returns text
 language plpgsql

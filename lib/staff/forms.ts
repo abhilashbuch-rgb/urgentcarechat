@@ -189,3 +189,10 @@ export function currentSlot(now = new Date()): "am" | "pm" {
   );
   return hour < 13 ? "am" : "pm";
 }
+
+/** Forms where a missing photo is a flagged exception, not just a gap.
+ *  NOT a submit-time requirement — see app/components/staff/LogForm.tsx:
+ *  a reading must never fail to save because a camera did. Shared with
+ *  lib/staff/report.ts so the EOD report and the log form agree on which
+ *  logs this applies to without a second list to keep in sync. */
+export const REQUIRED_PHOTO_FORMS = new Set(["temp-fridge"]);

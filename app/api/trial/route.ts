@@ -3,7 +3,7 @@ import { modulesFromConfig } from "@/lib/demo/config";
 import { withOrg, isDatabaseConfigured } from "@/lib/staff/db";
 import { slugFrom } from "@/lib/staff/stripe";
 
-// POST /api/trial — start a 14-day trial with no credit card.
+// POST /api/trial — start a 30-day trial with no credit card.
 //
 // This is the only unauthenticated write in the staff system, so it is
 // deliberately small: it creates an org and an invite, and nothing else.
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
     const slug = await withOrg("", "platform_super_admin", async (sql) => {
       const rows = await sql<{ provision_trial: string }[]>`
         select staff.provision_trial(
-          ${slugFrom(clinic, email)}, ${clinic}, ${email}, 14, ${facility}
+          ${slugFrom(clinic, email)}, ${clinic}, ${email}, 30, ${facility}
         )
       `;
       return rows[0].provision_trial;

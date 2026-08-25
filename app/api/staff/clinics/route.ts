@@ -12,7 +12,7 @@ import { atLeast } from "@/lib/staff/roles";
 // repeated here so a center admin gets a clean 403 instead of a raw SQL
 // exception surfacing as "that didn't go through".
 //
-// THE NEW CLINIC IS NOT FREE. staff.add_clinic() gives it its own 14-day
+// THE NEW CLINIC IS NOT FREE. staff.add_clinic() gives it its own 30-day
 // trial rather than copying the caller's live billing state — see
 // supabase/staff-multisite.sql for why that used to be a real bug.
 

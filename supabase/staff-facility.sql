@@ -533,7 +533,7 @@ drop function if exists staff.provision_trial(text, text, text, int);
 -- still works and gets urgent_care — but only because the old overload
 -- is dropped immediately above.
 create or replace function staff.provision_trial(
-  p_slug text, p_name text, p_email text, p_days int default 14,
+  p_slug text, p_name text, p_email text, p_days int default 30,
   p_facility text default 'urgent_care'
 ) returns text
 language plpgsql

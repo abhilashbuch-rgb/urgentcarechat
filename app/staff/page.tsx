@@ -6,6 +6,8 @@ import { getProfile, outstandingFor } from "@/lib/staff/compliance";
 import { summary, type ObligationSummary } from "@/lib/staff/obligations";
 import { ROLE_LABELS, atLeast } from "@/lib/staff/roles";
 import { shiftState, myCredentialWarnings, type ShiftState, type ExpiringCredential } from "@/lib/staff/shift";
+import { factOfTheDay } from "@/lib/staff/history-facts";
+import StaffClock from "@/app/components/staff/StaffClock";
 
 // The staff landing screen — one shift, from the point of view of the
 // person working it.
@@ -38,6 +40,7 @@ interface Overview {
   obligations: ObligationSummary | null;
   shift: ShiftState;
   credentials: ExpiringCredential[];
+  timezone: string;
 }
 
 export default async function StaffHome() {
@@ -61,8 +64,8 @@ export default async function StaffHome() {
         // Overview.hasProfile comment. Nothing below the profile row
         // means anything for this person in this org, so it isn't
         // queried.
-        const orgRow = await sql<{ name: string }[]>`
-          select name from staff.orgs where slug = ${org}
+        const orgRow = await sql<{ name: string; timezone: string }[]>`
+          select name, timezone from staff.orgs where slug = ${org}
         `;
         return {
           hasProfile: false,
@@ -72,9 +75,13 @@ export default async function StaffHome() {
           obligations: null,
           shift: await shiftState(sql, null),
           credentials: [],
+          timezone: orgRow[0]?.timezone ?? "America/New_York",
         };
       }
       const outstanding = await outstandingFor(sql, session.uid);
+      const [orgRow] = await sql<{ timezone: string }[]>`
+        select timezone from staff.orgs where slug = ${org}
+      `;
       return {
         hasProfile: true,
         orgName: null,
@@ -83,6 +90,7 @@ export default async function StaffHome() {
         outstanding: outstanding.length,
         needsOnboarding: !profile.esign_consented_at || !profile.legal_name,
         obligations: seesObligations ? await summary(sql, org) : null,
+        timezone: orgRow?.timezone ?? "America/New_York",
       };
     });
   } catch (err) {
@@ -142,7 +150,16 @@ export default async function StaffHome() {
         <p className="st-page-sub">
           Signed in as {session.email} &middot; {ROLE_LABELS[session.role]}
         </p>
+        {overview && <StaffClock timezone={overview.timezone} />}
       </header>
+
+      {/* One fact, once a day, not a stream. Rotates on the clinic's own
+          calendar day — see lib/staff/history-facts.ts for why nothing
+          here is generated or date-specific ("on this day...") claims
+          this file cannot verify. */}
+      {overview && (
+        <p className="st-history-fact">{factOfTheDay(overview.timezone)}</p>
+      )}
 
       {dbError && (
         <div className="st-notice st-notice-warn" role="alert">

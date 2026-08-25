@@ -21,7 +21,7 @@
 -- handled by adding clinics, each at the same price."
 --
 -- Fixed the same way a brand-new signup is priced: the new clinic gets
--- its own 14-day trial, same as provision_trial(). No new billing
+-- its own 30-day trial, same as provision_trial(). No new billing
 -- mechanism needed — staff.org_is_read_only() already flips a trial to
 -- read-only on read once trial_ends_on passes, and the Stripe webhook
 -- (app/api/webhooks/stripe/route.ts) already accepts a Payment Link
@@ -173,7 +173,7 @@ begin
   insert into staff.orgs (slug, name, plan, subscription_status, is_read_only,
                           trial_ends_on, billing_email, facility_type, group_id)
   values (final_slug, p_name, 'trial', 'trialing', false,
-          current_date + 14, home_billing_email,
+          current_date + 30, home_billing_email,
           coalesce(p_facility, 'urgent_care'), home_group);
 
   -- The owner reaches the new clinic as an administrator; their home org

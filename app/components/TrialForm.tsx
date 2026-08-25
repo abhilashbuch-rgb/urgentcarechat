@@ -106,7 +106,7 @@ export default function TrialForm({
           Sign in and set it up
         </a>
         <p className="tr-fine">
-          14 days, no card. When it ends nothing is deleted — the workspace
+          30 days, no card. When it ends nothing is deleted — the workspace
           goes read-only and everything stays exportable.
         </p>
         {/* OFFERED HERE AND NOWHERE ELSE ON THE MARKETING SITE.
@@ -223,7 +223,7 @@ export default function TrialForm({
       )}
 
       <button className="st-primary" type="submit" disabled={busy}>
-        {busy ? "Setting up…" : "Start the 14-day trial"}
+        {busy ? "Setting up…" : "Start the 30-day trial"}
       </button>
       <p className="tr-fine">No credit card. Nothing to cancel.</p>
     </form>
