@@ -3477,6 +3477,29 @@ body {
 .st-h2 { font-size: 15px; font-weight: 650; margin-bottom: 10px; }
 .st-page-sub { font-size: 13px; color: var(--ink-soft); margin-top: 4px; }
 
+.st-clock {
+  display: block;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-faint);
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Serif, like a pull quote — this is the one line on the page that is
+   there to be read for its own sake rather than acted on. */
+.st-history-fact {
+  font-family: var(--serif);
+  font-size: 13.5px;
+  font-style: italic;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  border-left: 2px solid var(--rule-firm);
+  padding-left: 12px;
+  margin: 4px 0 20px;
+  max-width: 62ch;
+}
+
 .st-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
