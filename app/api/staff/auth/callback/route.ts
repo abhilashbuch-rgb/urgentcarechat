@@ -9,6 +9,11 @@ import {
   STAFF_COOKIE_MAX_AGE,
   type StaffRole,
 } from "@/lib/staff/session";
+import {
+  signOrgChoice,
+  ORG_CHOICE_COOKIE,
+  ORG_CHOICE_COOKIE_MAX_AGE,
+} from "@/lib/staff/org-choice";
 
 // GET /api/staff/auth/callback — Google redirects here with a code.
 //
@@ -50,6 +55,12 @@ function deny(reason: string) {
   return redirectTo(`/staff/signin?e=${reason}`);
 }
 
+type Found =
+  | { org: string }
+  | { choose: string }
+  | { ambiguous: true }
+  | { none: true };
+
 export async function GET(req: NextRequest) {
   const params = req.nextUrl.searchParams;
 
@@ -77,15 +88,23 @@ export async function GET(req: NextRequest) {
     // Which org, before any org context exists. Deliberately the only
     // cross-org read in the system, and it happens exactly once per
     // sign-in — everything after this line is scoped to the answer.
-    const found = await withOrg("", "staff", async (sql) => {
-      const member = await sql<{ org_slug: string }[]>`
-        select org_slug from staff.resolve_signin(${identity.email}, ${identity.sub})
+    const found = await withOrg("", "staff", async (sql): Promise<Found> => {
+      const member = await sql<{ org_slug: string; person_key: string }[]>`
+        select org_slug, person_key
+          from staff.resolve_signin(${identity.email}, ${identity.sub})
       `;
       if (member.length === 1) return { org: member[0].org_slug };
-      // Two rows means the same person exists in two orgs. That is a
-      // real situation this build has no screen for, and picking one for
-      // them would put someone in the wrong clinic's records.
-      if (member.length > 1) return { ambiguous: true as const };
+      if (member.length > 1) {
+        // Two rows sharing a person_key are the same person, deliberately
+        // linked into more than one of the same owner's clinics — see
+        // supabase/staff-multisite-worker.sql. Anything else is a real
+        // collision this build genuinely has no screen for, and picking
+        // one for them would put someone in the wrong clinic's records.
+        if (member[0].person_key === member[1].person_key) {
+          return { choose: member[0].person_key };
+        }
+        return { ambiguous: true as const };
+      }
 
       const invite = await sql<{ org_slug: string }[]>`
         select org_slug from staff.resolve_invite(${identity.email})
@@ -95,6 +114,21 @@ export async function GET(req: NextRequest) {
       return { none: true as const };
     });
 
+    if ("choose" in found) {
+      const token = await signOrgChoice({
+        email: identity.email,
+        personKey: found.choose,
+      });
+      const res = redirectTo("/staff/choose-clinic");
+      res.cookies.set(ORG_CHOICE_COOKIE, token, {
+        httpOnly: true,
+        secure: !isLocalRequest(req),
+        sameSite: "lax",
+        path: "/",
+        maxAge: ORG_CHOICE_COOKIE_MAX_AGE,
+      });
+      return res;
+    }
     if ("ambiguous" in found) return deny("ambiguous");
     if ("none" in found) return deny("no_invite");
     org = found.org;

@@ -99,6 +99,10 @@ const MESSAGES: Record<string, { title: string; body: ReactNode }> = {
     title: "Couldn't reach the staff database",
     body: "Check STAFF_DATABASE_URL and that supabase/staff-schema.sql has been run.",
   },
+  choice_expired: {
+    title: "That clinic picker expired",
+    body: "The link between proving who you are and picking which clinic only stays open a few minutes. Sign in again and choose right away.",
+  },
 };
 
 export default async function StaffSignIn({

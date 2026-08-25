@@ -4,6 +4,7 @@ import { withSession } from "@/lib/staff/db";
 import { atLeast } from "@/lib/staff/roles";
 import { redirectAfterPost } from "@/lib/staff/http";
 import { issue, revoke, type InviteRole } from "@/lib/staff/invites";
+import { findSiblingHomeAccount, linkFromSiblingClinic } from "@/lib/staff/link-worker";
 
 // POST /api/staff/team/invite — the administrator's control over who may
 // come in at all.
@@ -58,6 +59,30 @@ export async function POST(req: NextRequest) {
   if (!ROLES.has(roleRaw)) return redirectAfterPost("/staff/team?e=bad_role");
 
   try {
+    // A plain-staff invite whose address already works at one of this
+    // owner's OTHER clinics is not a new hire — it's the same person
+    // rotating in. Caught here, before an ordinary invite would create a
+    // second, unlinked account for her. Deliberately not offered for an
+    // administrator invite: cross-clinic administration already has its
+    // own path, staff.add_clinic()'s user_orgs grant.
+    if (roleRaw === "staff" && jobRole) {
+      const sibling = await withSession(session, (sql) =>
+        findSiblingHomeAccount(sql, org, email)
+      );
+      if (sibling) {
+        const linked = await withSession(session, (sql) =>
+          linkFromSiblingClinic(sql, {
+            targetOrg: org,
+            homeUserId: sibling.userId,
+            jobRole,
+            actorId: session.uid,
+          })
+        );
+        if (!linked.ok) return redirectAfterPost(`/staff/team?e=${linked.reason}`);
+        return redirectAfterPost("/staff/team?done=linked");
+      }
+    }
+
     const result = await withSession(session, (sql) =>
       issue(sql, org, session.uid, email, roleRaw, jobRole)
     );

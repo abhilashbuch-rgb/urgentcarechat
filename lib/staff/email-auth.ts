@@ -178,6 +178,37 @@ export interface InviteMatch {
   legalName: string | null;
 }
 
+export interface MemberMatch {
+  org: string;
+  personKey: string;
+}
+
+/**
+ * Every ACTIVE account this address already signs into directly — at
+ * most 2, same limit as the Google path's staff.resolve_signin() call,
+ * for the same reason: the caller only needs to know whether there is
+ * more than one, and if so whether the two share a person_key (a
+ * deliberately linked account — see supabase/staff-multisite-worker.sql)
+ * or a genuine collision to refuse.
+ *
+ * Called with a null google_sub, which staff.resolve_signin() treats as
+ * "match by email only" — the same function the OAuth callback uses,
+ * reused rather than duplicated so the two sign-in paths cannot drift
+ * apart on who counts as an existing member.
+ */
+export async function resolveExistingMember(
+  email: string
+): Promise<MemberMatch[]> {
+  const addr = email.trim().toLowerCase();
+  return withOrg("", "staff", async (sql) => {
+    const rows = await sql<{ org_slug: string; person_key: string }[]>`
+      select org_slug, person_key
+        from staff.resolve_signin(${addr}, null)
+    `;
+    return rows.map((r) => ({ org: r.org_slug, personKey: r.person_key }));
+  });
+}
+
 /**
  * Which clinic, if any, has invited this address.
  *
