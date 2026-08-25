@@ -10430,13 +10430,35 @@ update staff.form_templates
    set optional = true
  where slug in ('radiation-apron', 'laser-safety');
 
--- WHAT IS DELIBERATELY NOT ON THAT LIST. The narcotics count, the crash
--- cart, the fridge, the front desk close. A clinic that stocks no
--- controlled substances genuinely does not need a count — but "we do not
--- have any" is a claim that changes with one delivery, and a log the
--- clinic switched off in March is not there to catch it in June. That
--- one stays on and gets filed as "none on site", which is a record.
--- Nothing above is switched off to save somebody thirty seconds.
+-- WHAT IS DELIBERATELY NOT ON THAT LIST. The crash cart, the fridge, the
+-- front desk close. Nothing above is switched off to save somebody
+-- thirty seconds.
+
+
+-- ---------- Controlled substances and hazardous chemicals ----------
+--
+-- These were on the "not on that list" line above until a real clinic
+-- asked for this by name: no federal rule makes a clinic count
+-- controlled substances it does not stock or inventory chemicals it does
+-- not have, and a clinic with neither has nothing to file here.
+--
+-- STAYS ON BY DEFAULT WHERE OFFERED, same reasoning as the apron and the
+-- laser log just above: a clinic that DOES stock narcotics or handle
+-- hazardous chemicals and stops seeing the log is a worse failure than a
+-- clinic with neither seeing one row it can switch off in Settings.
+update staff.form_templates
+   set optional = true
+ where slug in ('narcotics-count', 'hazcom-inventory');
+
+-- afc confirmed directly it has neither. Off now, for that clinic only —
+-- every other org keeps its current default. The template stays on the
+-- org's row rather than being deleted, so a delivery of controlled
+-- substances or a new chemical on the shelf is one Settings toggle away
+-- from being logged again, not a support ticket.
+update staff.form_templates
+   set active = false
+ where org_slug = 'afc'
+   and slug in ('narcotics-count', 'hazcom-inventory');
 
 
 -- ============================================================
