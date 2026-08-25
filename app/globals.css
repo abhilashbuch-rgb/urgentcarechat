@@ -3753,6 +3753,22 @@ body {
   color: var(--ink-faint);
 }
 
+.st-choose-clinic { display: flex; flex-direction: column; gap: 8px; }
+.st-choose-clinic-btn {
+  width: 100%;
+  padding: 13px 16px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.st-choose-clinic-btn:hover { background: var(--blue-050); border-color: var(--rule-firm); }
+
 @media (max-width: 720px) {
   .st-top-inner { height: auto; flex-wrap: wrap; gap: 10px; padding: 10px 16px; }
   .st-me { width: 100%; justify-content: flex-start; }
@@ -6345,6 +6361,17 @@ body {
   border-radius: 999px;
   font-size: 11px;
   color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.st-flag-linked {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border: 1px solid var(--rule-firm);
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--accent);
   white-space: nowrap;
 }
 

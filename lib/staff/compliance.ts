@@ -144,6 +144,10 @@ export interface TeamMember {
   active: boolean;
   mfa_enrolled: boolean;
   mfa_required: boolean;
+  /** True for someone whose home clinic is elsewhere — see
+   *  supabase/staff-multisite-worker.sql. Shown on the roster so a
+   *  seat count that doesn't match the row count isn't a mystery. */
+  is_linked: boolean;
 }
 
 /** The roster, including deactivated people.
@@ -162,6 +166,7 @@ export async function teamStatus(sql: StaffSql): Promise<TeamMember[]> {
            u.wants_digest,
            (u.totp_confirmed_at is not null) as mfa_enrolled,
            (u.role = any (o.mfa_required_roles)) as mfa_required,
+           (u.person_key <> u.id) as is_linked,
            coalesce(c.assigned_count, 0)::int as assigned_count,
            coalesce(c.outstanding_count, 0)::int as outstanding_count,
            c.last_signed_at::text as last_signed_at

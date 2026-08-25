@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withOrg, isDatabaseConfigured } from "@/lib/staff/db";
-import { verifyChallenge, resolveInvite } from "@/lib/staff/email-auth";
+import {
+  verifyChallenge,
+  resolveInvite,
+  resolveExistingMember,
+} from "@/lib/staff/email-auth";
 import { onboardingState, stepFor } from "@/lib/staff/onboarding";
 import {
   signSession,
@@ -8,6 +12,11 @@ import {
   STAFF_COOKIE_MAX_AGE,
   type StaffRole,
 } from "@/lib/staff/session";
+import {
+  signOrgChoice,
+  ORG_CHOICE_COOKIE,
+  ORG_CHOICE_COOKIE_MAX_AGE,
+} from "@/lib/staff/org-choice";
 
 // POST /api/staff/auth/email/verify — redeem a code or a link token.
 //
@@ -45,13 +54,42 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: result.reason }, { status });
   }
 
-  // Re-read at redemption, not carried from the request.
-  const invite = await resolveInvite(result.email);
-  if (!invite) {
+  // Existing member wins over any invite — same rule and same reason as
+  // the Google callback: someone already onboarded keeps their org(s)
+  // rather than a later, unrelated invite silently moving them. Checked
+  // first because it is also how a linked, multi-clinic account (see
+  // supabase/staff-multisite-worker.sql) gets caught here instead of
+  // falling through to the single-org invite lookup below.
+  const members = await resolveExistingMember(result.email);
+  if (members.length > 1) {
+    if (members[0].personKey === members[1].personKey) {
+      const choiceToken = await signOrgChoice({
+        email: result.email,
+        personKey: members[0].personKey,
+      });
+      const res = NextResponse.json({ ok: true, chooseClinic: true });
+      res.cookies.set(ORG_CHOICE_COOKIE, choiceToken, {
+        httpOnly: true,
+        secure: req.nextUrl.protocol === "https:",
+        sameSite: "lax",
+        path: "/",
+        maxAge: ORG_CHOICE_COOKIE_MAX_AGE,
+      });
+      return res;
+    }
+    return NextResponse.json({ error: "ambiguous" }, { status: 403 });
+  }
+
+  // Re-read at redemption, not carried from the request. Only fetched
+  // when there is no existing member match — an invite is what creates
+  // the FIRST account for an address, never a second one.
+  const invite = members[0] ? null : await resolveInvite(result.email);
+  const org = members[0]?.org ?? invite?.org;
+  if (!org) {
     return NextResponse.json({ error: "no_invite" }, { status: 403 });
   }
 
-  const outcome = await withOrg(invite.org, "platform_super_admin", async (sql) => {
+  const outcome = await withOrg(org, "platform_super_admin", async (sql) => {
     const existing = await sql<
       {
         id: string;
@@ -65,7 +103,7 @@ export async function POST(req: NextRequest) {
       select id, role, active, name, session_epoch,
              (totp_confirmed_at is not null) as mfa_enrolled
         from staff.users
-       where lower(email) = ${result.email} and org_slug = ${invite.org}
+       where lower(email) = ${result.email} and org_slug = ${org}
     `;
 
     let user = existing[0];
@@ -73,14 +111,18 @@ export async function POST(req: NextRequest) {
     if (user && !user.active) return { denied: "deactivated" as const };
 
     if (!user) {
-      // First sign-in. The job and the legal name come off the invite,
-      // same as the Google path — so a new hire lands on a board that
-      // already has their work on it rather than an empty one.
+      // First sign-in for this org. Reached only via the invite path — an
+      // existing member match above always has a real row, so it always
+      // lands in the branch above instead.
+      if (!invite) return { denied: "no_invite" as const };
+      // The job and the legal name come off the invite, same as the
+      // Google path — so a new hire lands on a board that already has
+      // their work on it rather than an empty one.
       const created = await sql<typeof existing>`
         insert into staff.users
           (email, name, org_slug, role, job_role, legal_name)
         values
-          (${result.email}, ${invite.legalName}, ${invite.org},
+          (${result.email}, ${invite.legalName}, ${org},
            ${invite.role}::staff.user_role,
            ${invite.jobRole}::staff.job_role, ${invite.legalName})
         returning id, role, active, name, session_epoch,
@@ -91,13 +133,13 @@ export async function POST(req: NextRequest) {
       await sql`update staff.users set last_seen_at = now() where id = ${user.id}`;
     }
 
-    const [org] = await sql<{ mfa_required_roles: StaffRole[] }[]>`
-      select mfa_required_roles from staff.orgs where slug = ${invite.org}
+    const [orgRow] = await sql<{ mfa_required_roles: StaffRole[] }[]>`
+      select mfa_required_roles from staff.orgs where slug = ${org}
     `;
 
     await sql`
       insert into staff.audit_log (org_slug, actor_id, action, entity, entity_id, detail)
-      values (${invite.org}, ${user.id}, 'signin', 'user', ${user.id},
+      values (${org}, ${user.id}, 'signin', 'user', ${user.id},
               ${sql.json({ method: "email" })})
     `;
 
@@ -111,7 +153,7 @@ export async function POST(req: NextRequest) {
 
     return {
       user,
-      mfaRequired: (org?.mfa_required_roles ?? []).includes(user.role),
+      mfaRequired: (orgRow?.mfa_required_roles ?? []).includes(user.role),
       needsOnboarding,
     };
   });
@@ -125,7 +167,7 @@ export async function POST(req: NextRequest) {
 
   const session = await signSession({
     uid: user.id,
-    org: invite.org,
+    org,
     role: user.role,
     email: result.email,
     name: user.name,

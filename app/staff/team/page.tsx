@@ -26,6 +26,11 @@ const NOTICES: Record<string, string> = {
   not_found: "No such person in this organization.",
   server_error: "That didn't go through. Nothing changed.",
   invited: "Invitation sent. The link works once and expires in 72 hours.",
+  linked:
+    "Added. They already have an account at one of your other clinics, so this doesn't cost an extra seat, and their credentials carried over — they'll see this clinic listed next time they sign in.",
+  not_same_group:
+    "That address belongs to an account at a clinic outside your group, so it can't be linked here. Sent as a normal invitation instead would create a separate account — try again if that's what you want.",
+  already_linked: "That person is already linked into this clinic.",
   invited_no_mail:
     "Invitation created, but this deployment has no mail provider configured, so nothing was sent. Set a mail provider key and invite again.",
   revoked: "Invitation withdrawn. That link stops working immediately.",
@@ -203,6 +208,11 @@ export default async function Team({
           its own &mdash; they still prove the address is theirs, so a
           forwarded link is not access.
         </p>
+        <p className="st-page-sub">
+          Already staff at one of your other clinics? Enter their same
+          address here &mdash; it&rsquo;s linked automatically, at no extra
+          seat, with no invitation to click.
+        </p>
 
         <form className="st-invite-form" method="POST" action="/api/staff/team/invite">
           <input type="hidden" name="action" value="invite" />
@@ -318,6 +328,14 @@ export default async function Team({
                     <span className="st-cell-name">
                       {m.legal_name ?? m.name ?? m.email}
                     </span>
+                    {m.is_linked && (
+                      <span
+                        className="st-flag-linked"
+                        title="Home clinic is one of your other locations — not counted in this clinic's seats."
+                      >
+                        Linked
+                      </span>
+                    )}
                     <span className="st-cell-sub">
                       {m.job_title ? `${m.job_title} · ` : ""}
                       {m.email}
@@ -419,6 +437,9 @@ export default async function Team({
         their next sign-in &mdash; the session already open on their phone
         stops working. Reactivating does not restore it; they sign in again.
         Every action here is written to the audit log with your name on it.
+        Deactivating someone at their <strong>home</strong> clinic also
+        deactivates them everywhere else they&rsquo;re linked; deactivating
+        a &ldquo;Linked&rdquo; row here only ends their access to this one.
       </p>
     </div>
   );
