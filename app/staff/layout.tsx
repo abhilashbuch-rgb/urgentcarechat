@@ -90,18 +90,23 @@ export default async function StaffLayout({
     <div className="st">
       <header className="st-top">
         <div className="st-top-inner">
-          {/* MOBILE ONLY — see .st-nav-mobile in globals.css. A row of
-              14+ links has to scroll sideways to be seen at all below
-              720px, which is how you miss half the nav on a phone
-              without knowing it exists. <details>/<summary> needs no
-              client component and no state: the drawer is closed on
-              every fresh page load, and clicking a link navigates away,
-              which closes it for free. */}
-          <details className="st-nav-mobile">
-            <summary className="st-nav-toggle" aria-label="Menu">
-              <span className="st-nav-bar" aria-hidden="true" />
-              <span className="st-nav-bar" aria-hidden="true" />
-              <span className="st-nav-bar" aria-hidden="true" />
+          {/* THE ONE NAV, EVERY WIDTH — see the "nav: a drawer, not a
+              row" comment in globals.css for why there is no wide-screen
+              row version any more: the header's own max-width caps the
+              space available to it regardless of how big the monitor is,
+              and this list is too long to fit beside the brand and the
+              signed-in-as cluster at ANY size. <details>/<summary> needs
+              no client component and no state: closed on every fresh
+              page load, and clicking a link navigates away, which closes
+              it for free. */}
+          <details className="st-nav-menu">
+            <summary className="st-nav-toggle">
+              <span className="st-nav-bars" aria-hidden="true">
+                <span className="st-nav-bar" />
+                <span className="st-nav-bar" />
+                <span className="st-nav-bar" />
+              </span>
+              Menu
             </summary>
             <nav className="st-nav-drawer">{navLinks}</nav>
           </details>
@@ -120,8 +125,6 @@ export default async function StaffLayout({
             <span className="st-brand-name">{orgName}</span>
             <span className="st-brand-tag">Staff</span>
           </a>
-
-          <nav className="st-nav">{navLinks}</nav>
 
           <div className="st-me">
             <ShiftChime audioEnabled={audio} openNow={openNow} />
