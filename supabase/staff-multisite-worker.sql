@@ -97,7 +97,15 @@ create index if not exists staff_users_person_key
 -- For three or more linked sites the picker still needs the full list —
 -- staff.list_my_orgs_for_person() below is what it calls once it knows
 -- this is a linked account, not a collision.
-create or replace function staff.resolve_signin(p_email text, p_google_sub text)
+--
+-- DROPPED FIRST, not CREATE OR REPLACE. Postgres refuses to replace a
+-- function whose OUT-parameter row shape changes — and adding person_key
+-- and org_name does change it — so a plain CREATE OR REPLACE here fails
+-- with "cannot change return type of existing function" the moment this
+-- file lands on a database that already ran staff-multisite.sql's
+-- version.
+drop function if exists staff.resolve_signin(text, text);
+create function staff.resolve_signin(p_email text, p_google_sub text)
 returns table (
   org_slug text,
   member_role staff.user_role,
