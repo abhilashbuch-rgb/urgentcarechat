@@ -9,6 +9,8 @@ import Avatar from "@/app/components/staff/Avatar";
 import ShiftChime from "@/app/components/staff/ShiftChime";
 import InstallPrompt from "@/app/components/staff/InstallPrompt";
 import BrandLockup from "@/app/components/BrandLockup";
+import { NAV_ICONS } from "@/app/components/staff/NavGroupIcon";
+import type { NavIconId } from "@/app/components/staff/NavGroupIcon";
 
 // The staff shell. Lives at /staff on an org's own hostname
 // (afc.medicin.io/staff) — see the passthrough in proxy.ts, which
@@ -66,22 +68,40 @@ export default async function StaffLayout({
 
   // One item, link or placeholder — shared by the standalone top link
   // (Today) and every item inside a group, so the two render identically.
-  const renderNavItem = (item: NavItem) =>
+  // Icon is only ever passed for the top link and the group label itself;
+  // a sub-item inside an open group renders as plain text, because an
+  // icon on every one of eighteen links is noise, not a map.
+  const renderNavItem = (
+    item: NavItem,
+    icon?: React.ReactNode,
+    extraClass?: string
+  ) =>
     item.placeholder ? (
       <span
         key={item.href}
-        className="st-nav-link st-nav-soon"
+        className={`st-nav-link st-nav-soon${extraClass ? ` ${extraClass}` : ""}`}
         title={item.note}
         aria-disabled="true"
       >
+        {icon}
         {item.label}
         <span className="st-soon-dot" aria-hidden="true" />
       </span>
     ) : (
-      <a key={item.href} className="st-nav-link" href={item.href}>
+      <a
+        key={item.href}
+        className={`st-nav-link${extraClass ? ` ${extraClass}` : ""}`}
+        href={item.href}
+      >
+        {icon}
         {item.label}
       </a>
     );
+
+  const navIcon = (id: NavIconId) => {
+    const Icon = NAV_ICONS[id];
+    return <Icon />;
+  };
 
   return (
     <div className="st">
@@ -109,12 +129,19 @@ export default async function StaffLayout({
               Menu
             </summary>
             <nav className="st-nav-drawer">
-              {top.map(renderNavItem)}
+              {top.map((item) =>
+                renderNavItem(item, navIcon("today"), "st-nav-top-link")
+              )}
               {groups.map((g) => (
                 <details key={g.group} className="st-nav-group">
-                  <summary className="st-nav-group-toggle">{g.label}</summary>
+                  <summary className="st-nav-group-toggle">
+                    <span className="st-nav-group-label">
+                      {navIcon(g.group)}
+                      {g.label}
+                    </span>
+                  </summary>
                   <div className="st-nav-group-items">
-                    {g.items.map(renderNavItem)}
+                    {g.items.map((item) => renderNavItem(item))}
                   </div>
                 </details>
               ))}

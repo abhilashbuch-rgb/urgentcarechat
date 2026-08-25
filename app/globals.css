@@ -3471,11 +3471,11 @@ body {
   min-width: 220px;
   max-width: min(320px, calc(100vw - 32px));
   margin-top: 8px;
-  padding: 8px;
+  padding: 10px;
   background: #fff;
   border: 1px solid var(--rule);
-  border-radius: 10px;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, .16);
+  border-radius: 12px;
+  box-shadow: 0 16px 32px rgba(15, 23, 42, .14), 0 2px 6px rgba(15, 23, 42, .06);
   z-index: 30;
   max-height: calc(100vh - 72px);
   overflow-y: auto;
@@ -3527,6 +3527,8 @@ body {
 .st-nav-group-toggle::marker { content: ""; }
 .st-nav-group-toggle:hover { background: var(--blue-050); color: var(--ink); }
 
+.st-nav-group-label { display: flex; align-items: center; gap: 8px; }
+
 /* A chevron that rotates open, drawn the same way as the "bars" icon —
    currentColor and a couple of borders, no icon font or SVG import for
    one glyph used in one place. */
@@ -3547,8 +3549,28 @@ body {
   flex-direction: column;
   gap: 2px;
   padding-left: 8px;
+  /* The guide line that makes a sub-item read as a CHILD of the group
+     rather than just the next row in the list — the one cue a group
+     label alone doesn't give once it's collapsed away above. */
+  margin-left: 11px;
+  border-left: 1px solid var(--rule);
 }
 .st-nav-group-items .st-nav-link { padding: 10px 12px; font-size: 14.5px; }
+
+/* The five icons: one per group plus Today, drawn in
+   app/components/staff/NavGroupIcon.tsx. currentColor, so each takes
+   whatever color the row around it already has — no separate palette to
+   keep in sync with the text. */
+.st-nav-icon { flex-shrink: 0; }
+
+/* Today sits above the groups with no border of its own to lean on, so
+   it gets a LITTLE more weight — bold text and the accent on its icon —
+   rather than reading as a stray extra row before the real menu starts. */
+.st-nav-top-link {
+  font-weight: 650;
+  margin-bottom: 2px;
+}
+.st-nav-top-link .st-nav-icon { color: var(--accent); }
 
 /* Nav items that exist but aren't built. Shown rather than hidden so the
    shape of the product is legible, with a marker that says "not yet"
