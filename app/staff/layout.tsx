@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import { resolve } from "@/lib/staff/auth";
 import { getTenantBySlug } from "@/lib/tenants";
-import { navFor, ROLE_LABELS } from "@/lib/staff/roles";
+import { groupedNavFor, ROLE_LABELS } from "@/lib/staff/roles";
+import type { NavItem } from "@/lib/staff/roles";
 import { withSession } from "@/lib/staff/db";
 import { getProfile } from "@/lib/staff/compliance";
 import Avatar from "@/app/components/staff/Avatar";
 import ShiftChime from "@/app/components/staff/ShiftChime";
 import InstallPrompt from "@/app/components/staff/InstallPrompt";
 import BrandLockup from "@/app/components/BrandLockup";
+import { NAV_ICONS } from "@/app/components/staff/NavGroupIcon";
+import type { NavIconId } from "@/app/components/staff/NavGroupIcon";
 
 // The staff shell. Lives at /staff on an org's own hostname
 // (afc.medicin.io/staff) — see the passthrough in proxy.ts, which
@@ -61,30 +64,44 @@ export default async function StaffLayout({
       `
     )[0] ?? { brand_color: "#173a8a", logo_url: null },
   }));
-  const nav = navFor(session.role, me?.job_role ?? null);
+  const { top, groups } = groupedNavFor(session.role, me?.job_role ?? null);
 
-  // Built once, rendered twice — the wide-screen row and the mobile
-  // drawer show the exact same items in the exact same order, just laid
-  // out differently below 720px. Two elements can share one array of
-  // already-built React elements; they only need to be unique within
-  // whichever parent renders them, and each renders in exactly one.
-  const navLinks = nav.map((item) =>
+  // One item, link or placeholder — shared by the standalone top link
+  // (Today) and every item inside a group, so the two render identically.
+  // Icon is only ever passed for the top link and the group label itself;
+  // a sub-item inside an open group renders as plain text, because an
+  // icon on every one of eighteen links is noise, not a map.
+  const renderNavItem = (
+    item: NavItem,
+    icon?: React.ReactNode,
+    extraClass?: string
+  ) =>
     item.placeholder ? (
       <span
         key={item.href}
-        className="st-nav-link st-nav-soon"
+        className={`st-nav-link st-nav-soon${extraClass ? ` ${extraClass}` : ""}`}
         title={item.note}
         aria-disabled="true"
       >
+        {icon}
         {item.label}
         <span className="st-soon-dot" aria-hidden="true" />
       </span>
     ) : (
-      <a key={item.href} className="st-nav-link" href={item.href}>
+      <a
+        key={item.href}
+        className={`st-nav-link${extraClass ? ` ${extraClass}` : ""}`}
+        href={item.href}
+      >
+        {icon}
         {item.label}
       </a>
-    )
-  );
+    );
+
+  const navIcon = (id: NavIconId) => {
+    const Icon = NAV_ICONS[id];
+    return <Icon />;
+  };
 
   return (
     <div className="st">
@@ -94,11 +111,14 @@ export default async function StaffLayout({
               row" comment in globals.css for why there is no wide-screen
               row version any more: the header's own max-width caps the
               space available to it regardless of how big the monitor is,
-              and this list is too long to fit beside the brand and the
-              signed-in-as cluster at ANY size. <details>/<summary> needs
-              no client component and no state: closed on every fresh
-              page load, and clicking a link navigates away, which closes
-              it for free. */}
+              and even five top-level entries plus Today do not fit beside
+              the brand and the signed-in-as cluster at ANY size.
+              <details>/<summary> needs no client component and no state:
+              closed on every fresh page load, and clicking a link
+              navigates away, which closes it for free — nested
+              <details> for each group get that for free too, so
+              "Administer" collapses again the moment you leave the page
+              rather than staying pinned open from your last visit. */}
           <details className="st-nav-menu">
             <summary className="st-nav-toggle">
               <span className="st-nav-bars" aria-hidden="true">
@@ -108,7 +128,24 @@ export default async function StaffLayout({
               </span>
               Menu
             </summary>
-            <nav className="st-nav-drawer">{navLinks}</nav>
+            <nav className="st-nav-drawer">
+              {top.map((item) =>
+                renderNavItem(item, navIcon("today"), "st-nav-top-link")
+              )}
+              {groups.map((g) => (
+                <details key={g.group} className="st-nav-group">
+                  <summary className="st-nav-group-toggle">
+                    <span className="st-nav-group-label">
+                      {navIcon(g.group)}
+                      {g.label}
+                    </span>
+                  </summary>
+                  <div className="st-nav-group-items">
+                    {g.items.map((item) => renderNavItem(item))}
+                  </div>
+                </details>
+              ))}
+            </nav>
           </details>
 
           {/* THE SAME LOCKUP AS THE PUBLIC SITE, then the clinic's name.
