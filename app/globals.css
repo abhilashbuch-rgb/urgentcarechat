@@ -3492,8 +3492,14 @@ body {
   color: var(--ink-soft);
   text-decoration: none;
   white-space: nowrap;
+  transition: background .12s ease, color .12s ease;
 }
-.st-nav-link:hover { background: var(--blue-050); color: var(--ink); }
+/* ACCENT, NOT JUST DARKER INK. A hover that only deepens the same muted
+   grey is easy to miss on a fast pass through the drawer; the accent
+   blue is a color nothing else in an unhovered row wears, so the row a
+   cursor is actually over is never ambiguous. The icon rides along for
+   free — it's already currentColor. */
+.st-nav-link:hover { background: var(--blue-050); color: var(--accent); }
 
 /* ---------- nav groups: a <details> inside the <details> ----------
  * Five items instead of eighteen: Today plus four collapsed groups
@@ -3522,10 +3528,14 @@ body {
   color: var(--ink-soft);
   cursor: pointer;
   list-style: none;
+  transition: background .12s ease, color .12s ease;
 }
 .st-nav-group-toggle::-webkit-details-marker { display: none; }
 .st-nav-group-toggle::marker { content: ""; }
-.st-nav-group-toggle:hover { background: var(--blue-050); color: var(--ink); }
+/* Same accent-on-hover as .st-nav-link, so a group header lights up the
+   same way its own items do once it's open — one hover language for the
+   whole drawer rather than two. */
+.st-nav-group-toggle:hover { background: var(--blue-050); color: var(--accent); }
 
 .st-nav-group-label { display: flex; align-items: center; gap: 8px; }
 
