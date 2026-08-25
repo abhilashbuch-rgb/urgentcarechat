@@ -1858,7 +1858,7 @@ grant execute on function staff.provision_org(text, text, text, text, text) to s
 --
 -- Run AFTER supabase/staff-billing.sql. Idempotent.
 --
--- "Start a 14-day trial, no credit card" is the conversion mechanism, and
+-- "Start a 30-day trial, no credit card" is the conversion mechanism, and
 -- it needs an org to exist BEFORE Stripe has ever heard of the customer.
 --
 -- Expiry is COMPUTED, NOT SCHEDULED. A nightly job that flips expired
@@ -1904,7 +1904,7 @@ end $$;
 -- and anything stricter would block a real clinic whose manager typo'd
 -- their address the first time.
 create or replace function staff.provision_trial(
-  p_slug text, p_name text, p_email text, p_days int default 14
+  p_slug text, p_name text, p_email text, p_days int default 30
 ) returns text
 language plpgsql
 security definer
@@ -8175,7 +8175,7 @@ drop function if exists staff.provision_trial(text, text, text, int);
 -- still works and gets urgent_care — but only because the old overload
 -- is dropped immediately above.
 create or replace function staff.provision_trial(
-  p_slug text, p_name text, p_email text, p_days int default 14,
+  p_slug text, p_name text, p_email text, p_days int default 30,
   p_facility text default 'urgent_care'
 ) returns text
 language plpgsql
@@ -10759,7 +10759,7 @@ grant select on staff.seat_bill to staff_app;
 -- ============================================================
 
 create or replace function staff.provision_trial(
-  p_slug text, p_name text, p_email text, p_days int default 14,
+  p_slug text, p_name text, p_email text, p_days int default 30,
   p_facility text default 'urgent_care'
 ) returns text
 language plpgsql
@@ -10883,7 +10883,7 @@ update staff.users
 -- handled by adding clinics, each at the same price."
 --
 -- Fixed the same way a brand-new signup is priced: the new clinic gets
--- its own 14-day trial, same as provision_trial(). No new billing
+-- its own 30-day trial, same as provision_trial(). No new billing
 -- mechanism needed — staff.org_is_read_only() already flips a trial to
 -- read-only on read once trial_ends_on passes, and the Stripe webhook
 -- (app/api/webhooks/stripe/route.ts) already accepts a Payment Link
@@ -11035,7 +11035,7 @@ begin
   insert into staff.orgs (slug, name, plan, subscription_status, is_read_only,
                           trial_ends_on, billing_email, facility_type, group_id)
   values (final_slug, p_name, 'trial', 'trialing', false,
-          current_date + 14, home_billing_email,
+          current_date + 30, home_billing_email,
           coalesce(p_facility, 'urgent_care'), home_group);
 
   -- The owner reaches the new clinic as an administrator; their home org

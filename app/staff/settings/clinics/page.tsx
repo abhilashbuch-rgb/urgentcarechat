@@ -11,7 +11,7 @@ import SwitchClinicButton from "@/app/components/staff/SwitchClinicButton";
 // $149/clinic/month, same as the first — the landing page has always
 // said this ("no volume discount... each clinic at the same price") and
 // staff.add_clinic() now actually enforces it: a new clinic gets its own
-// 14-day trial rather than inheriting the caller's paid status for free.
+// 30-day trial rather than inheriting the caller's paid status for free.
 
 export const dynamic = "force-dynamic";
 
@@ -106,7 +106,7 @@ export default async function ClinicsPage() {
       <section className="st-set-block">
         <h2 className="st-set-h">Add a clinic</h2>
         <p className="st-set-b">
-          Same account, a second board. It starts with a 14-day trial like
+          Same account, a second board. It starts with a 30-day trial like
           any new clinic &mdash; pay to keep it once you&rsquo;re ready,
           from the list above.
         </p>

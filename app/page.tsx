@@ -110,7 +110,7 @@ export default function LandingPage() {
             <a href="/demo">See a live demo</a>
             <a href="/staff/signin">Login</a>
             {/* SAME DESTINATION AS THE HERO CTA, REACHABLE WITHOUT
-                SCROLLING. "Install now" rather than "Start the 14-day
+                SCROLLING. "Install now" rather than "Start the 30-day
                 trial" here on purpose — the nav has room for four words,
                 not seven, and a first-time visitor on a phone should not
                 have to scroll past the hero to find the one button that
@@ -145,7 +145,7 @@ export default function LandingPage() {
           </p>
           <div className="mh-cta-row">
             <Link className="mh-cta" href="/start">
-              Start the 14-day trial
+              Start the 30-day trial
             </Link>
             <Link className="mh-cta-secondary" href="/demo">
               See a live demo

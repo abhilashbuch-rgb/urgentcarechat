@@ -3,7 +3,7 @@
 --
 -- Run AFTER supabase/staff-billing.sql. Idempotent.
 --
--- "Start a 14-day trial, no credit card" is the conversion mechanism, and
+-- "Start a 30-day trial, no credit card" is the conversion mechanism, and
 -- it needs an org to exist BEFORE Stripe has ever heard of the customer.
 --
 -- Expiry is COMPUTED, NOT SCHEDULED. A nightly job that flips expired
@@ -49,7 +49,7 @@ end $$;
 -- and anything stricter would block a real clinic whose manager typo'd
 -- their address the first time.
 create or replace function staff.provision_trial(
-  p_slug text, p_name text, p_email text, p_days int default 14
+  p_slug text, p_name text, p_email text, p_days int default 30
 ) returns text
 language plpgsql
 security definer
