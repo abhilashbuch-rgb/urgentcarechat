@@ -3391,6 +3391,7 @@ body {
   display: flex;
   align-items: center;
   gap: 24px;
+  position: relative;
 }
 
 /* align-items: center, not baseline — the mark is a square with no
@@ -3415,41 +3416,60 @@ body {
   border-radius: 4px;
 }
 
-.st-nav { display: flex; gap: 2px; flex: 1; min-width: 0; overflow-x: auto; }
+/* ---------- nav: a drawer, not a row ---------- */
+/*
+ * There is no width at which a row holds this list. .st-top-inner caps out
+ * at 1080px same as .st-page, and even a center admin's own nav alone runs
+ * to 16 items once obligations, protocols, roster, activity, clinic logs,
+ * settings, accreditation, inspection and team are all visible — that
+ * never fits beside the brand lockup and the signed-in-as cluster, on any
+ * monitor, because the cap is on the CONTAINER, not the screen. A row that
+ * scrolls sideways to be seen is not navigation, it's a scavenger hunt.
+ *
+ * One menu, one width, every screen: a toggle at the far left opens a
+ * vertical list of the same links <details>/<summary> gives this for
+ * free — no client component, no JS state, closed on every fresh load,
+ * and a click navigates away, which closes it too.
+ */
 
-/* ---------- mobile nav: a drawer instead of a sideways scroll ---------- */
+.st-nav-menu { display: block; position: relative; }
 
-/* Hidden above 720px — the row above is what renders there. See the
-   media query at the bottom of this block for the swap. */
-.st-nav-mobile { display: none; }
-
+/* A labelled pill, not a bare icon — the complaint this replaces was
+   "no way of navigating to it," and an icon nobody recognizes as a
+   button is exactly that, again, in a different shape. */
 .st-nav-toggle {
-  display: flex;
-  flex-direction: column;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
-  width: 34px;
+  gap: 8px;
   height: 34px;
+  padding: 0 12px 0 10px;
   border-radius: 8px;
-  color: var(--ink-soft);
+  border: 1px solid var(--rule);
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 550;
   cursor: pointer;
   list-style: none;
+  white-space: nowrap;
 }
 .st-nav-toggle::-webkit-details-marker { display: none; }
 .st-nav-toggle::marker { content: ""; }
 .st-nav-toggle:hover,
-.st-nav-mobile[open] .st-nav-toggle { background: var(--blue-050); color: var(--ink); }
+.st-nav-menu[open] .st-nav-toggle { background: var(--blue-050); border-color: var(--rule-firm); }
 
-.st-nav-bar { display: block; width: 18px; height: 2px; border-radius: 2px; background: currentColor; }
+.st-nav-bars { display: flex; flex-direction: column; gap: 3px; }
+.st-nav-bar { display: block; width: 16px; height: 2px; border-radius: 2px; background: currentColor; }
 
 .st-nav-drawer {
   display: flex;
   flex-direction: column;
   gap: 2px;
   position: absolute;
-  left: 16px;
-  right: 16px;
+  top: 100%;
+  left: 0;
+  width: max-content;
+  min-width: 220px;
+  max-width: min(320px, calc(100vw - 32px));
   margin-top: 8px;
   padding: 8px;
   background: #fff;
@@ -3492,6 +3512,9 @@ body {
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
+  /* Nothing else in this row claims flex: 1 now that the nav is a
+     toggle instead of a row — this is what pushes it to the far edge. */
+  margin-left: auto;
   font-size: 12px;
   color: var(--ink-soft);
 }
@@ -3710,11 +3733,9 @@ body {
 }
 
 @media (max-width: 720px) {
-  .st-top-inner { height: auto; flex-wrap: wrap; gap: 10px; padding: 10px 16px; position: relative; }
+  .st-top-inner { height: auto; flex-wrap: wrap; gap: 10px; padding: 10px 16px; }
   .st-me { width: 100%; justify-content: flex-start; }
   .st-me-email { max-width: none; flex: 1; }
-  .st-nav { display: none; }
-  .st-nav-mobile { display: block; order: -1; }
 }
 
 /* ---------- onboarding, documents, signatures ---------- */
@@ -5592,17 +5613,6 @@ body {
 @media (max-width: 720px) {
   .st-ob-facts { gap: 12px 20px; padding: 14px 16px; }
   .st-ob-done, .st-ob-history, .st-ob-complete, .st-ob-more { padding: 16px; }
-}
-
-/* The staff nav gained a sixth tab with the obligations register, which
-   pushed it past a phone's width. It scrolls rather than overflowing the
-   page, but a tab you have to discover by swiping is a tab most people
-   never find. So on a narrow screen the inert "coming soon" items drop
-   out — they are already listed on the Today screen, and they were the
-   only two that don't go anywhere. */
-@media (max-width: 720px) {
-  .st-nav-soon { display: none; }
-  .st-nav-link { padding: 6px 8px; font-size: 13.5px; }
 }
 
 /* ---------- roster: credentials and exclusion screening ---------- */
