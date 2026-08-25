@@ -3495,6 +3495,61 @@ body {
 }
 .st-nav-link:hover { background: var(--blue-050); color: var(--ink); }
 
+/* ---------- nav groups: a <details> inside the <details> ----------
+ * Five items instead of eighteen: Today plus four collapsed groups
+ * (My shift, My record, Run the clinic, Administer — see the NavGroup
+ * comment in lib/staff/roles.ts for why grouped this way). Nested rather
+ * than a client-side accordion for the same reason the outer drawer is a
+ * <details>: no JS state to wire up, and each one is independently
+ * closed on every fresh page load. */
+.st-nav-group {
+  border-top: 1px solid var(--rule);
+  margin-top: 4px;
+  padding-top: 4px;
+}
+.st-nav-group:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+
+.st-nav-group-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--ink-soft);
+  cursor: pointer;
+  list-style: none;
+}
+.st-nav-group-toggle::-webkit-details-marker { display: none; }
+.st-nav-group-toggle::marker { content: ""; }
+.st-nav-group-toggle:hover { background: var(--blue-050); color: var(--ink); }
+
+/* A chevron that rotates open, drawn the same way as the "bars" icon —
+   currentColor and a couple of borders, no icon font or SVG import for
+   one glyph used in one place. */
+.st-nav-group-toggle::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform .12s ease;
+  flex-shrink: 0;
+}
+.st-nav-group[open] > .st-nav-group-toggle::after { transform: rotate(45deg); }
+
+.st-nav-group-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 8px;
+}
+.st-nav-group-items .st-nav-link { padding: 10px 12px; font-size: 14.5px; }
+
 /* Nav items that exist but aren't built. Shown rather than hidden so the
    shape of the product is legible, with a marker that says "not yet"
    instead of a link that goes nowhere. */

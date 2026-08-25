@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { resolve } from "@/lib/staff/auth";
 import { getTenantBySlug } from "@/lib/tenants";
-import { navFor, ROLE_LABELS } from "@/lib/staff/roles";
+import { groupedNavFor, ROLE_LABELS } from "@/lib/staff/roles";
+import type { NavItem } from "@/lib/staff/roles";
 import { withSession } from "@/lib/staff/db";
 import { getProfile } from "@/lib/staff/compliance";
 import Avatar from "@/app/components/staff/Avatar";
@@ -61,14 +62,11 @@ export default async function StaffLayout({
       `
     )[0] ?? { brand_color: "#173a8a", logo_url: null },
   }));
-  const nav = navFor(session.role, me?.job_role ?? null);
+  const { top, groups } = groupedNavFor(session.role, me?.job_role ?? null);
 
-  // Built once, rendered twice — the wide-screen row and the mobile
-  // drawer show the exact same items in the exact same order, just laid
-  // out differently below 720px. Two elements can share one array of
-  // already-built React elements; they only need to be unique within
-  // whichever parent renders them, and each renders in exactly one.
-  const navLinks = nav.map((item) =>
+  // One item, link or placeholder — shared by the standalone top link
+  // (Today) and every item inside a group, so the two render identically.
+  const renderNavItem = (item: NavItem) =>
     item.placeholder ? (
       <span
         key={item.href}
@@ -83,8 +81,7 @@ export default async function StaffLayout({
       <a key={item.href} className="st-nav-link" href={item.href}>
         {item.label}
       </a>
-    )
-  );
+    );
 
   return (
     <div className="st">
@@ -94,11 +91,14 @@ export default async function StaffLayout({
               row" comment in globals.css for why there is no wide-screen
               row version any more: the header's own max-width caps the
               space available to it regardless of how big the monitor is,
-              and this list is too long to fit beside the brand and the
-              signed-in-as cluster at ANY size. <details>/<summary> needs
-              no client component and no state: closed on every fresh
-              page load, and clicking a link navigates away, which closes
-              it for free. */}
+              and even five top-level entries plus Today do not fit beside
+              the brand and the signed-in-as cluster at ANY size.
+              <details>/<summary> needs no client component and no state:
+              closed on every fresh page load, and clicking a link
+              navigates away, which closes it for free — nested
+              <details> for each group get that for free too, so
+              "Administer" collapses again the moment you leave the page
+              rather than staying pinned open from your last visit. */}
           <details className="st-nav-menu">
             <summary className="st-nav-toggle">
               <span className="st-nav-bars" aria-hidden="true">
@@ -108,7 +108,17 @@ export default async function StaffLayout({
               </span>
               Menu
             </summary>
-            <nav className="st-nav-drawer">{navLinks}</nav>
+            <nav className="st-nav-drawer">
+              {top.map(renderNavItem)}
+              {groups.map((g) => (
+                <details key={g.group} className="st-nav-group">
+                  <summary className="st-nav-group-toggle">{g.label}</summary>
+                  <div className="st-nav-group-items">
+                    {g.items.map(renderNavItem)}
+                  </div>
+                </details>
+              ))}
+            </nav>
           </details>
 
           {/* THE SAME LOCKUP AS THE PUBLIC SITE, then the clinic's name.
