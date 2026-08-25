@@ -218,6 +218,7 @@ export default function LandingPage() {
             medicin.io &mdash; a Medicin.io LLC product
           </span>
           <span className="lp-footer-links">
+            <Link href="/guides">Guides</Link>
             <Link href="/terms">Terms</Link>
             <Link href="/privacy">Privacy</Link>
             <Link href="/security">Security</Link>
