@@ -3417,6 +3417,51 @@ body {
 
 .st-nav { display: flex; gap: 2px; flex: 1; min-width: 0; overflow-x: auto; }
 
+/* ---------- mobile nav: a drawer instead of a sideways scroll ---------- */
+
+/* Hidden above 720px — the row above is what renders there. See the
+   media query at the bottom of this block for the swap. */
+.st-nav-mobile { display: none; }
+
+.st-nav-toggle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  list-style: none;
+}
+.st-nav-toggle::-webkit-details-marker { display: none; }
+.st-nav-toggle::marker { content: ""; }
+.st-nav-toggle:hover,
+.st-nav-mobile[open] .st-nav-toggle { background: var(--blue-050); color: var(--ink); }
+
+.st-nav-bar { display: block; width: 18px; height: 2px; border-radius: 2px; background: currentColor; }
+
+.st-nav-drawer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  margin-top: 8px;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, .16);
+  z-index: 30;
+  max-height: calc(100vh - 72px);
+  overflow-y: auto;
+}
+.st-nav-drawer .st-nav-link { padding: 11px 12px; font-size: 15px; }
+
 .st-nav-link {
   display: inline-flex;
   align-items: center;
@@ -3665,9 +3710,11 @@ body {
 }
 
 @media (max-width: 720px) {
-  .st-top-inner { height: auto; flex-wrap: wrap; gap: 10px; padding: 10px 16px; }
+  .st-top-inner { height: auto; flex-wrap: wrap; gap: 10px; padding: 10px 16px; position: relative; }
   .st-me { width: 100%; justify-content: flex-start; }
   .st-me-email { max-width: none; flex: 1; }
+  .st-nav { display: none; }
+  .st-nav-mobile { display: block; order: -1; }
 }
 
 /* ---------- onboarding, documents, signatures ---------- */
