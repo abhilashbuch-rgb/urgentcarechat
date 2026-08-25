@@ -53,6 +53,14 @@ export default async function StaffHome() {
   // page they were just removed from is worse than not mentioning it.
   const seesObligations = atLeast(session.role, "clinical_lead");
 
+  // Anyone at clinical_lead or above already has a working nav — Team,
+  // Settings, Obligations — whether or not their own onboarding packet is
+  // signed. Sending them to the wizard on every visit to "Home" trapped an
+  // owner who needed to get back to Team and delete someone with no way
+  // out but the browser's back button. A plain staff account has nowhere
+  // else to go until it's done, so that one still bounces straight there.
+  const hasNavAccess = atLeast(session.role, "clinical_lead");
+
   let overview: Overview | null = null;
   let dbError: string | null = null;
 
@@ -101,7 +109,7 @@ export default async function StaffHome() {
   // dashboard with a notification on it. Someone who has never consented
   // or signed anything has nothing to look at here yet, and a banner they
   // can dismiss is exactly how "we never knew" happens.
-  if (overview?.needsOnboarding) redirect("/staff/onboarding");
+  if (overview?.needsOnboarding && !hasNavAccess) redirect("/staff/onboarding");
 
   // Administering this clinic, not working a shift in it. Nobody files a
   // log here under this identity, so a board framed around "what do I
@@ -159,6 +167,23 @@ export default async function StaffHome() {
           this file cannot verify. */}
       {overview && (
         <p className="st-history-fact">{factOfTheDay(overview.timezone)}</p>
+      )}
+
+      {/* Only reachable by clinical_lead+ — see hasNavAccess above. A plain
+          staff account with needsOnboarding never gets here; it was
+          redirected before this render. */}
+      {overview?.needsOnboarding && (
+        <div className="st-notice st-notice-warn" role="status">
+          <strong>Your own onboarding packet is still open.</strong>
+          <span>
+            The clinic below is fully usable &mdash; Team, Settings and
+            everything else &mdash; but your consent and signature aren&rsquo;t
+            on file yet.
+          </span>
+          <Link className="st-btn st-notice-action" href="/staff/onboarding">
+            Finish onboarding &rarr;
+          </Link>
+        </div>
       )}
 
       {dbError && (
