@@ -67,6 +67,27 @@ export async function putFile(
 }
 
 /**
+ * The bytes themselves, for a server-side reader that is going to embed
+ * or re-encode the file rather than hand a browser a link — the EOD
+ * report embedding a temp-check photo into the PDF it renders, not a
+ * person opening one in the surveyor vault. signedUrl() stays the right
+ * call for that second case; this one skips the round trip through a
+ * URL a server would just fetch right back anyway.
+ */
+export async function getFile(
+  key: string,
+  which: Bucket = "credentials"
+): Promise<{ bytes: Uint8Array; contentType: string }> {
+  const bucket = bucketName(which);
+  const { data, error } = await client().storage.from(bucket).download(key);
+  if (error || !data) throw new Error(error?.message ?? "download_failed");
+  return {
+    bytes: new Uint8Array(await data.arrayBuffer()),
+    contentType: data.type || "application/octet-stream",
+  };
+}
+
+/**
  * A short-lived link to read one file back.
  *
  * SIGNED AND SHORT, never a public URL. These are licences and

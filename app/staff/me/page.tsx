@@ -18,7 +18,12 @@ import SigninHistory from "@/app/components/staff/SigninHistory";
 
 export const dynamic = "force-dynamic";
 
-export default async function MyRecord() {
+export default async function MyRecord({
+  searchParams,
+}: {
+  searchParams: Promise<{ done?: string }>;
+}) {
+  const { done } = await searchParams;
   const { session, org } = await requireStaff();
   const tenant = await getTenantBySlug(org);
 
@@ -32,6 +37,16 @@ export default async function MyRecord() {
         select brand_color from staff.org_theme where slug = ${org}
       `
     )[0] ?? { brand_color: "#173a8a" },
+    timezone: (
+      await sql<{ timezone: string }[]>`
+        select timezone from staff.orgs where slug = ${org}
+      `
+    )[0]?.timezone,
+    wantsDigest: (
+      await sql<{ wants_digest: boolean }[]>`
+        select wants_digest from staff.users where id = ${session.uid}
+      `
+    )[0]?.wants_digest ?? false,
   }));
   const theme = data.theme;
 
@@ -54,6 +69,13 @@ export default async function MyRecord() {
           Print
         </button>
       </header>
+
+      {done === "digest_updated" && (
+        <div className="st-notice st-no-print" role="status">
+          <strong>Updated.</strong>
+          <span>Takes effect on the next digest.</span>
+        </div>
+      )}
 
       {/* The photo lives on the record rather than in a settings page.
           This is the screen a person already opens to check their own
@@ -178,6 +200,21 @@ export default async function MyRecord() {
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="st-record-section st-no-print">
+        <h2 className="st-h2">Email preferences</h2>
+        <p className="st-page-sub" style={{ marginBottom: 12 }}>
+          The routine digest &mdash; what got done, what did not &mdash; is
+          optional. An out-of-range reading or a missed task always reaches
+          you regardless; there is no switch for those.
+        </p>
+        <form method="POST" action="/api/staff/notifications">
+          <input type="hidden" name="wants" value={data.wantsDigest ? "0" : "1"} />
+          <button className="st-btn" type="submit">
+            {data.wantsDigest ? "Turn off digest emails" : "Turn on digest emails"}
+          </button>
+        </form>
       </section>
 
       <section className="st-record-section st-no-print">

@@ -219,11 +219,24 @@ export default async function SettingsPage({
         </section>
 
         <section className="st-set-block">
-          <h2 className="st-set-h">Scheduled reports</h2>
+          <h2 className="st-set-h">End-of-day report</h2>
           <p className="st-set-b">
-            A link rather than an attachment, because these name people and
-            an emailed PDF cannot be recalled. Sent at 7am in the clinic&rsquo;s
-            own timezone, with the exception count in the subject line.
+            Every administrator on this clinic&rsquo;s team gets today&rsquo;s
+            report automatically, no setup needed &mdash; sent at your
+            evening digest time below, as a real PDF attachment plus a
+            revocable link. Manage who that is from the{" "}
+            <Link href="/staff/team">Team</Link> page.
+          </p>
+        </section>
+
+        <section className="st-set-block">
+          <h2 className="st-set-h">Additional scheduled reports</h2>
+          <p className="st-set-b">
+            For anyone else who wants one &mdash; an outside accountant, a
+            franchise manager with no staff account. A link rather than an
+            attachment here, because these name people and an emailed PDF
+            cannot be recalled. Sent at 7am in the clinic&rsquo;s own
+            timezone, with the exception count in the subject line.
           </p>
 
           <label className="st-field">

@@ -16,20 +16,40 @@ const RECORD_TZ = "America/New_York";
 
 /** Dates in a compliance record are read by people checking whether
  *  something was done in time, so they get an unambiguous format rather
- *  than the locale's. */
-export function formatSignedAt(iso: string | null): string {
+ *  than the locale's.
+ *
+ *  DEFAULTS TO EASTERN, NOT BECAUSE THAT IS CORRECT — because most call
+ *  sites have no org in scope to ask. Pass the org's real IANA timezone
+ *  (staff.orgs.timezone, the same field lib/staff/alerts.ts's
+ *  localStamp() already reads correctly) wherever it is available;
+ *  hardcoding it here for every clinic is the same class of bug that
+ *  file exists to avoid, not a design choice. */
+export function formatSignedAt(iso: string | null, tz: string = RECORD_TZ): string {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: RECORD_TZ,
-    timeZoneName: "short",
-  });
+  try {
+    return d.toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: tz,
+      timeZoneName: "short",
+    });
+  } catch {
+    // An invalid zone must not blank out a signature's timestamp.
+    return d.toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: RECORD_TZ,
+      timeZoneName: "short",
+    });
+  }
 }
 
 /** Just the clock time, for a confirmation read seconds after the thing

@@ -5,6 +5,7 @@ import {
   sendReport,
   type SendOutcome,
 } from "@/lib/staff/report-schedule";
+import { sendEodReports, type EodSendOutcome } from "@/lib/staff/eod-report";
 
 // GET /api/cron/reports — send whatever scheduled log reports are due.
 //
@@ -39,7 +40,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Cross-org read, so platform context. Everything after this is scoped
-  // to one org at a time inside sendReport().
+  // to one org at a time inside sendReport() / sendEodReports().
   const due = await withOrg("", "platform_super_admin", (sql) =>
     dueSubscriptions(sql)
   );
@@ -55,6 +56,44 @@ export async function GET(req: NextRequest) {
   const sent = results.filter((r) => r.ok).length;
   const failed = results.filter((r) => !r.ok);
 
+  // The EOD report, automatic per org, no subscription involved. Fires
+  // at the clinic's own digest_pm_at — "end of day" already had a
+  // clinic-local time attached to it, no new schedule concept needed.
+  // TODAY's local date, not yesterday's: digest_pm_at lands in the
+  // evening of the day it is reporting on, unlike the 7am subscription
+  // sweep above, which is why staff.report_period_due's own "daily"
+  // math (built for that 7am case) is not reused here.
+  const eodDue = await withOrg("", "platform_super_admin", (sql) =>
+    sql<{ slug: string; local_date: string }[]>`
+      select slug, (now() at time zone timezone)::date::text as local_date
+        from staff.orgs
+       where active
+         and date_trunc('hour', now() at time zone timezone)
+             = date_trunc('hour', (now() at time zone timezone)::date + digest_pm_at)
+    `
+  );
+
+  const eodResults: EodSendOutcome[] = [];
+  for (const { slug, local_date } of eodDue) {
+    try {
+      eodResults.push(...(await sendEodReports(slug, local_date)));
+    } catch (err) {
+      console.error(
+        `[cron-reports] EOD for ${slug} failed:`,
+        err instanceof Error ? err.message : "Unknown"
+      );
+      eodResults.push({
+        org: slug,
+        date: local_date,
+        to: "",
+        ok: false,
+        error: err instanceof Error ? err.message : "unknown",
+      });
+    }
+  }
+  const eodSent = eodResults.filter((r) => r.ok).length;
+  const eodFailed = eodResults.filter((r) => !r.ok);
+
   // Reports what was ACTUALLY sent, not what was attempted — the lie the
   // alert sweep used to tell before it was fixed.
   return NextResponse.json({
@@ -63,6 +102,12 @@ export async function GET(req: NextRequest) {
     sent,
     failed: failed.length,
     failures: failed.map((f) => ({ org: f.org, to: f.to, error: f.error })),
+    eod: {
+      orgsDue: eodDue.length,
+      sent: eodSent,
+      failed: eodFailed.length,
+      failures: eodFailed.map((f) => ({ org: f.org, to: f.to, error: f.error })),
+    },
   });
 }
 

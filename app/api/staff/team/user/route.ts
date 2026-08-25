@@ -115,11 +115,31 @@ export async function POST(req: NextRequest) {
         return { ok: "sessions_revoked" };
       }
 
+      // The one preference an administrator can set on somebody else's
+      // behalf. Deliberately just this one: urgent alerts have no column
+      // to disable at all (see supabase/staff-alerts.sql), so there is
+      // nothing else here to toggle.
+      if (action === "toggle_digest") {
+        const wants = String(form.get("wants") ?? "") === "1";
+        await sql`
+          update staff.users set wants_digest = ${wants} where id = ${userId}
+        `;
+        await sql`
+          insert into staff.audit_log (org_slug, actor_id, action, entity, entity_id, detail)
+          values (${org}, ${session.uid}, 'digest_preference_changed', 'user', ${userId},
+                  ${sql.json({ wants_digest: wants })})
+        `;
+        return { ok: "digest_updated" as const };
+      }
+
       return { error: "bad_action" as const };
     });
 
     if ("error" in outcome) {
       return redirectAfterPost(`/staff/team?e=${outcome.error}`);
+    }
+    if (outcome.ok === "digest_updated") {
+      return redirectAfterPost(`/staff/team/${userId}?done=digest_updated`);
     }
     return redirectAfterPost(`/staff/team?done=${outcome.ok}`);
   } catch (err) {

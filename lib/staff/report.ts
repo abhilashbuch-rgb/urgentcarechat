@@ -1,5 +1,7 @@
 import { PDFDocument, StandardFonts } from "pdf-lib";
 import type { StaffSql } from "@/lib/staff/db";
+import { REQUIRED_PHOTO_FORMS } from "@/lib/staff/forms";
+import { getFile } from "@/lib/staff/storage";
 import {
   A4,
   M,
@@ -7,6 +9,7 @@ import {
   type Ctx,
   footerAll,
   heading,
+  need,
   SOFT,
   kv,
   table,
@@ -57,6 +60,28 @@ export interface ReportData {
   /** Templates that were due in the window and never filed. */
   missed: { due_date: string; form_name: string; slot: string | null }[];
   generatedAt: string;
+
+  // The three fields below are only ever populated for the admin EOD
+  // report (see gatherEodExtras) — undefined, not empty arrays, for the
+  // subscription-based report so a reader of that code path is not left
+  // wondering why a section it never asked for renders "none today".
+  signins?: EodSignin[];
+  photos?: EodPhoto[];
+  missingPhotos?: MissingPhotoRow[];
+}
+
+export interface EodSignin {
+  name: string;
+  at: string;
+  method: string | null;
+}
+
+export interface EodPhoto {
+  formName: string;
+  dueDate: string;
+  filedBy: string | null;
+  bytes: Uint8Array;
+  contentType: string;
 }
 
 export interface ReportTotals {
@@ -132,6 +157,112 @@ export async function gatherReport(
   };
 }
 
+/** The three things only the admin EOD report shows: who signed in that
+ *  day, the photos actually taken, and which required ones are missing.
+ *  A separate function from gatherReport() rather than three more
+ *  optional parameters on it, so the widely-used subscription path never
+ *  has to think about a photo bucket or the audit log. */
+export async function gatherEodExtras(
+  sql: StaffSql,
+  org: string,
+  date: string
+): Promise<{ signins: EodSignin[]; photos: EodPhoto[]; missingPhotos: MissingPhotoRow[] }> {
+  const signinRows = await sql<
+    { name: string | null; email: string; at: string; method: string | null }[]
+  >`
+    select coalesce(u.legal_name, u.name) as name, u.email,
+           a.created_at::text as at, a.detail->>'method' as method
+      from staff.audit_log a
+      join staff.users u on u.id = a.actor_id
+     where a.org_slug = ${org} and a.action = 'signin'
+       and a.created_at::date = ${date}::date
+     order by a.created_at
+  `;
+  const signins = signinRows.map((r) => ({
+    name: r.name ?? r.email,
+    at: r.at,
+    method: r.method,
+  }));
+
+  // Every photo actually attached to a log due that day. Fetched here
+  // rather than left as a storage key for renderReport() to resolve,
+  // because rendering must stay a pure function of ReportData — the
+  // storage read (and the network round trip it costs) happens once,
+  // at gather time, same as everything else in this object.
+  const photoRows = await sql<
+    {
+      form_name: string;
+      due_date: string;
+      filed_by: string | null;
+      file_path: string;
+      file_type: string;
+    }[]
+  >`
+    select l.form_name, l.due_date::text as due_date, l.filed_by,
+           p.file_path, p.file_type
+      from staff.report_log_rows l
+      join staff.log_photos p on p.response_id = l.id
+     where l.org_slug = ${org} and l.due_date = ${date}::date
+     order by l.due_date, l.form_name
+  `;
+  const photos: EodPhoto[] = [];
+  for (const r of photoRows) {
+    try {
+      const { bytes, contentType } = await getFile(r.file_path, "media");
+      photos.push({
+        formName: r.form_name,
+        dueDate: r.due_date,
+        filedBy: r.filed_by,
+        bytes,
+        contentType,
+      });
+    } catch (err) {
+      // One unreadable file must not blank the whole report — the PDF
+      // still lists everything else, and the gap is a storage problem
+      // to chase, not a reason to withhold the rest of the day's record.
+      console.error(
+        `[eod-report] photo fetch failed for ${r.file_path}:`,
+        err instanceof Error ? err.message : "Unknown"
+      );
+    }
+  }
+
+  const missingPhotos = await missingRequiredPhotos(sql, org, date, date);
+
+  return { signins, photos, missingPhotos };
+}
+
+export interface MissingPhotoRow {
+  due_date: string;
+  form_name: string;
+  filed_by: string | null;
+}
+
+/** Logs on staff.forms.ts's REQUIRED_PHOTO_FORMS list, filed in the
+ *  window, with no staff.log_photos row. NEVER blocked the log itself —
+ *  see app/components/staff/LogForm.tsx — this is what makes the
+ *  exception visible after the fact instead. */
+export async function missingRequiredPhotos(
+  sql: StaffSql,
+  org: string,
+  periodStart: string,
+  periodEnd: string
+): Promise<MissingPhotoRow[]> {
+  if (REQUIRED_PHOTO_FORMS.size === 0) return [];
+  return sql<MissingPhotoRow[]>`
+    select l.due_date::text as due_date, l.form_name, l.filed_by
+      from staff.report_log_rows l
+     where l.org_slug = ${org}
+       and l.form_slug = any(${Array.from(REQUIRED_PHOTO_FORMS)})
+       and l.due_date between ${periodStart}::date and ${periodEnd}::date
+       and l.submitted_at is not null
+       and not exists (
+         select 1 from staff.log_photos p where p.response_id = l.id
+       )
+     order by l.due_date, l.form_name
+  `;
+}
+
 const CADENCE_LABEL: Record<Cadence, string> = {
   daily: "Daily log report",
   weekly: "Weekly log report",
@@ -151,6 +282,25 @@ function localTime(iso: string | null, tz: string): string {
     }).format(new Date(iso));
   } catch {
     return iso.slice(11, 16);
+  }
+}
+
+/** Embeds one EOD photo, or returns null for a type this build of
+ *  pdf-lib cannot embed. See app/api/staff/logs/photo/route.ts for why
+ *  only JPEG and PNG are ever stored in the first place — this should
+ *  never actually see anything else, but a report generator that throws
+ *  on one bad row and loses the whole document is worse than one that
+ *  skips a photo and keeps going. */
+async function embedPhoto(c: Ctx, p: EodPhoto) {
+  try {
+    if (p.contentType === "image/png") return await c.doc.embedPng(p.bytes);
+    return await c.doc.embedJpg(p.bytes);
+  } catch (err) {
+    console.error(
+      `[eod-report] embed failed for ${p.formName}/${p.dueDate}:`,
+      err instanceof Error ? err.message : "Unknown"
+    );
+    return null;
   }
 }
 
@@ -271,6 +421,62 @@ export async function renderReport(d: ReportData): Promise<Uint8Array> {
     { label: "Where", width: 99, get: (r) => place(r) },
   ];
   table(c, allCols, d.rows, "No logs were filed in this period.");
+
+  // The three EOD-only sections. Undefined, not empty, on every other
+  // report this renderer serves — see the note on ReportData.
+  if (d.missingPhotos && d.missingPhotos.length > 0) {
+    heading(
+      c,
+      "Filed without the required photo",
+      "The reading still saved — a camera failure must never cost the record itself. This is the follow-up list."
+    );
+    table(
+      c,
+      [
+        { label: "Date", width: 90, get: (m: MissingPhotoRow) => m.due_date },
+        { label: "Log", width: 240, get: (m: MissingPhotoRow) => m.form_name },
+        { label: "Filed by", width: 90, get: (m: MissingPhotoRow) => m.filed_by ?? "—" },
+      ],
+      d.missingPhotos,
+      ""
+    );
+  }
+
+  if (d.signins && d.signins.length > 0) {
+    heading(c, "Sign-ins today", "Every authentication event, most recent last.");
+    table(
+      c,
+      [
+        { label: "Time", width: 100, get: (s: EodSignin) => localTime(s.at, d.timezone) },
+        { label: "Name", width: 240, get: (s: EodSignin) => s.name },
+        {
+          label: "Method",
+          width: 80,
+          get: (s: EodSignin) => (s.method === "google" ? "Google" : "Emailed code"),
+        },
+      ],
+      d.signins,
+      "Nobody signed in today."
+    );
+  }
+
+  if (d.photos && d.photos.length > 0) {
+    heading(c, "Photos filed today", "The equipment display or seal photographed with each reading.");
+    for (const p of d.photos) {
+      const embedded = await embedPhoto(c, p);
+      if (!embedded) continue;
+      const boxW = 220;
+      const boxH = (embedded.height / embedded.width) * boxW;
+      need(c, boxH + 26);
+      c.page.drawImage(embedded, { x: M, y: c.y - boxH, width: boxW, height: boxH });
+      c.y -= boxH + 4;
+      text(c, `${p.formName} — ${p.filedBy ?? "unknown"} — ${p.dueDate}`, {
+        size: 8.5,
+        color: SOFT,
+      });
+      c.y -= 8;
+    }
+  }
 
   heading(c, "About this report");
   text(

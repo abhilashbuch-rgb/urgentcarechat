@@ -14,10 +14,20 @@
 // question "was the medical director told about the 49-degree fridge" is
 // answerable either way, which is the whole reason the queue exists.
 
+export interface MailAttachment {
+  filename: string;
+  /** Raw bytes. Base64-encoded per provider's own shape at send time —
+   *  never stored as base64 here, so a caller building one from pdf-lib's
+   *  Uint8Array output does not have to think about encoding twice. */
+  content: Uint8Array;
+  contentType?: string;
+}
+
 export interface Mail {
   to: string;
   subject: string;
   text: string;
+  attachments?: MailAttachment[];
 }
 
 type Provider = "resend" | "postmark" | "sendgrid";
@@ -50,7 +60,17 @@ export async function send(mail: Mail): Promise<void> {
   // A 10-second ceiling. Without it a hung provider connection holds the
   // cron invocation until the platform kills it, and every remaining
   // alert in the sweep waits behind one bad request.
-  const signal = AbortSignal.timeout(10_000);
+  //
+  // A PDF attachment takes longer to accept than a text-only message, so
+  // an attached send gets more room — 10 seconds was tuned for a body of
+  // a few hundred bytes, not a multi-page binder base64-encoded into the
+  // request.
+  const signal = AbortSignal.timeout(mail.attachments?.length ? 30_000 : 10_000);
+
+  // Base64 once, here, rather than in every provider branch below — and
+  // rather than in each caller, which is how a report generator ends up
+  // needing to know three different providers' attachment shapes.
+  const b64 = (bytes: Uint8Array) => Buffer.from(bytes).toString("base64");
 
   let res: Response;
   if (p.name === "resend") {
@@ -66,6 +86,10 @@ export async function send(mail: Mail): Promise<void> {
         to: [mail.to],
         subject: mail.subject,
         text: mail.text,
+        attachments: mail.attachments?.map((a) => ({
+          filename: a.filename,
+          content: b64(a.content),
+        })),
       }),
     });
   } else if (p.name === "postmark") {
@@ -83,6 +107,11 @@ export async function send(mail: Mail): Promise<void> {
         Subject: mail.subject,
         TextBody: mail.text,
         MessageStream: "outbound",
+        Attachments: mail.attachments?.map((a) => ({
+          Name: a.filename,
+          Content: b64(a.content),
+          ContentType: a.contentType ?? "application/octet-stream",
+        })),
       }),
     });
   } else {
@@ -98,6 +127,11 @@ export async function send(mail: Mail): Promise<void> {
         from: { email: from },
         subject: mail.subject,
         content: [{ type: "text/plain", value: mail.text }],
+        attachments: mail.attachments?.map((a) => ({
+          content: b64(a.content),
+          filename: a.filename,
+          type: a.contentType ?? "application/octet-stream",
+        })),
       }),
     });
   }
