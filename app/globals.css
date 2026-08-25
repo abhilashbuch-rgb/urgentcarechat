@@ -3541,6 +3541,27 @@ body {
 
 .st-page { max-width: 1080px; margin: 0 auto; padding: 32px 20px 64px; }
 .st-page-head { margin-bottom: 24px; }
+.st-page-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+/* A single, obvious way to add someone, from the top of the screen —
+   the complaint this answers was "no way of adding employees," not
+   "the form is wrong." Jumps to #invite rather than duplicating it. */
+.st-add-employee {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px 9px 13px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.st-add-employee:hover { background: var(--accent-deep); }
+.st-add-employee span { font-size: 18px; line-height: 1; font-weight: 700; }
 .st-h1 { font-size: 24px; font-weight: 650; letter-spacing: -.02em; }
 .st-h2 { font-size: 15px; font-weight: 650; margin-bottom: 10px; }
 .st-page-sub { font-size: 13px; color: var(--ink-soft); margin-top: 4px; }

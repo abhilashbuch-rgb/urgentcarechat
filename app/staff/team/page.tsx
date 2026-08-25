@@ -87,13 +87,22 @@ export default async function Team({
 
   return (
     <div className="st-page">
-      <header className="st-page-head">
-        <h1 className="st-h1">Team</h1>
-        <p className="st-page-sub">
-          {active.length} active {active.length === 1 ? "person" : "people"}
-          {behind > 0 ? ` · ${behind} with outstanding documents` : " · all current"}
-          {mfaGaps > 0 && ` · ${mfaGaps} without a second factor`}
-        </p>
+      <header className="st-page-head st-page-head-row">
+        <div>
+          <h1 className="st-h1">Team</h1>
+          <p className="st-page-sub">
+            {active.length} active {active.length === 1 ? "person" : "people"}
+            {behind > 0 ? ` · ${behind} with outstanding documents` : " · all current"}
+            {mfaGaps > 0 && ` · ${mfaGaps} without a second factor`}
+          </p>
+        </div>
+        {/* One obvious way in, from the top of the screen — not a form
+            you have to already know is further down the page to find.
+            Jumps to the same invite form rather than duplicating it, so
+            there is still exactly one place that sends an invitation. */}
+        <a className="st-add-employee" href="#invite">
+          <span aria-hidden="true">+</span> Add employee
+        </a>
       </header>
 
       {(done || e) && (
@@ -186,7 +195,7 @@ export default async function Team({
         </section>
       )}
 
-      <section className="st-invite">
+      <section className="st-invite" id="invite">
         <h2 className="st-h2">Invite someone</h2>
         <p className="st-page-sub">
           They get a link at this address that works once and expires in{" "}
