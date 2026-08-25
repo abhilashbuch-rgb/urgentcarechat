@@ -1,6 +1,7 @@
 "use client";
 
 import BrandLockup from "@/app/components/BrandLockup";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import TriageApp from "@/app/components/TriageApp";
 import { ROOT_URL, PRODUCT_NAME } from "@/lib/site";
@@ -27,9 +28,9 @@ function EmbedDocs() {
   return (
     <div className="widget-docs">
       <header className="site-header">
-        <div className="brand">
+        <Link href="/" className="brand" style={{ textDecoration: "none" }}>
           <BrandLockup />
-        </div>
+        </Link>
         <div className="tagline">Embed this widget</div>
       </header>
 
