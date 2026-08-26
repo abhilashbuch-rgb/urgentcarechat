@@ -42,14 +42,13 @@ export const OPERATOR = "Medicin.io LLC";
 /**
  * The contact mailbox.
  *
- * Still the old address, because it is a real inbox someone reads and
- * inventing hello@medicin.io here would print a contact address that
- * bounces — worse than an address on the wrong brand. It is no longer
- * SHOWN anywhere: every place that used to print it now uses link text,
- * so the site never says the old name out loud. When a mailbox exists on
- * the new domain, this line is the only edit.
+ * On the real domain now — this was the one line the earlier comment
+ * here said to change once a mailbox existed on medicin.io, and it now
+ * does. It is still not SHOWN anywhere as literal text: every place
+ * that prints it uses link text instead, so a typo here breaks a link
+ * rather than a sentence on the page.
  */
-export const CONTACT_EMAIL = "urgentcarechat@icloud.com";
+export const CONTACT_EMAIL = "contact@medicin.io";
 
 /** A mailto with the subject pre-filled, so replies arrive sorted. */
 export function contactMailto(subject: string): string {

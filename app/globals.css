@@ -5734,6 +5734,18 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 .tr-lede { font-size: 14.5px; line-height: 1.55; color: var(--ink-soft); margin: 8px 0 24px; }
 .tr-form .st-primary { margin-top: 6px; }
 .tr-fine { font-size: 12px; color: var(--ink-faint); text-align: center; margin-top: 12px; line-height: 1.5; }
+
+.tr-agree {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 4px 0 2px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.tr-agree input { margin-top: 3px; flex-shrink: 0; width: 15px; height: 15px; }
 .tr-done h2 { font-family: var(--serif); font-size: 22px; font-weight: 600; margin-bottom: 10px; }
 .tr-done p { font-size: 14.5px; line-height: 1.6; color: var(--ink-soft); margin-bottom: 20px; }
 .tr-done .lp-btn-primary { display: block; text-align: center; }

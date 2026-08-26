@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
     email?: string;
     facility?: string;
     demo?: string;
+    agreed?: boolean;
   };
   try {
     body = await req.json();
@@ -53,12 +54,21 @@ export async function POST(req: NextRequest) {
     ? String(body.facility)
     : "urgent_care";
   const email = (body.email ?? "").trim().toLowerCase().slice(0, 160);
+  const agreed = body.agreed === true;
 
   if (clinic.length < 2) {
     return NextResponse.json({ error: "missing_clinic" }, { status: 400 });
   }
   if (!isEmail(email)) {
     return NextResponse.json({ error: "bad_email" }, { status: 400 });
+  }
+  // Checked here too, not only by staff.provision_trial()'s own guard —
+  // a clean 400 for a form submitted around the checkbox (or a stale
+  // client) reads to the visitor as their own mistake to fix, rather
+  // than the raw "server_error" the DB exception would otherwise
+  // surface as.
+  if (!agreed) {
+    return NextResponse.json({ error: "agreement_not_accepted" }, { status: 400 });
   }
 
   // Checked before trying, so the homepage's primary button fails
@@ -100,7 +110,7 @@ export async function POST(req: NextRequest) {
     const slug = await withOrg("", "platform_super_admin", async (sql) => {
       const rows = await sql<{ provision_trial: string }[]>`
         select staff.provision_trial(
-          ${slugFrom(clinic, email)}, ${clinic}, ${email}, 30, ${facility}
+          ${slugFrom(clinic, email)}, ${clinic}, ${email}, 30, ${facility}, ${agreed}
         )
       `;
       return rows[0].provision_trial;
