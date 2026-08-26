@@ -2257,6 +2257,120 @@ body {
   .sec-block { padding-top: 34px; }
 }
 
+/* ---------- compliance guides (reuses the .lp shell, same system as
+   .sec-* — see the security page above) ---------- */
+.guide-head { padding-top: 64px; padding-bottom: 8px; max-width: 780px; }
+.guide-h1 { font-size: clamp(28px, 3.4vw, 40px); margin-bottom: 16px; }
+
+.guide-block { padding-top: 40px; padding-bottom: 4px; max-width: 780px; }
+
+.guide-h2 {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: clamp(20px, 2.2vw, 25px);
+  letter-spacing: -0.012em;
+  margin-bottom: 12px;
+}
+
+.guide-block p {
+  font-size: 15.5px;
+  line-height: 1.68;
+  color: var(--l-ink-soft);
+  max-width: 70ch;
+  margin-bottom: 18px;
+}
+.guide-block p strong { color: var(--l-ink); }
+
+.guide-callout {
+  border-left: 3px solid var(--l-teal);
+  background: var(--l-teal-soft);
+  border-radius: 0 10px 10px 0;
+  padding: 16px 18px;
+  font-size: 14.5px;
+  line-height: 1.62;
+  color: var(--l-ink);
+  max-width: 78ch;
+  margin: 8px 0 26px;
+}
+.guide-callout strong { color: var(--l-navy-deep); }
+
+.guide-list { list-style: none; display: grid; gap: 12px; max-width: 78ch; margin-bottom: 22px; }
+.guide-list li {
+  position: relative;
+  padding-left: 26px;
+  font-size: 14.8px;
+  line-height: 1.62;
+  color: var(--l-ink-soft);
+}
+.guide-list li::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 8px;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: var(--l-navy);
+}
+.guide-list strong { color: var(--l-ink); }
+
+.guide-cite {
+  display: block;
+  margin-top: -8px;
+  margin-bottom: 26px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--l-ink-faint);
+}
+
+.guide-close { padding: 40px 0 88px; max-width: 780px; }
+.guide-close .lp-btn-primary { margin-top: 8px; }
+
+.guide-back { display: inline-block; margin-bottom: 18px; font-size: 13.5px; color: var(--l-ink-faint); }
+
+/* the /guides index */
+.guide-index-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 18px;
+  margin: 8px 0 60px;
+}
+
+.guide-card {
+  background: var(--l-card);
+  border: 1px solid var(--l-rule);
+  border-radius: 14px;
+  padding: 22px;
+  box-shadow: var(--l-shadow);
+  text-decoration: none;
+  display: block;
+  transition: border-color .12s ease, box-shadow .12s ease;
+}
+.guide-card:hover { border-color: var(--l-navy); box-shadow: var(--l-shadow-lg); }
+
+.guide-card-eyebrow {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--l-ink-faint);
+  font-weight: 600;
+}
+
+.guide-card h2 {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 19px;
+  margin: 8px 0 8px;
+  color: var(--l-ink);
+}
+.guide-card p { font-size: 14px; line-height: 1.55; color: var(--l-ink-soft); margin: 0; }
+
+@media (max-width: 780px) {
+  .guide-head { padding-top: 44px; }
+  .guide-block { padding-top: 30px; }
+}
+
 /* ---------- live chat as a bounded card in the landing hero ----------
    The chat normally owns the viewport: .input-bar is position:fixed to
    the bottom of the window and .chat grows without limit. Inside the

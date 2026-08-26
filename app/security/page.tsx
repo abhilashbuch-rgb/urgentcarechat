@@ -292,6 +292,7 @@ export default function SecurityPage() {
           </span>
           <span className="lp-footer-links">
             <Link href="/">Home</Link>
+            <Link href="/guides">Guides</Link>
             <Link href="/terms">Terms</Link>
             <Link href="/privacy">Privacy</Link>
             <Link href="/disclaimer">Disclaimer</Link>

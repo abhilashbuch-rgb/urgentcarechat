@@ -34,5 +34,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // them is a page anyone searched for; they carry noindex and are
     // absent here.
     { url: `${SITE_URL}/demo`, lastModified: now, changeFrequency: "monthly", priority: 0.9 },
+    // Organic entry points, not top-of-funnel like /start or /demo — a
+    // reader here searched a regulation, not this product's name. Listed
+    // individually rather than relying on the index page's own links,
+    // since a guide can rank on its own long before /guides does.
+    { url: `${SITE_URL}/guides`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${SITE_URL}/guides/osha-sharps-injury-log`, lastModified: now, changeFrequency: "yearly", priority: 0.5 },
+    { url: `${SITE_URL}/guides/hazardous-chemical-inventory-osha`, lastModified: now, changeFrequency: "yearly", priority: 0.5 },
+    { url: `${SITE_URL}/guides/clia-waived-testing-requirements`, lastModified: now, changeFrequency: "yearly", priority: 0.5 },
   ];
 }
