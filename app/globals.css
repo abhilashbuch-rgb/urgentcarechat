@@ -4169,6 +4169,39 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 }
 .st-sign-fine { font-size: 11.5px; color: var(--ink-faint); margin-top: 12px; line-height: 1.5; }
 
+/* Same calm notice as .st-sign-error, not a green box — this app
+   carries status in the word, not the colour, everywhere else (see the
+   accreditation matrix key), and a send confirmation is no more alarming
+   than a validation message. */
+.st-sign-ok {
+  font-size: 13px;
+  color: var(--blue-900);
+  background: var(--blue-100);
+  border-radius: 6px;
+  padding: 9px 11px;
+  margin-bottom: 12px;
+}
+
+/* ---------- the second way to get the binder out: emailed ---------- */
+.st-email-binder { margin-top: 18px; }
+.st-email-binder-row { display: flex; gap: 8px; }
+.st-email-binder-row .st-input { flex: 1; min-width: 0; }
+
+.st-secondary {
+  flex-shrink: 0;
+  padding: 0 16px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  background: #fff;
+  border: 1px solid var(--rule-firm);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.st-secondary:hover:not(:disabled) { background: var(--blue-050); }
+.st-secondary:disabled { color: var(--ink-faint); border-color: var(--rule); cursor: not-allowed; }
+
 .st-consent {
   background: var(--blue-050);
   border: 1px solid var(--rule);
