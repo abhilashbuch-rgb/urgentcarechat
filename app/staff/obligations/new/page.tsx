@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 
 export default async function NewObligationPage() {
   const { session } = await requireStaff();
-  if (!atLeast(session.role, "org_admin")) redirect("/staff/obligations");
+  if (!atLeast(session.role, "manager")) redirect("/staff/obligations");
 
   const team = await withSession(
     session,

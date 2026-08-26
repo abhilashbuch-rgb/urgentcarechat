@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
   // Adding an obligation commits the whole organization to a deadline and
   // puts somebody's name against it. Administrators only.
-  if (!atLeast(session.role, "org_admin")) {
+  if (!atLeast(session.role, "manager")) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 

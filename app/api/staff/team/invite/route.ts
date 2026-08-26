@@ -26,14 +26,14 @@ const isEmail = (s: string) => /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(s);
 // Mirrors staff.user_role. Anything else is refused rather than
 // defaulted: silently downgrading a mistyped 'admin' to staff would look
 // like it worked and leave the clinic without an administrator.
-const ROLES = new Set<InviteRole>(["staff", "org_admin"]);
+const ROLES = new Set<InviteRole>(["staff", "manager", "org_admin"]);
 
 export async function POST(req: NextRequest) {
   const auth = await resolve();
   if (!auth.ok) return redirectAfterPost(`/staff/signin?e=${auth.reason}`);
   const { session, org } = auth.ctx;
 
-  if (!atLeast(session.role, "org_admin")) {
+  if (!atLeast(session.role, "manager")) {
     return redirectAfterPost("/staff?e=forbidden");
   }
 
@@ -57,6 +57,15 @@ export async function POST(req: NextRequest) {
 
   if (!isEmail(email)) return redirectAfterPost("/staff/team?e=bad_email");
   if (!ROLES.has(roleRaw)) return redirectAfterPost("/staff/team?e=bad_role");
+
+  // A MANAGER CANNOT MINT AN OWNER. They oversee the staff and the
+  // day-to-day of the clinic, but granting somebody the role that reaches
+  // billing is the one door that stays the owner's alone — otherwise a
+  // manager could invite themselves a peer with full access, which
+  // defeats the whole point of a role that sits below one.
+  if (roleRaw === "org_admin" && !atLeast(session.role, "org_admin")) {
+    return redirectAfterPost("/staff/team?e=owner_only_role");
+  }
 
   try {
     // A plain-staff invite whose address already works at one of this

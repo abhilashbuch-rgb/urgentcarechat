@@ -25,6 +25,8 @@ const NOTICES: Record<string, string> = {
   last_admin: "That would leave this organization with no active administrator.",
   not_found: "No such person in this organization.",
   server_error: "That didn't go through. Nothing changed.",
+  owner_only_role: "Only the owner can make someone an administrator.",
+  not_permitted: "Only the owner can manage another administrator's account.",
   invited: "Invitation sent. The link works once and expires in 72 hours.",
   linked:
     "Added. They already have an account at one of your other clinics, so this doesn't cost an extra seat, and their credentials carried over — they'll see this clinic listed next time they sign in.",
@@ -72,9 +74,10 @@ export default async function Team({
   const { session } = await requireStaff();
   const { done, e } = await searchParams;
 
-  // The nav already hides this link below org_admin, but hiding a link is
+  // The nav already hides this link below manager, but hiding a link is
   // not access control — someone who types the URL gets the same answer.
-  if (!atLeast(session.role, "org_admin")) redirect("/staff");
+  if (!atLeast(session.role, "manager")) redirect("/staff");
+  const isOwner = atLeast(session.role, "org_admin");
 
   const { team, invites, seats, unassigned, bill } = await withSession(
     session,
@@ -240,12 +243,28 @@ export default async function Team({
 
           {/* THE ADMINISTRATOR PICKS THIS, NOT THE INVITEE. A new hire
               choosing their own permissions on their first morning is
-              the one moment nobody is watching. */}
+              the one moment nobody is watching.
+
+              THREE LEVELS, NOT TWO. Staff does clinical work. A manager
+              runs the team &mdash; same Team page, same roster, same
+              register, same audit trail as the owner &mdash; but cannot
+              touch billing or subscriptions, and cannot create another
+              administrator. Only the owner sees that third option; a
+              manager sending an invite is only ever offered staff or
+              another manager, both here and on the server that receives
+              this form. */}
           <label className="st-field">
-            <span className="st-field-label">Can administer</span>
+            <span className="st-field-label">Access level</span>
             <select className="st-input" name="role" defaultValue="staff">
-              <option value="staff">No &mdash; clinical staff</option>
-              <option value="org_admin">Yes &mdash; administrator</option>
+              <option value="staff">Staff &mdash; clinical work only</option>
+              <option value="manager">
+                Manager &mdash; runs the team, not billing
+              </option>
+              {isOwner && (
+                <option value="org_admin">
+                  Administrator &mdash; full access, including billing
+                </option>
+              )}
             </select>
           </label>
 
@@ -275,6 +294,9 @@ export default async function Team({
                       {i.email}
                       {i.role === "org_admin" && (
                         <span className="st-flag-admin">Administrator</span>
+                      )}
+                      {i.role === "manager" && (
+                        <span className="st-flag-admin">Manager</span>
                       )}
                     </td>
                     <td>{i.job_role ? JOB_LABELS[i.job_role] ?? i.job_role : "\u2014"}</td>
@@ -382,9 +404,15 @@ export default async function Team({
 
                   {/* Plain forms. Each is one POST that navigates, so
                       there is never a button that looks like it worked
-                      when it didn't. */}
+                      when it didn't. NO BUTTON A MANAGER CANNOT USE: the
+                      API already refuses a manager acting on an owner's
+                      account (see api/staff/team/user/route.ts), and a
+                      row of buttons that all fail the same way teaches
+                      nothing except to stop trying. */}
                   <td className="st-cell-actions">
-                    {m.active ? (
+                    {!isOwner && (m.role === "org_admin" || m.role === "platform_super_admin") ? (
+                      <span className="st-cell-sub">Owner-managed</span>
+                    ) : m.active ? (
                       <>
                         {/* Not offered for yourself. The API refuses it
                             too — this just means nobody is invited to

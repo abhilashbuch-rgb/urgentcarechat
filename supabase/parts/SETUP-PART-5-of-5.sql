@@ -13,6 +13,10 @@
 --   staff-optional-logs
 --   staff-seats
 --   staff-founder-job
+--   staff-multisite
+--   staff-multisite-worker
+--   staff-eod-report
+--   staff-agreement
 -- ============================================================
 
 -- ========== staff-privacy-rules.sql ==========
@@ -511,13 +515,35 @@ update staff.form_templates
    set optional = true
  where slug in ('radiation-apron', 'laser-safety');
 
--- WHAT IS DELIBERATELY NOT ON THAT LIST. The narcotics count, the crash
--- cart, the fridge, the front desk close. A clinic that stocks no
--- controlled substances genuinely does not need a count — but "we do not
--- have any" is a claim that changes with one delivery, and a log the
--- clinic switched off in March is not there to catch it in June. That
--- one stays on and gets filed as "none on site", which is a record.
--- Nothing above is switched off to save somebody thirty seconds.
+-- WHAT IS DELIBERATELY NOT ON THAT LIST. The crash cart, the fridge, the
+-- front desk close. Nothing above is switched off to save somebody
+-- thirty seconds.
+
+
+-- ---------- Controlled substances and hazardous chemicals ----------
+--
+-- These were on the "not on that list" line above until a real clinic
+-- asked for this by name: no federal rule makes a clinic count
+-- controlled substances it does not stock or inventory chemicals it does
+-- not have, and a clinic with neither has nothing to file here.
+--
+-- STAYS ON BY DEFAULT WHERE OFFERED, same reasoning as the apron and the
+-- laser log just above: a clinic that DOES stock narcotics or handle
+-- hazardous chemicals and stops seeing the log is a worse failure than a
+-- clinic with neither seeing one row it can switch off in Settings.
+update staff.form_templates
+   set optional = true
+ where slug in ('narcotics-count', 'hazcom-inventory');
+
+-- afc confirmed directly it has neither. Off now, for that clinic only —
+-- every other org keeps its current default. The template stays on the
+-- org's row rather than being deleted, so a delivery of controlled
+-- substances or a new chemical on the shelf is one Settings toggle away
+-- from being logged again, not a support ticket.
+update staff.form_templates
+   set active = false
+ where org_slug = 'afc'
+   and slug in ('narcotics-count', 'hazcom-inventory');
 
 
 -- ============================================================
@@ -840,7 +866,7 @@ grant select on staff.seat_bill to staff_app;
 -- ============================================================
 
 create or replace function staff.provision_trial(
-  p_slug text, p_name text, p_email text, p_days int default 14,
+  p_slug text, p_name text, p_email text, p_days int default 30,
   p_facility text default 'urgent_care'
 ) returns text
 language plpgsql
@@ -937,3 +963,744 @@ update staff.users
    set job_role = 'center_admin'
  where role = 'org_admin'
    and job_role is null;
+
+
+-- ========== staff-multisite.sql ==========
+
+-- ============================================================
+-- MULTI-SITE, FINISHED: PRICE THE CLINIC, NOT THE PERSON, AND LET
+-- SOMEBODY ACTUALLY REACH THE SECOND ONE
+--
+-- Run AFTER supabase/staff-facility.sql. Idempotent.
+--
+-- staff-facility.sql built staff.org_groups, staff.user_orgs and
+-- staff.add_clinic() — the data model for an owner who runs more than
+-- one site. Nothing in the app ever called any of it. This file finishes
+-- the job: fixes the one thing add_clinic() got wrong, and adds the two
+-- functions the application layer needs that did not exist yet.
+--
+-- ---------------------------------------------------------------
+-- BUG: A SECOND CLINIC WAS FREE
+-- ---------------------------------------------------------------
+-- add_clinic() copied plan, subscription_status and is_read_only straight
+-- from the home clinic. An owner already paying and active would have
+-- their new clinic created already-active — no charge, ever, for as many
+-- clinics as they cared to add. The landing page has always said
+-- otherwise: "$149/clinic/month... no volume discount... Groups are
+-- handled by adding clinics, each at the same price."
+--
+-- Fixed the same way a brand-new signup is priced: the new clinic gets
+-- its own 30-day trial, same as provision_trial(). No new billing
+-- mechanism needed — staff.org_is_read_only() already flips a trial to
+-- read-only on read once trial_ends_on passes, and the Stripe webhook
+-- (app/api/webhooks/stripe/route.ts) already accepts a Payment Link
+-- completion carrying client_reference_id for an EXISTING org slug,
+-- specifically so "an existing clinic adding a location" attaches a
+-- subscription to the clinic just created rather than provisioning a
+-- third one. That comment predates this file; this is what it was
+-- waiting for.
+-- ---------------------------------------------------------------
+-- BUG: A GRANT WITH NO ROW BEHIND IT
+-- ---------------------------------------------------------------
+-- staff.user_orgs grants access; it does not create staff.users row in
+-- the new org. But almost everything else in this schema — a profile, a
+-- credential, a signed document, the onboarding gates, an audit log
+-- entry — is keyed to a user_id THAT LIVES IN THAT ORG under RLS. An
+-- owner who switched in on the grant alone had a role and nothing to
+-- attach it to: /staff read their profile as "does not exist" and sent
+-- them straight into onboarding, for a clinic they may never work a
+-- shift at.
+--
+-- staff.users gets a row for them too now — reachable_via_switch (below)
+-- marks it as what it is: an administrative identity, not a place to
+-- sign in directly.
+--
+-- WHY NOT JUST A SECOND EMAIL MATCH. staff.resolve_signin() is the one
+-- function a Google or emailed-code sign-in trusts to say which org an
+-- address belongs to, and it refuses outright the moment an email
+-- matches staff.users in two orgs — deliberately, because picking one
+-- for a real ambiguous case would be a security bug, not a convenience.
+-- A second row with the same email would trip that refusal for every
+-- multi-site owner trying to sign in normally, which is the opposite of
+-- what this feature is for. reachable_via_switch excludes exactly this
+-- row from that lookup: direct sign-in still resolves to one org, the
+-- home one, unchanged for every existing user; the second clinic is only
+-- ever reached through the in-app switcher, which does not go through
+-- resolve_signin at all.
+-- ---------------------------------------------------------------
+-- BUG: THE SESSION LAYER HAD NO CONCEPT OF A SECOND CLINIC
+-- ---------------------------------------------------------------
+-- Every request re-validates the session against staff.users.org_slug —
+-- the person's ONE home clinic — and refuses ("revoked") on any mismatch.
+-- staff.user_orgs granting access to a second clinic changed nothing
+-- there: the moment a session's org claim named the second clinic, the
+-- live check would kick it straight back out.
+--
+-- staff.session_check_for() below is the fix: given a user and a
+-- candidate org, it returns the role that applies there — the home role
+-- if it's the home clinic, the granted role from user_orgs if it's a
+-- second one, or no row at all if neither, which is a plain "no". Called
+-- instead of the org-blind staff.session_checks view.
+-- ---------------------------------------------------------------
+-- BUG: staff.my_orgs COULD NOT ACTUALLY LIST A SECOND CLINIC
+-- ---------------------------------------------------------------
+-- staff.my_orgs is a plain view (security_invoker), and its join to
+-- staff.orgs is subject to that table's own RLS policy — "your org, or
+-- you are the platform super admin" — which only ever allows ONE org at
+-- a time. Queried from inside any single clinic's request, the join
+-- silently drops every other clinic's row. It was never wrong so much as
+-- untestable from the one context the app ever runs a query in.
+--
+-- staff.list_my_orgs() replaces it for the switcher UI: a SECURITY
+-- DEFINER function, same bootstrap pattern as staff.resolve_signin() —
+-- it is the one place allowed to look across orgs, and it returns
+-- nothing but the rows a switcher screen needs.
+-- ============================================================
+
+
+-- ---------- 0. The administrative-identity marker ----------
+
+alter table staff.users
+  add column if not exists reachable_via_switch boolean not null default false;
+
+-- Redefined only to add "and not reachable_via_switch" — everything else
+-- is unchanged from staff-single-domain.sql. Direct sign-in still
+-- resolves to exactly the rows it always did for every account that has
+-- never touched multi-site; an administrative identity row from
+-- add_clinic() is the one new kind of row this now has to skip, because
+-- it exists to be reached by the in-app switcher, not by Google or an
+-- emailed code.
+create or replace function staff.resolve_signin(p_email text, p_google_sub text)
+returns table (org_slug text, member_role staff.user_role, existing boolean)
+language sql
+security definer
+set search_path = pg_catalog, public
+as $$
+  select u.org_slug, u.role, true
+    from staff.users u
+   where u.active
+     and not u.reachable_via_switch
+     and (u.google_sub = p_google_sub or lower(u.email) = lower(p_email))
+   limit 2
+$$;
+
+revoke all on function staff.resolve_signin(text, text) from public;
+grant execute on function staff.resolve_signin(text, text) to staff_app;
+
+
+-- ---------- 1. A second clinic starts on its own trial ----------
+
+create or replace function staff.add_clinic(
+  p_owner_email text, p_slug text, p_name text, p_facility text
+) returns text
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+declare
+  home_slug text;
+  home_group uuid;
+  final_slug text;
+  n int := 1;
+  owner_id uuid;
+  owner_name text;
+  owner_legal_name text;
+  home_billing_email text;
+begin
+  select u.org_slug, u.id, u.name, u.legal_name
+    into home_slug, owner_id, owner_name, owner_legal_name
+    from staff.users u
+   where lower(u.email) = lower(p_owner_email)
+     and u.role in ('org_admin', 'platform_super_admin')
+     and u.active
+   limit 1;
+  if home_slug is null then
+    raise exception 'no owning account for %', p_owner_email
+      using errcode = 'insufficient_privilege';
+  end if;
+
+  final_slug := p_slug;
+  while exists (select 1 from staff.orgs where slug = final_slug) loop
+    n := n + 1;
+    final_slug := p_slug || '-' || n;
+  end loop;
+
+  select group_id into home_group from staff.orgs where slug = home_slug;
+  if home_group is null then
+    insert into staff.org_groups (name)
+    select coalesce(o.name, home_slug) from staff.orgs o where o.slug = home_slug
+    returning id into home_group;
+    update staff.orgs set group_id = home_group where slug = home_slug;
+  end if;
+
+  select billing_email into home_billing_email
+    from staff.orgs where slug = home_slug;
+
+  -- OWN TRIAL, NOT THE HOME CLINIC'S LIVE STATE. plan/subscription_status
+  -- /is_read_only/trial_ends_on are the four columns that decide whether
+  -- a clinic can file — this is the fix, not a detail of it.
+  insert into staff.orgs (slug, name, plan, subscription_status, is_read_only,
+                          trial_ends_on, billing_email, facility_type, group_id)
+  values (final_slug, p_name, 'trial', 'trialing', false,
+          current_date + 30, home_billing_email,
+          coalesce(p_facility, 'urgent_care'), home_group);
+
+  -- The owner reaches the new clinic as an administrator; their home org
+  -- is unchanged, so their session still opens where it always did.
+  insert into staff.user_orgs (user_id, org_slug, role, granted_by)
+  values (owner_id, final_slug, 'org_admin', owner_id)
+  on conflict do nothing;
+
+  -- The administrative identity itself (see the note above this
+  -- function). reachable_via_switch = true keeps it out of
+  -- staff.resolve_signin() — this person still only ever signs in
+  -- directly at their home clinic. Name and legal name are carried over
+  -- so the profile step, if they're later invited to actually work a
+  -- shift here, is not asking a stranger's question of someone who
+  -- already answered it once; job_role/job_confirmed_at are left unset
+  -- deliberately, same as staff-founder-job.sql — center_admin fits, but
+  -- they still see and click the real confirmation screen for THIS
+  -- clinic rather than having it silently assumed.
+  -- No ON CONFLICT clause: final_slug was just proven not to exist above,
+  -- so (email, org_slug) cannot already have a row.
+  insert into staff.users (org_slug, email, name, role, job_role, legal_name,
+                           reachable_via_switch)
+  values (final_slug, lower(p_owner_email), owner_name, 'org_admin',
+          'center_admin', owner_legal_name, true);
+
+  insert into staff.org_invites (org_slug, email, role)
+  values (final_slug, lower(p_owner_email), 'org_admin')
+  on conflict do nothing;
+
+  perform staff.seed_facility(final_slug);
+
+  return final_slug;
+end $$;
+
+revoke all on function staff.add_clinic(text, text, text, text) from public;
+grant execute on function staff.add_clinic(text, text, text, text) to staff_app;
+
+
+-- ---------- 2. Which role a person holds in a GIVEN clinic ----------
+
+-- The org-aware replacement for staff.session_checks. Returns one row —
+-- home clinic or a granted one — or none at all, which is the correct
+-- "no" for a clinic this person cannot reach. active/session_epoch/
+-- mfa_enrolled live on the person, not the clinic, so they are the same
+-- either way; role is the one thing that actually depends on which
+-- clinic was asked about.
+create or replace function staff.session_check_for(p_uid uuid, p_org text)
+returns table (
+  active boolean,
+  role staff.user_role,
+  session_epoch integer,
+  mfa_enrolled boolean
+)
+language sql stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  select u.active,
+         case when u.org_slug = p_org then u.role else m.role end,
+         u.session_epoch,
+         (u.totp_confirmed_at is not null)
+    from staff.users u
+    left join staff.user_orgs m
+      on m.user_id = u.id and m.org_slug = p_org
+   where u.id = p_uid
+     and (u.org_slug = p_org or m.org_slug is not null)
+   limit 1
+$$;
+
+revoke all on function staff.session_check_for(uuid, text) from public;
+grant execute on function staff.session_check_for(uuid, text) to staff_app;
+
+
+-- ---------- 3. Every clinic a person can reach, for the switcher ----------
+
+create or replace function staff.list_my_orgs(p_uid uuid)
+returns table (
+  slug text,
+  name text,
+  facility_type text,
+  member_role staff.user_role,
+  is_home boolean,
+  subscription_status text,
+  is_read_only boolean,
+  trial_ends_on date
+)
+language sql stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  select o.slug, o.name, o.facility_type, u.role, true,
+         o.subscription_status, o.is_read_only, o.trial_ends_on
+    from staff.users u
+    join staff.orgs o on o.slug = u.org_slug
+   where u.id = p_uid and u.active
+  union
+  select o.slug, o.name, o.facility_type, m.role, false,
+         o.subscription_status, o.is_read_only, o.trial_ends_on
+    from staff.user_orgs m
+    join staff.orgs o on o.slug = m.org_slug
+   where m.user_id = p_uid
+$$;
+
+revoke all on function staff.list_my_orgs(uuid) from public;
+grant execute on function staff.list_my_orgs(uuid) to staff_app;
+
+
+-- ========== staff-multisite-worker.sql ==========
+
+-- ============================================================
+-- ONE PERSON, WORKING AT MORE THAN ONE OF THE SAME OWNER'S CLINICS
+--
+-- Run AFTER supabase/staff-multisite.sql. Idempotent.
+--
+-- staff-multisite.sql solved a different problem: an OWNER administering
+-- a second clinic without ever working a shift there, on purpose — see
+-- its header. The "administrative identity" row it creates deliberately
+-- has no working profile at the second clinic: no shift board, no logs,
+-- because an owner clicking into Team at a site they don't staff should
+-- not also be handed that site's fridge log to file.
+--
+-- A MEDICAL ASSISTANT WHO ROTATES BETWEEN THREE OF THE SAME OWNER'S SITES
+-- NEEDS THE OPPOSITE: a real, working profile — logs, rounds, her own
+-- credentials — at every site she's actually scheduled at.
+--
+-- WHY NOT ONE IDENTITY ACROSS ALL THREE. staff.users.id is a single
+-- global primary key, and nearly everything in this schema — credentials,
+-- signed documents, log entries, the audit trail — hangs off that id
+-- WITHIN one org's RLS. Making the same id reappear in three orgs' worth
+-- of staff.users rows would mean rewriting every foreign key in the
+-- schema to a composite key. Not worth it for one rotating employee.
+--
+-- WHAT THIS BUILDS INSTEAD: three separate staff.users rows — her own
+-- account, her own onboarding, her own job at each site (a rotating MA at
+-- one clinic can be front desk at another; nothing here assumes the job
+-- is the same) — linked by ONE shared person_key so the product can still
+-- answer "is this the same person" without pretending they are the same
+-- row:
+--
+--   SIGN-IN. One email, up to three matching accounts. Today that trips
+--   staff.resolve_signin()'s ambiguity refusal — deliberately, because a
+--   real collision (two unrelated people who happen to share an email
+--   pattern) must never have the software guess which org to open. A
+--   linked set is not that collision; it is the one case the refusal's
+--   own comment says has "no screen for" it yet. This file adds the
+--   person_key resolve_signin() already needs to tell the two apart; the
+--   picker screen itself is application code, not SQL.
+--
+--   BILLING. She is one employee, not three — staff.seat_usage is
+--   amended so only her HOME row (person_key = id) counts toward a
+--   clinic's seat usage; the sites she's linked into see her on the
+--   roster but are not billed for her.
+--
+--   CREDENTIALS. A BLS card doesn't change per building. Linking copies
+--   her current ones over so she isn't retyping the same expiry date
+--   three times; the new site's onboarding still makes her confirm the
+--   JOB and sign that site's OWN policy packet, because those genuinely
+--   differ per clinic.
+-- ============================================================
+
+
+-- ---------- 0. The shared key ----------
+--
+-- Defaults to a row's own id — "home, and the only place this person
+-- exists" — for every account that was never linked. Set on INSERT rather
+-- than via a column DEFAULT because a default cannot reference the row's
+-- own generated id; a BEFORE INSERT trigger can, once the id default has
+-- already run.
+alter table staff.users
+  add column if not exists person_key uuid;
+
+create or replace function staff.users_default_person_key()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.person_key is null then
+    new.person_key := new.id;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists staff_users_person_key on staff.users;
+create trigger staff_users_person_key
+  before insert on staff.users
+  for each row execute function staff.users_default_person_key();
+
+-- Backfill: every row that predates this file is its own home.
+update staff.users set person_key = id where person_key is null;
+
+alter table staff.users alter column person_key set not null;
+
+create index if not exists staff_users_person_key
+  on staff.users (person_key);
+
+
+-- ---------- 1. resolve_signin() learns to tell "linked" from "collision" ----------
+--
+-- Same query as staff-multisite.sql's version, with person_key and the
+-- clinic's display name added — everything the sign-in picker needs to
+-- render without a second cross-org round trip. Still at most 2 rows:
+-- the caller does not need every clinic here, only enough to know
+-- whether there is more than one and, if so, whether they are the same
+-- person wearing two badges or a genuine ambiguity to refuse.
+--
+-- For three or more linked sites the picker still needs the full list —
+-- staff.list_my_orgs_for_person() below is what it calls once it knows
+-- this is a linked account, not a collision.
+--
+-- DROPPED FIRST, not CREATE OR REPLACE. Postgres refuses to replace a
+-- function whose OUT-parameter row shape changes — and adding person_key
+-- and org_name does change it — so a plain CREATE OR REPLACE here fails
+-- with "cannot change return type of existing function" the moment this
+-- file lands on a database that already ran staff-multisite.sql's
+-- version.
+drop function if exists staff.resolve_signin(text, text);
+create function staff.resolve_signin(p_email text, p_google_sub text)
+returns table (
+  org_slug text,
+  member_role staff.user_role,
+  existing boolean,
+  person_key uuid,
+  org_name text
+)
+language sql
+security definer
+set search_path = pg_catalog, public
+as $$
+  select u.org_slug, u.role, true, u.person_key, o.name
+    from staff.users u
+    join staff.orgs o on o.slug = u.org_slug
+   where u.active
+     and not u.reachable_via_switch
+     and (u.google_sub = p_google_sub or lower(u.email) = lower(p_email))
+   limit 2
+$$;
+
+revoke all on function staff.resolve_signin(text, text) from public;
+grant execute on function staff.resolve_signin(text, text) to staff_app;
+
+-- Every clinic a linked person can sign into directly — not the switcher
+-- (staff.list_my_orgs(), which is for an owner's administrative reach),
+-- this is her own working accounts. Called once resolve_signin() has
+-- already established the match is a linked person, not a collision.
+create or replace function staff.list_my_orgs_for_person(p_person_key uuid)
+returns table (org_slug text, org_name text, member_role staff.user_role)
+language sql stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  select u.org_slug, o.name, u.role
+    from staff.users u
+    join staff.orgs o on o.slug = u.org_slug
+   where u.person_key = p_person_key
+     and u.active
+     and not u.reachable_via_switch
+   order by o.name
+$$;
+
+revoke all on function staff.list_my_orgs_for_person(uuid) from public;
+grant execute on function staff.list_my_orgs_for_person(uuid) to staff_app;
+
+
+-- ---------- 2. Adding an existing person to another of the owner's sites ----------
+--
+-- NOT an invite. She already proved who she is at her home clinic; this
+-- is the owner (or an admin at the target site) vouching that the same
+-- person also works here — the same trust an owner already has to
+-- administer a second clinic in the first place. So no email, no link to
+-- click: she simply sees the new clinic next time she signs in.
+--
+-- SAME GROUP ONLY. Linking across staff.orgs.group_id is the whole
+-- safety boundary here — it is exactly the set of clinics one owner
+-- already controls, the same boundary staff.add_clinic() trusts for
+-- letting an owner reach a second clinic as its administrator. Linking a
+-- person into an org outside that group would let one clinic's admin
+-- reach into a stranger's roster by guessing a user id, so it is refused
+-- outright rather than left to the caller to check.
+create or replace function staff.link_existing_person(
+  p_home_user_id uuid,
+  p_target_org text,
+  p_job_role staff.job_role,
+  p_actor_id uuid
+) returns uuid
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+declare
+  home record;
+  target_group uuid;
+  new_id uuid;
+begin
+  select u.id, u.person_key, u.email, u.name, u.legal_name, u.phone, o.group_id
+    into home
+    from staff.users u
+    join staff.orgs o on o.slug = u.org_slug
+   where u.id = p_home_user_id
+     and u.active
+     and u.person_key = u.id  -- must be linking FROM a home row
+   for update of u;
+
+  if home.id is null then
+    raise exception 'not_a_home_account' using errcode = 'invalid_parameter_value';
+  end if;
+
+  select group_id into target_group from staff.orgs where slug = p_target_org;
+
+  if target_group is null or home.group_id is null
+     or target_group <> home.group_id then
+    raise exception 'not_same_group' using errcode = 'insufficient_privilege';
+  end if;
+
+  if exists (
+    select 1 from staff.users
+     where org_slug = p_target_org
+       and person_key = home.person_key
+       and active
+  ) then
+    raise exception 'already_linked' using errcode = 'unique_violation';
+  end if;
+
+  insert into staff.users
+    (org_slug, email, name, legal_name, phone, role, job_role, person_key)
+  values
+    (p_target_org, home.email, home.name, home.legal_name, home.phone,
+     'staff', p_job_role, home.person_key)
+  returning id into new_id;
+
+  -- Carried over so she is not retyping a card she already handed her
+  -- home clinic. job_confirmed_at and esign_consented_at are deliberately
+  -- NOT copied — the job can differ site to site, and this clinic's own
+  -- policy packet still gets its own real signature.
+  insert into staff.credentials (org_slug, user_id, kind, expires_on)
+  select p_target_org, new_id, kind, expires_on
+    from staff.credentials
+   where user_id = p_home_user_id
+     and active
+     and expires_on is not null;
+
+  insert into staff.audit_log (org_slug, actor_id, action, entity, entity_id, detail)
+  values (p_target_org, p_actor_id, 'person_linked', 'user', new_id,
+          jsonb_build_object('home_user_id', p_home_user_id, 'job_role', p_job_role));
+
+  return new_id;
+end $$;
+
+revoke all on function staff.link_existing_person(uuid, text, staff.job_role, uuid) from public;
+grant execute on function staff.link_existing_person(uuid, text, staff.job_role, uuid) to staff_app;
+
+
+-- ---------- 3. Seats: billed once, at home, not once per site ----------
+--
+-- Identical to staff-seats.sql's view except every count(u.id) filter
+-- also requires person_key = id — a linked (non-home) row still shows up
+-- on that clinic's roster, still shows up in staff.pending_invites-style
+-- team management, just does not add to what the clinic is charged for.
+drop view if exists staff.seat_usage cascade;
+create view staff.seat_usage
+with (security_invoker = true)
+as
+select
+  o.slug                                             as org_slug,
+  r.job_role,
+  coalesce(ov.included, ps.included, 0)              as included,
+  coalesce(ov.included, ps.included, 0) is distinct from ps.included
+                                                     as is_override,
+  count(u.id) filter (where u.active and u.person_key = u.id) as in_use,
+  count(distinct i.id) filter (
+    where i.revoked_at is null
+      and i.accepted_at is null
+      and not exists (
+        select 1 from staff.users x
+         where x.org_slug = o.slug
+           and lower(x.email) = lower(i.email)
+           and x.active
+      )
+  )                                                  as invited_not_yet_in,
+  greatest(
+    count(u.id) filter (where u.active and u.person_key = u.id)
+      - coalesce(ov.included, ps.included, 0),
+    0
+  )                                                  as over_by,
+  coalesce(ps.extra_seat_cents, 0)                   as extra_seat_cents,
+  greatest(
+    count(u.id) filter (where u.active and u.person_key = u.id)
+      - coalesce(ov.included, ps.included, 0),
+    0
+  ) * coalesce(ps.extra_seat_cents, 0)               as extra_cents
+from staff.orgs o
+cross join unnest(enum_range(null::staff.job_role)) as r(job_role)
+left join staff.plan_seats ps
+       on ps.plan = o.plan and ps.job_role = r.job_role
+left join staff.org_seat_overrides ov
+       on ov.org_slug = o.slug and ov.job_role = r.job_role
+left join staff.users u
+       on u.org_slug = o.slug and u.job_role = r.job_role
+left join staff.org_invites i
+       on i.org_slug = o.slug and i.job_role = r.job_role
+where not o.is_library
+group by o.slug, r.job_role, ov.included, ps.included, ps.extra_seat_cents;
+
+grant select on staff.seat_usage to staff_app;
+
+
+-- ---------- 4. Deactivating her HOME account closes every linked door ----------
+--
+-- Same idiom as staff.revoke_invites_on_deactivate() in staff-invites.sql
+-- — a trigger, because there is more than one route to active = false
+-- and the one that forgets is the one that matters.
+--
+-- ONE DIRECTION ONLY. Deactivating her at a site she's LINKED into (she
+-- stopped rotating there, or was let go from just that location) says
+-- nothing about her home clinic or any other linked one — she may still
+-- work both. Deactivating her HOME account is different: that is the
+-- owner ending the employment relationship this whole group was built
+-- on, and an owner who does that while her accounts at two of THEIR OWN
+-- other clinics stay live has a real gap, not a choice they made on
+-- purpose.
+create or replace function staff.deactivate_cascades_from_home()
+returns trigger
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+begin
+  if old.active and not new.active and old.person_key = old.id then
+    update staff.users
+       set active = false, session_epoch = session_epoch + 1
+     where person_key = old.person_key
+       and id <> old.id
+       and active;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists staff_users_deactivate_cascades_from_home on staff.users;
+create trigger staff_users_deactivate_cascades_from_home
+  after update of active on staff.users
+  for each row
+  execute function staff.deactivate_cascades_from_home();
+
+
+-- ========== staff-eod-report.sql ==========
+
+-- ============================================================
+-- THE ADMIN'S END-OF-DAY REPORT, AND AN OPT-IN DIGEST FOR EVERYONE ELSE
+--
+-- Run AFTER supabase/staff-reports.sql. Idempotent.
+--
+-- staff-reports.sql built a report an owner subscribes an ARBITRARY
+-- ADDRESS to — the right shape for an accountant or a franchise manager
+-- with no staff account. It never automatically reaches the people who
+-- actually administer the clinic day to day, and it never reached staff
+-- at all. This file adds the other half: every active org_admin and
+-- platform_super_admin gets today's report automatically, no
+-- subscription required, and any employee can opt into the routine
+-- digest that used to be owner/medical-director only.
+--
+-- ONE COLUMN. wants_digest is deliberately not a JSONB bag of
+-- preferences — there is exactly one optional notification today (the
+-- AM/PM "what got done" digest), and a table of one boolean is honest
+-- about that. Urgent alerts (excursions, missed tasks) are unaffected:
+-- there is still no column to turn those off, for the reason already
+-- given in staff-alerts.sql.
+-- ============================================================
+
+alter table staff.users
+  add column if not exists wants_digest boolean not null default false;
+
+
+-- ========== staff-agreement.sql ==========
+
+-- ============================================================
+-- THE SUBSCRIPTION AGREEMENT, ACCEPTED AND RECORDED
+--
+-- Run AFTER supabase/staff-founder-job.sql. Idempotent.
+--
+-- Every record this product asks a clinic to trust exists because
+-- someone did something and it was written down, not because a
+-- checkbox was rendered on a screen. A signup flow that shows an "I
+-- agree" box and never records that it was checked is exactly the
+-- hollow record this product exists to replace elsewhere in the
+-- building — nothing to point to, a year later, when the question is
+-- whether an owner actually agreed to the geolocation terms in
+-- app/agreement/page.tsx before signing up.
+--
+-- WHAT THIS ADDS: one timestamp, staff.orgs.agreement_accepted_at, set
+-- once at signup and never touched again — provenance, the same
+-- contract every other timestamp in this schema keeps. And the check is
+-- enforced in staff.provision_trial() itself, not just trusted from the
+-- client: a request that reaches this function without acceptance gets
+-- no organization, the same posture every other guard in this schema
+-- takes toward a caller that could otherwise route around it.
+-- ============================================================
+
+alter table staff.orgs
+  add column if not exists agreement_accepted_at timestamptz;
+
+-- DROP FIRST, MATCHING THE IDIOM ALREADY ESTABLISHED IN THIS SCHEMA (see
+-- the comment on this exact function in staff-facility.sql): adding a
+-- required argument changes the signature, and CREATE OR REPLACE only
+-- replaces a function with the SAME signature — it does not overload.
+drop function if exists staff.provision_trial(text, text, text, int, text);
+
+create or replace function staff.provision_trial(
+  p_slug text, p_name text, p_email text, p_days int default 30,
+  p_facility text default 'urgent_care', p_agreed boolean default false
+) returns text
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+declare final_slug text; n int := 1;
+begin
+  select org_slug into final_slug
+    from staff.org_invites where lower(email) = lower(p_email) limit 1;
+  if found then return final_slug; end if;
+
+  -- Enforced here, not only checked on the client. THE ROUTE ALSO
+  -- REJECTS AN UNAGREED REQUEST BEFORE IT REACHES THIS FUNCTION (see
+  -- app/api/trial/route.ts) so a visitor sees a clean 400 rather than
+  -- this exception — this guard exists for whatever calls
+  -- provision_trial without going through that route.
+  if not coalesce(p_agreed, false) then
+    raise exception 'subscription agreement not accepted'
+      using errcode = 'check_violation';
+  end if;
+
+  final_slug := p_slug;
+  while exists (select 1 from staff.orgs where slug = final_slug) loop
+    n := n + 1;
+    final_slug := p_slug || '-' || n;
+  end loop;
+
+  insert into staff.orgs (slug, name, plan, subscription_status,
+                          is_read_only, trial_ends_on, billing_email,
+                          facility_type, agreement_accepted_at)
+  values (final_slug, p_name, 'trial', 'trialing',
+          false, current_date + p_days, lower(p_email),
+          coalesce(p_facility, 'urgent_care'), now());
+
+  insert into staff.org_invites (org_slug, email, role, job_role)
+  values (final_slug, lower(p_email), 'org_admin', 'center_admin');
+
+  perform staff.seed_facility(final_slug);
+
+  return final_slug;
+end $$;
+
+revoke all on function staff.provision_trial(text, text, text, int, text, boolean) from public;
+grant execute on function staff.provision_trial(text, text, text, int, text, boolean) to staff_app;
+
+
+-- ---------- Clinics that signed up before this existed ----------
+--
+-- Every org already provisioned agreed to nothing in writing, because
+-- there was nothing to agree to. Backfilling agreement_accepted_at with
+-- a fabricated date would misstate history; leaving it null is the
+-- honest record of "this predates the agreement flow," and is exactly
+-- the distinction a real audit would need to draw anyway.

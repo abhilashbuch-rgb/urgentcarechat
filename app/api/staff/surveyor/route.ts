@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   }
   const { session, org } = auth.ctx;
 
-  if (!atLeast(session.role, "org_admin")) {
+  if (!atLeast(session.role, "manager")) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
@@ -78,7 +78,7 @@ export async function DELETE(req: NextRequest) {
   }
   const { session, org } = auth.ctx;
 
-  if (!atLeast(session.role, "org_admin")) {
+  if (!atLeast(session.role, "manager")) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 

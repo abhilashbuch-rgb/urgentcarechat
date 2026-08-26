@@ -55,7 +55,7 @@ export default async function ActivityBoard() {
   // An MA has no reason to watch the whole clinic file logs, and giving
   // them one turns a compliance tool into a surveillance one — which is
   // the single fastest way to lose staff adoption.
-  if (!atLeast(session.role, "org_admin")) redirect("/staff");
+  if (!atLeast(session.role, "manager")) redirect("/staff");
 
   const rows = await withSession(session, (sql) =>
     sql<Row[]>`

@@ -55,7 +55,7 @@ export async function POST(
       if (!ob) return { error: "not_found" as const, status: 404 };
 
       const isLead = atLeast(session.role, "clinical_lead");
-      const isAdmin = atLeast(session.role, "org_admin");
+      const isAdmin = atLeast(session.role, "manager");
 
       if (action === "complete") {
         // Anyone can complete what they own. Someone else's obligation

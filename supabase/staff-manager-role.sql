@@ -1,0 +1,29 @@
+-- ============================================================
+-- A THIRD ROLE, BETWEEN OWNER AND STAFF
+--
+-- Run AFTER supabase/staff-schema.sql. Idempotent; safe to re-run.
+--
+-- Until now access was binary: plain staff, or org_admin — full access
+-- to everything including billing. That put an owner in the position of
+-- either keeping every administrative task to themselves or handing a
+-- trusted manager the ability to change the payment method and add a
+-- second $149/month clinic.
+--
+-- 'manager' sits between the two. It sees and runs everything an
+-- org_admin does — the team, the roster, the register, accreditation,
+-- inspection access, the audit trail, clinic settings — except billing,
+-- which stays reachable only from staff.orgs rows an org_admin session
+-- can reach, enforced by application code (app/staff/settings/clinics,
+-- app/api/staff/clinics) and never by this migration. A manager also
+-- cannot invite or manage an org_admin account, so the owner is never
+-- outranked by someone they promoted. See lib/staff/roles.ts for the
+-- exact rank table and the per-route notes on where the line is drawn.
+--
+-- ONE STATEMENT, RUN ALONE. Postgres will not let a freshly added enum
+-- value be referenced in the same transaction that added it, and a
+-- multi-statement paste is sent as one transaction. This file adds the
+-- value and nothing else, so there is nothing here that could trip that
+-- rule no matter how it's run.
+-- ============================================================
+
+alter type staff.user_role add value if not exists 'manager' after 'org_admin';

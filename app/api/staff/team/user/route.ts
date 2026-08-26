@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
 
   // Checked here and not only by hiding the buttons. The nav is a
   // convenience; this is the control.
-  if (!atLeast(session.role, "org_admin")) {
+  if (!atLeast(session.role, "manager")) {
     return redirectAfterPost("/staff?e=forbidden");
   }
 
@@ -57,6 +57,18 @@ export async function POST(req: NextRequest) {
          where id = ${userId} and org_slug = ${org}
       `;
       if (target.length === 0) return { error: "not_found" as const };
+
+      // A MANAGER OVERSEES STAFF, NOT THE OWNER. Every action below —
+      // deactivate, reset a factor, sign someone out, touch their digest
+      // preference — reaches an org_admin or platform_super_admin account
+      // only when the actor is one too. Without this a manager account
+      // could lock the actual owner out of their own clinic.
+      if (
+        !atLeast(session.role, "org_admin") &&
+        (target[0].role === "org_admin" || target[0].role === "platform_super_admin")
+      ) {
+        return { error: "not_permitted" as const };
+      }
 
       if (action === "deactivate" || action === "activate") {
         const nextActive = action === "activate";

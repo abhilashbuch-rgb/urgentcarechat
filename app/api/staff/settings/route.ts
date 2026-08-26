@@ -32,8 +32,10 @@ export async function POST(req: NextRequest) {
   const { session, org } = auth.ctx;
 
   // The clinic's address and who gets told when something is wrong are
-  // the owner's decisions, not a medical assistant's.
-  if (!atLeast(session.role, "org_admin")) {
+  // an operating decision, not a medical assistant's — and a manager
+  // runs operations same as the owner. Billing itself is a separate
+  // route (app/api/staff/clinics/route.ts) that stays owner-only.
+  if (!atLeast(session.role, "manager")) {
     return redirectAfterPost("/staff?e=forbidden");
   }
 

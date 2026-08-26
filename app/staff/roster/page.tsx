@@ -46,7 +46,7 @@ export default async function RosterPage() {
   const fine = creds.filter((c) => c.status === "current");
   const dueScreens = scr.filter((s) => s.status !== "current");
   const doneScreens = scr.filter((s) => s.status === "current");
-  const canRecord = atLeast(session.role, "org_admin");
+  const canRecord = atLeast(session.role, "manager");
 
   return (
     <div className="st-page">

@@ -46,7 +46,7 @@ const STATUS_LABEL: Record<Cell["status"], string> = {
 
 export default async function Accreditation() {
   const { session, org } = await requireStaff();
-  if (!atLeast(session.role, "org_admin")) redirect("/staff");
+  if (!atLeast(session.role, "manager")) redirect("/staff");
 
   const { cells, links } = await withSession(session, async (sql) => ({
     cells: await sql<Cell[]>`

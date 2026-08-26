@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   if (!auth.ok) {
     return NextResponse.json({ error: auth.reason }, { status: 401 });
   }
-  if (!atLeast(auth.ctx.session.role, "org_admin")) {
+  if (!atLeast(auth.ctx.session.role, "manager")) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
