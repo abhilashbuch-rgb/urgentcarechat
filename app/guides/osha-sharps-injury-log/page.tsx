@@ -13,6 +13,18 @@ export const metadata = {
 // in supabase/staff-statutory-logs.sql. Written for a search result
 // rather than for the app, but the underlying fact never differs
 // between the two: it would be a bug in one of them if it did.
+//
+// LINKED TO OSHA'S OWN PAGE, NOT ECFR. Both carry the same text; OSHA's
+// page loads for an automated fetch without a bot-check redirect and
+// the eCFR one didn't when this was written, and there's no reason to
+// send a reader through a interstitial when the enforcing agency's own
+// copy is right there. Verified against the live page before linking —
+// see the PR that added this comment for the exact text checked.
+const OSHA_1910_1030 =
+  "https://www.osha.gov/laws-regs/regulations/standardnumber/1910/1910.1030";
+const OSHA_1910_1020 =
+  "https://www.osha.gov/laws-regs/regulations/standardnumber/1910/1910.1020";
+
 export default function SharpsInjuryLogGuide() {
   return (
     <div className="lp">
@@ -36,10 +48,15 @@ export default function SharpsInjuryLogGuide() {
         </Link>
 
         <section className="guide-head">
-          <span className="lp-eyebrow">
+          <a
+            className="lp-eyebrow"
+            href={OSHA_1910_1030}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             <span className="lp-eyebrow-dot" aria-hidden="true" />
-            29 CFR 1910.1030(h)(5)
-          </span>
+            29 CFR 1910.1030(h)(5) ↗
+          </a>
           <h1 className="lp-h1 guide-h1">
             The OSHA sharps injury log, explained
           </h1>
@@ -57,7 +74,11 @@ export default function SharpsInjuryLogGuide() {
             blood or other potentially infectious materials — which covers
             essentially every urgent care, primary care, dental, and
             ambulatory surgery practice — must establish and maintain a
-            sharps injury log under the Bloodborne Pathogens Standard.
+            sharps injury log under the{" "}
+            <a href={OSHA_1910_1030} target="_blank" rel="noopener noreferrer">
+              Bloodborne Pathogens Standard
+            </a>
+            .
           </p>
           <p>
             <strong>
@@ -123,11 +144,17 @@ export default function SharpsInjuryLogGuide() {
         <section className="guide-block">
           <h2 className="guide-h2">Retention</h2>
           <p>
-            Sharps injury log entries are employee exposure and medical
-            records, retained for the duration of employment plus 30 years
-            under 29 CFR 1910.1020(d) — the general OSHA recordkeeping
-            standard for exposure records. That&apos;s a long time to trust a
-            binder in a back office.
+            Sharps injury log entries are employee exposure records, retained
+            for at least 30 years under{" "}
+            <a href={OSHA_1910_1020} target="_blank" rel="noopener noreferrer">
+              29 CFR 1910.1020(d)
+            </a>{" "}
+            — the general OSHA standard for access to employee exposure and
+            medical records. (Medical records proper carry a longer duration
+            — employment plus 30 years, under the same section&apos;s
+            (d)(1)(i) — but a sharps log itself falls under the exposure-
+            record provision at (d)(1)(ii), which is 30 years flat.)
+            That&apos;s a long time to trust a binder in a back office.
           </p>
         </section>
 
@@ -135,12 +162,14 @@ export default function SharpsInjuryLogGuide() {
           <h2 className="guide-h2">The related record</h2>
           <p>
             A sharps injury is also a triggering event for a{" "}
-            <strong>post-exposure evaluation</strong>{" "}under 29 CFR
-            1910.1030(f)(3) — a confidential medical evaluation and
-            follow-up, made available immediately at no cost to the
-            employee. The sharps log and the post-exposure evaluation are
-            two different, related records; a clinic needs both, not one in
-            place of the other.
+            <strong>post-exposure evaluation</strong>{" "}under{" "}
+            <a href={OSHA_1910_1030} target="_blank" rel="noopener noreferrer">
+              29 CFR 1910.1030(f)(3)
+            </a>{" "}
+            — a confidential medical evaluation and follow-up, made available
+            immediately at no cost to the employee. The sharps log and the
+            post-exposure evaluation are two different, related records; a
+            clinic needs both, not one in place of the other.
           </p>
         </section>
 

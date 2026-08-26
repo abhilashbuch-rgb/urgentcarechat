@@ -11,6 +11,17 @@ export const metadata = {
 // Same reasoning already vetted for the 'urinalysis-qc' template in
 // supabase/staff-optional-logs.sql — this restates it as an explainer
 // rather than as a form.
+//
+// eCFR rather than OSHA.gov here — 493.15 is a CMS regulation, not an
+// OSHA one, so there is no OSHA.gov mirror of it. Confirmed via
+// govinfo.gov's own XML copy of the section (which does not bot-check
+// automated fetches the way eCFR's HTML front end does) that (e)(1)
+// reads "Follow manufacturers' instructions for performing the test" —
+// exactly the text quoted below — and that section 493.15 sits under
+// Title 42, Chapter IV, Subchapter G, Part 493, Subpart A.
+const ECFR_493_15 =
+  "https://www.ecfr.gov/current/title-42/chapter-IV/subchapter-G/part-493/subpart-A/section-493.15";
+
 export default function ClaWaivedTestingGuide() {
   return (
     <div className="lp">
@@ -34,10 +45,15 @@ export default function ClaWaivedTestingGuide() {
         </Link>
 
         <section className="guide-head">
-          <span className="lp-eyebrow">
+          <a
+            className="lp-eyebrow"
+            href={ECFR_493_15}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             <span className="lp-eyebrow-dot" aria-hidden="true" />
-            42 CFR 493.15(e)(1)
-          </span>
+            42 CFR 493.15(e)(1) ↗
+          </a>
           <h1 className="lp-h1 guide-h1">
             CLIA-waived testing: what the rule actually requires
           </h1>
@@ -52,7 +68,12 @@ export default function ClaWaivedTestingGuide() {
         <section className="guide-block">
           <h2 className="guide-h2">The rule, in full</h2>
           <div className="guide-callout">
-            <strong>42 CFR 493.15(e)(1):</strong>{" "}&ldquo;Follow the
+            <strong>
+              <a href={ECFR_493_15} target="_blank" rel="noopener noreferrer">
+                42 CFR 493.15(e)(1)
+              </a>
+              :
+            </strong>{" "}&ldquo;Follow the
             manufacturer&apos;s instructions for performing the test.&rdquo;
             That&apos;s the whole federal quality requirement for a waived
             test.

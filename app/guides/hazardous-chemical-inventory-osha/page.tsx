@@ -12,6 +12,12 @@ export const metadata = {
 // supabase/staff-statutory-logs.sql, written as prose rather than as a
 // form's field list. If this page and that template ever disagree about
 // what the rule says, that file is the one to fix.
+//
+// Linked to OSHA's own page — see the same note in the sharps-injury
+// guide's source for why OSHA rather than eCFR.
+const OSHA_1910_1200 =
+  "https://www.osha.gov/laws-regs/regulations/standardnumber/1910/1910.1200";
+
 export default function HazcomInventoryGuide() {
   return (
     <div className="lp">
@@ -35,10 +41,15 @@ export default function HazcomInventoryGuide() {
         </Link>
 
         <section className="guide-head">
-          <span className="lp-eyebrow">
+          <a
+            className="lp-eyebrow"
+            href={OSHA_1910_1200}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             <span className="lp-eyebrow-dot" aria-hidden="true" />
-            29 CFR 1910.1200
-          </span>
+            29 CFR 1910.1200 ↗
+          </a>
           <h1 className="lp-h1 guide-h1">
             Hazardous chemical inventory &amp; SDS access
           </h1>
@@ -53,7 +64,10 @@ export default function HazcomInventoryGuide() {
         <section className="guide-block">
           <h2 className="guide-h2">The chemical list</h2>
           <p>
-            29 CFR 1910.1200(e)(1)(i) requires a list of the hazardous
+            <a href={OSHA_1910_1200} target="_blank" rel="noopener noreferrer">
+              29 CFR 1910.1200(e)(1)(i)
+            </a>{" "}
+            requires a list of the hazardous
             chemicals known to be present in the workplace. In a clinic
             that&apos;s cleaning solutions, disinfectants, reagents, and
             anything else with a hazard on its own label — not just what a
@@ -74,7 +88,10 @@ export default function HazcomInventoryGuide() {
             stricter than it sounds
           </h2>
           <p>
-            29 CFR 1910.1200(g)(8) requires safety data sheets be readily
+            <a href={OSHA_1910_1200} target="_blank" rel="noopener noreferrer">
+              29 CFR 1910.1200(g)(8)
+            </a>{" "}
+            requires safety data sheets be readily
             accessible to employees in their work area during each work
             shift. A binder in a locked office down the hall doesn&apos;t
             meet that bar — accessible means a staff member handling a

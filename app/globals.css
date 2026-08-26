@@ -1661,7 +1661,14 @@ body {
   padding: 7px 13px;
   border-radius: 999px;
   margin-bottom: 22px;
+  /* A plain span everywhere except the compliance guides, where it's
+     also the link straight to the regulation on osha.gov or eCFR — same
+     pill, so citing a source doesn't look like a different kind of UI
+     element than the rest of the page. */
+  text-decoration: none;
+  transition: background .12s ease;
 }
+a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 
 .lp-eyebrow-dot {
   width: 6px;
