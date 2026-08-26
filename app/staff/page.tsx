@@ -4,10 +4,11 @@ import { requireStaff } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
 import { getProfile, outstandingFor } from "@/lib/staff/compliance";
 import { summary, type ObligationSummary } from "@/lib/staff/obligations";
-import { ROLE_LABELS, atLeast } from "@/lib/staff/roles";
+import { ROLE_LABELS, atLeast, navFor, type NavItem } from "@/lib/staff/roles";
 import { shiftState, myCredentialWarnings, type ShiftState, type ExpiringCredential } from "@/lib/staff/shift";
 import { factOfTheDay } from "@/lib/staff/history-facts";
 import StaffClock from "@/app/components/staff/StaffClock";
+import ShortcutGrid from "@/app/components/staff/ShortcutGrid";
 
 // The staff landing screen — one shift, from the point of view of the
 // person working it.
@@ -41,6 +42,10 @@ interface Overview {
   shift: ShiftState;
   credentials: ExpiringCredential[];
   timezone: string;
+  /** navFor()'s own output for this person — see ShortcutGrid.tsx. Built
+   *  here rather than in the component so it uses the same job_role the
+   *  rest of this page already resolved, instead of a second lookup. */
+  shortcuts: NavItem[];
 }
 
 export default async function StaffHome() {
@@ -84,6 +89,7 @@ export default async function StaffHome() {
           shift: await shiftState(sql, null),
           credentials: [],
           timezone: orgRow[0]?.timezone ?? "America/New_York",
+          shortcuts: navFor(session.role, null),
         };
       }
       const outstanding = await outstandingFor(sql, session.uid);
@@ -99,6 +105,7 @@ export default async function StaffHome() {
         needsOnboarding: !profile.esign_consented_at || !profile.legal_name,
         obligations: seesObligations ? await summary(sql, org) : null,
         timezone: orgRow?.timezone ?? "America/New_York",
+        shortcuts: navFor(session.role, profile.job_role ?? null),
       };
     });
   } catch (err) {
@@ -239,6 +246,19 @@ export default async function StaffHome() {
             <span className="st-callout-sub">Open the register &rarr;</span>
           </Link>
         )}
+
+      {/* ADMIN-TIER ONLY. A plain staff account's Today stays exactly the
+          lean, shift-focused screen it already was — see the file header
+          comment on why that was deliberate. An administrator's version
+          of "what do I owe this shift" also includes "who do I need to
+          add or remove," and that answer was two taps into a menu
+          instead of on the screen they land on. */}
+      {hasNavAccess && overview && overview.shortcuts.length > 0 && (
+        <section className="st-shortcuts-section">
+          <h2 className="st-h2">Shortcuts</h2>
+          <ShortcutGrid items={overview.shortcuts} />
+        </section>
+      )}
 
       {/* THE SHIFT, NOT THE ORGANIZATION.
           What stood here was three cards explaining the software to the
