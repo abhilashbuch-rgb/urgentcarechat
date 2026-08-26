@@ -30,7 +30,7 @@ function mint(): string {
   return randomBytes(32).toString("base64url");
 }
 
-export type InviteRole = "staff" | "org_admin";
+export type InviteRole = "staff" | "manager" | "org_admin";
 
 export interface PendingInvite {
   id: string;

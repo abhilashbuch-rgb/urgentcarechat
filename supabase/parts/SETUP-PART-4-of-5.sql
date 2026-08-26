@@ -866,7 +866,7 @@ drop function if exists staff.provision_trial(text, text, text, int);
 -- still works and gets urgent_care — but only because the old overload
 -- is dropped immediately above.
 create or replace function staff.provision_trial(
-  p_slug text, p_name text, p_email text, p_days int default 14,
+  p_slug text, p_name text, p_email text, p_days int default 30,
   p_facility text default 'urgent_care'
 ) returns text
 language plpgsql
@@ -1920,6 +1920,38 @@ where t.active
   and t.frequency <> 'on_event';
 
 grant select on staff.todays_logs to staff_app;
+
+-- `drop view staff.todays_logs cascade` above also drops
+-- staff.overdue_today, which is built on top of it and drives the
+-- missed-task alerts — the same cascade staff-amend.sql already had to
+-- put back for the same reason. That fix only covers amend's own drop;
+-- this one, done after it, needed the identical repair and never got it,
+-- so the alert view has been missing from every deployment that reached
+-- this file, silently, since the day this migration first ran. Recreated
+-- verbatim from staff-alerts.sql — every column it reads (org_slug,
+-- template_id, slug, name, slot, job_roles, response_id) is still
+-- present on the todays_logs shape above, so nothing else changes.
+create or replace view staff.overdue_today
+with (security_invoker = true) as
+select
+  l.org_slug,
+  l.template_id,
+  l.slug,
+  l.name,
+  l.slot,
+  l.job_roles,
+  (now() at time zone o.timezone)::time as local_now,
+  o.timezone
+from staff.todays_logs l
+join staff.orgs o on o.slug = l.org_slug
+where l.response_id is null
+  and (
+    (l.slot = 'am' and (now() at time zone o.timezone)::time > time '11:00')
+    or (l.slot = 'pm' and (now() at time zone o.timezone)::time
+          > (o.operating_hours_end - interval '1 hour'))
+  );
+
+grant select on staff.overdue_today to staff_app;
 
 -- ============================================================
 -- THE TEMPLATES

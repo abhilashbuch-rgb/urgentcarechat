@@ -20,6 +20,7 @@ export const STAFF_COOKIE_MAX_AGE = MAX_AGE_SECONDS;
 export type StaffRole =
   | "platform_super_admin"
   | "org_admin"
+  | "manager"
   | "clinical_lead"
   | "staff";
 

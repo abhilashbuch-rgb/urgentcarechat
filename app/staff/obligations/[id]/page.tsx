@@ -49,7 +49,7 @@ export default async function ObligationPage({
   const { obligation: o, team } = data;
 
   const isLead = atLeast(session.role, "clinical_lead");
-  const isAdmin = atLeast(session.role, "org_admin");
+  const isAdmin = atLeast(session.role, "manager");
   const canComplete = isLead || o.owner_id === session.uid;
   const repeat = repeatLabel(o.repeat_months);
 

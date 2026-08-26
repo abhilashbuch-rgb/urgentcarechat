@@ -51,7 +51,7 @@ const GROUPS: { status: ObligationStatus; title: string; blurb: string }[] = [
 export default async function ObligationsPage() {
   const { session } = await requireStaff();
   const rows = await withSession(session, register);
-  const canAdd = atLeast(session.role, "org_admin");
+  const canAdd = atLeast(session.role, "manager");
 
   const overdue = rows.filter((r) => r.status === "overdue").length;
   const soon = rows.filter((r) => r.status === "due_soon").length;

@@ -35,7 +35,7 @@ const ERRORS: Record<string, string> = {
   reportemail:
     "A scheduled report needs an address to send to.",
   save: "That didn't save. Nothing was changed — try again.",
-  forbidden: "Only an administrator can change the clinic's settings.",
+  forbidden: "Only a manager or administrator can change the clinic's settings.",
 };
 
 interface OrgSettings {
@@ -55,7 +55,8 @@ export default async function SettingsPage({
   searchParams: Promise<{ e?: string; saved?: string }>;
 }) {
   const { session, org } = await requireStaff();
-  if (!atLeast(session.role, "org_admin")) redirect("/staff");
+  if (!atLeast(session.role, "manager")) redirect("/staff");
+  const isOwner = atLeast(session.role, "org_admin");
 
   const { e, saved } = await searchParams;
 
@@ -280,16 +281,23 @@ export default async function SettingsPage({
         </button>
       </form>
 
-      <section className="st-set-block">
-        <h2 className="st-set-h">Clinics</h2>
-        <p className="st-set-b">
-          Running more than one location? Same login, one price per
-          clinic &mdash; add another and switch between them.
-        </p>
-        <Link className="st-btn" href="/staff/settings/clinics">
-          Manage clinics
-        </Link>
-      </section>
+      {/* BILLING STAYS THE OWNER'S, EVEN THOUGH A MANAGER CAN SEE THIS
+          PAGE NOW. Adding a clinic starts a new $149/month subscription
+          — the one decision this product keeps reserved for whoever
+          answers for the money. The route this links to enforces the
+          same check independently. */}
+      {isOwner && (
+        <section className="st-set-block">
+          <h2 className="st-set-h">Clinics</h2>
+          <p className="st-set-b">
+            Running more than one location? Same login, one price per
+            clinic &mdash; add another and switch between them.
+          </p>
+          <Link className="st-btn" href="/staff/settings/clinics">
+            Manage clinics
+          </Link>
+        </section>
+      )}
 
       {/* NOT ON THIS PAGE, AND NOT AN OVERSIGHT. Whether the clinic has an
           autoclave is a fact about the building that the centre admin

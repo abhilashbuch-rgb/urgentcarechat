@@ -8,6 +8,7 @@ import type { StaffRole } from "@/lib/staff/session";
 export const ROLE_LABELS: Record<StaffRole, string> = {
   platform_super_admin: "Platform admin",
   org_admin: "Administrator",
+  manager: "Manager",
   clinical_lead: "Clinical lead",
   staff: "Staff",
 };
@@ -38,10 +39,22 @@ export const JOB_PHRASES: Record<string, string> = {
 };
 
 /** Highest first. Used only for comparisons like "at least a clinical
- *  lead" — never as a substitute for a permission check on data. */
+ *  lead" — never as a substitute for a permission check on data.
+ *
+ *  MANAGER SITS JUST BELOW OWNER, NOT BESIDE CLINICAL LEAD. A manager
+ *  runs the team — invites, deactivates, sees the same roster, the same
+ *  register, the same audit trail an owner does — and is deliberately
+ *  ranked above clinical_lead so every gate written as
+ *  atLeast(role, "clinical_lead") already includes them. The one thing
+ *  a manager cannot reach is what an owner alone should decide: money.
+ *  See the ORG_ADMIN-ONLY, DELIBERATELY markers on the clinics/billing
+ *  page and the invite route for where that line actually sits — it is
+ *  drawn per-route, not by rank alone, because rank alone cannot express
+ *  "sees everything, cannot spend anything." */
 const RANK: Record<StaffRole, number> = {
-  platform_super_admin: 3,
-  org_admin: 2,
+  platform_super_admin: 4,
+  org_admin: 3,
+  manager: 2,
   clinical_lead: 1,
   staff: 0,
 };
@@ -63,12 +76,13 @@ export function atLeast(role: StaffRole, minimum: StaffRole): boolean {
  * the one person who is not in the building.
  *
  * NOT the same as atLeast(role, "org_admin"). This deliberately does NOT
- * open the alert-routing, geofence or billing settings — who gets
- * telephoned when a vaccine fridge fails is the owner's decision and
- * stays on /staff/settings.
+ * open billing — who pays for the clinic is the owner's decision alone,
+ * enforced separately on /staff/settings/clinics. Alert routing and
+ * geofencing now DO open to a manager along with everything else they
+ * run; see the rank comment on RANK for why that line moved.
  */
 export function runsClinic(role: StaffRole, jobRole?: string | null): boolean {
-  return jobRole === "center_admin" || atLeast(role, "org_admin");
+  return jobRole === "center_admin" || atLeast(role, "manager");
 }
 
 /** Five buckets instead of eighteen flat links: what you do on shift, your
@@ -171,7 +185,7 @@ export const NAV: NavItem[] = [
     note: "Approve or flag submitted logs.",
     group: "admin",
   },
-  { href: "/staff/activity", label: "Activity", minRole: "org_admin", group: "admin" },
+  { href: "/staff/activity", label: "Activity", minRole: "manager", group: "admin" },
   // WHICH LOGS THIS CLINIC RUNS — separate from Settings, and reachable
   // by the centre admin as well as the owner. Whether there is an
   // autoclave in the back room is a fact about the building, known to
@@ -185,10 +199,14 @@ export const NAV: NavItem[] = [
     operatorOnly: true,
     group: "clinic",
   },
-  { href: "/staff/settings", label: "Settings", minRole: "org_admin", group: "admin" },
-  { href: "/staff/accreditation", label: "Accreditation", minRole: "org_admin", group: "clinic" },
-  { href: "/staff/surveyor", label: "Inspection", minRole: "org_admin", group: "clinic" },
-  { href: "/staff/team", label: "Team", minRole: "org_admin", group: "admin" },
+  // Billing/subscription itself lives one level deeper, at
+  // /staff/settings/clinics, and stays org_admin-only — this page is the
+  // clinic's operating settings (alert routing, geofencing, reports),
+  // which a manager runs day to day same as an owner does.
+  { href: "/staff/settings", label: "Settings", minRole: "manager", group: "admin" },
+  { href: "/staff/accreditation", label: "Accreditation", minRole: "manager", group: "clinic" },
+  { href: "/staff/surveyor", label: "Inspection", minRole: "manager", group: "clinic" },
+  { href: "/staff/team", label: "Team", minRole: "manager", group: "admin" },
 ];
 
 export function navFor(role: StaffRole, jobRole?: string | null): NavItem[] {

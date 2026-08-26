@@ -7,7 +7,7 @@ import SurveyorLinks from "@/app/components/staff/SurveyorLinks";
 
 // Issuing read-only access for an inspector.
 //
-// ADMINISTRATORS ONLY, and redirected rather than shown a refusal: a
+// MANAGERS AND ABOVE ONLY, and redirected rather than shown a refusal: a
 // page explaining a capability you cannot use is a page that teaches
 // people to ask for the permission. The nav link is hidden too.
 
@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 
 export default async function SurveyorPage() {
   const { session } = await requireStaff();
-  if (!atLeast(session.role, "org_admin")) redirect("/staff");
+  if (!atLeast(session.role, "manager")) redirect("/staff");
 
   const links = await withSession(session, (sql) => issuedLinks(sql));
 

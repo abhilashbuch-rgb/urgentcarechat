@@ -26,7 +26,7 @@ export default async function TeamMemberPage({
   const { done } = await searchParams;
   const { session, org } = await requireStaff();
 
-  if (!atLeast(session.role, "org_admin")) redirect("/staff");
+  if (!atLeast(session.role, "manager")) redirect("/staff");
 
   const { member, signins, timezone } = await withSession(session, async (sql) => {
     const team = await teamStatus(sql);
@@ -46,6 +46,14 @@ export default async function TeamMemberPage({
   // Same as any other admin lookup that comes up empty: back to the
   // list rather than a bare 404 for a screen with no direct URL entry.
   if (!member) redirect("/staff/team?e=not_found");
+
+  // A manager can look, same as the roster row this links from, but the
+  // API refuses a manager writing to an owner's account — see the note
+  // on the Team list page. The toggle below is hidden rather than left
+  // to fail silently, since this page has nowhere to show that error.
+  const canManage =
+    atLeast(session.role, "org_admin") ||
+    (member.role !== "org_admin" && member.role !== "platform_super_admin");
 
   return (
     <div className="st-page">
@@ -76,14 +84,18 @@ export default async function TeamMemberPage({
           missed task) go to every active person regardless; there is no
           switch for those, for anyone, including from here.
         </p>
-        <form method="POST" action="/api/staff/team/user">
-          <input type="hidden" name="user_id" value={id} />
-          <input type="hidden" name="action" value="toggle_digest" />
-          <input type="hidden" name="wants" value={member.wants_digest ? "0" : "1"} />
-          <button className="st-btn" type="submit">
-            {member.wants_digest ? "Turn off digest emails" : "Turn on digest emails"}
-          </button>
-        </form>
+        {canManage ? (
+          <form method="POST" action="/api/staff/team/user">
+            <input type="hidden" name="user_id" value={id} />
+            <input type="hidden" name="action" value="toggle_digest" />
+            <input type="hidden" name="wants" value={member.wants_digest ? "0" : "1"} />
+            <button className="st-btn" type="submit">
+              {member.wants_digest ? "Turn off digest emails" : "Turn on digest emails"}
+            </button>
+          </form>
+        ) : (
+          <p className="st-page-sub">Set by the owner.</p>
+        )}
       </section>
 
       <section className="st-record-section">
