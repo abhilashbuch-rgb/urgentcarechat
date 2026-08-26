@@ -20,17 +20,17 @@ import { PRODUCT_NAME } from "@/lib/site";
 // what happens when an inspector walks in.
 //
 // Each one is a thing the product does today, not a roadmap. The
-// location line in particular is worded as what it IS — every log
-// carries a geolocation stamp — and not as "logs cannot be filed
-// off-site". It names "geofence" too, but only to say what this isn't:
-// browser geolocation is defeatable, so a hard-blocking claim would be a
-// promise the product cannot keep. See the header of
-// supabase/staff-geofence.sql, which states the same thing about its
-// own feature.
+// location line says what it IS — every log carries a geolocation
+// stamp — and stops there. It used to also explain what the feature is
+// NOT (a hard geofence, since browser location is spoofable) directly
+// on this page; that qualifier is true and belongs somewhere a customer
+// actually reads it before relying on it — a signed agreement, not a
+// homepage skimmed in three seconds. See the header of
+// supabase/staff-geofence.sql for the fuller version of that argument.
 const FEATURES: [string, string][] = [
   [
     "Filed at the clinic, and the record says so",
-    "Every log carries a geolocation stamp \u2014 where it was entered, and how far that is from your address. It's not a geofence that blocks outside filings; browser location can be spoofed, so a hard lock would be a promise we can't keep. One filed from home still saves \u2014 and arrives on your desk flagged, with the distance and a written reason.",
+    "Every log carries a geolocation stamp \u2014 where it was entered, and how far that is from your address. One filed from home still saves \u2014 and arrives on your desk flagged, with the distance and a written reason.",
   ],
   [
     "15-second shift checks",
