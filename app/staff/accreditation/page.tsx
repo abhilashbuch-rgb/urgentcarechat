@@ -3,6 +3,7 @@ import { requireStaff } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
 import { atLeast, JOB_LABELS } from "@/lib/staff/roles";
 import SurveyorLinks from "@/app/components/staff/SurveyorLinks";
+import EmailBinderForm from "@/app/components/staff/EmailBinderForm";
 import { issuedLinks } from "@/lib/staff/surveyor";
 
 // The console you open when a surveyor is coming.
@@ -185,6 +186,7 @@ export default async function Accreditation() {
               Formatted for an accreditation review. It carries no patient
               information and nothing financial.
             </p>
+            <EmailBinderForm />
           </section>
 
           <section className="st-panel">
