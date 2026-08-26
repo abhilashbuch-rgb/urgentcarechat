@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { contactMailto } from "@/lib/site";
 import InstallPrompt from "@/app/components/staff/InstallPrompt";
 
@@ -37,13 +38,14 @@ export default function TrialForm({
   const [clinic, setClinic] = useState("");
   const [email, setEmail] = useState("");
   const [facility, setFacility] = useState(demoFacility ?? "urgent_care");
+  const [agreed, setAgreed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (busy) return;
+    if (busy || !agreed) return;
     setBusy(true);
     setError(null);
 
@@ -60,6 +62,7 @@ export default function TrialForm({
         // anyway would switch on a log for equipment they just said they
         // do not have.
         demo: demoFacility && facility === demoFacility ? demoConfig : undefined,
+        agreed,
       }),
     }).catch(() => null);
 
@@ -198,6 +201,26 @@ export default function TrialForm({
         </span>
       </label>
 
+      {/* THE ONE THING A CHECKBOX HAS TO ACTUALLY DO: gate the button.
+          A checkbox that renders but doesn't block submission is a
+          decoration, not consent — see supabase/staff-agreement.sql,
+          which refuses to create an org at all without this reaching
+          the server as true. */}
+      <label className="tr-agree">
+        <input
+          type="checkbox"
+          checked={agreed}
+          onChange={(e) => setAgreed(e.target.checked)}
+        />
+        <span>
+          I agree to the{" "}
+          <Link href="/agreement" target="_blank" rel="noopener noreferrer">
+            Subscription Agreement
+          </Link>
+          , including how location data on a log is used.
+        </span>
+      </label>
+
       {error?.startsWith("taken:") ? (
         <p className="st-sign-error" role="alert">
           <strong>{error.slice(6)} already has a workspace.</strong>{" "}
@@ -214,6 +237,10 @@ export default function TrialForm({
             Email us and we&rsquo;ll set your clinic up by hand.
           </a>
         </p>
+      ) : error === "agreement_not_accepted" ? (
+        <p className="st-sign-error" role="alert">
+          Check the Subscription Agreement box above to continue.
+        </p>
       ) : (
         error && (
           <p className="st-sign-error" role="alert">
@@ -222,7 +249,7 @@ export default function TrialForm({
         )
       )}
 
-      <button className="st-primary" type="submit" disabled={busy}>
+      <button className="st-primary" type="submit" disabled={busy || !agreed}>
         {busy ? "Setting up…" : "Start the 30-day trial"}
       </button>
       <p className="tr-fine">No credit card. Nothing to cancel.</p>

@@ -20,15 +20,17 @@ import { PRODUCT_NAME } from "@/lib/site";
 // what happens when an inspector walks in.
 //
 // Each one is a thing the product does today, not a roadmap. The
-// location line in particular is worded as what it IS — every log
-// carries where it was filed from — and not as "logs cannot be filed
-// off-site", because browser geolocation is defeatable and a marketing
-// claim the product cannot keep is worse than no claim. See the header
-// of supabase/staff-geofence.sql.
+// location line says what it IS — every log carries a geolocation
+// stamp — and stops there. It used to also explain what the feature is
+// NOT (a hard geofence, since browser location is spoofable) directly
+// on this page; that qualifier is true and belongs somewhere a customer
+// actually reads it before relying on it — a signed agreement, not a
+// homepage skimmed in three seconds. See the header of
+// supabase/staff-geofence.sql for the fuller version of that argument.
 const FEATURES: [string, string][] = [
   [
     "Filed at the clinic, and the record says so",
-    "Every log is stamped with where it was entered and how far that is from your address. One filed from home still saves \u2014 and arrives on your desk flagged, with the distance and a written reason.",
+    "Every log carries a geolocation stamp \u2014 where it was entered, and how far that is from your address. One filed from home still saves \u2014 and arrives on your desk flagged, with the distance and a written reason.",
   ],
   [
     "15-second shift checks",
@@ -65,7 +67,7 @@ const INCLUDED = [
 export const metadata: Metadata = {
   title: `${PRODUCT_NAME} — kill the paper binder`,
   description:
-    "Digital compliance logs for urgent care. Crash cart, fridge temperatures and narcotics counts done in seconds on staff phones — location stamped, range alarms enforced, and an audit trail nobody can backdate.",
+    "Digital compliance logs for urgent care. Crash cart, fridge temperatures and narcotics counts done in seconds on staff phones — geolocation stamped, range alarms enforced, and an audit trail nobody can backdate.",
   alternates: { canonical: "/" },
 };
 
