@@ -7,6 +7,8 @@ import { summary, type ObligationSummary } from "@/lib/staff/obligations";
 import { ROLE_LABELS, atLeast, navFor, type NavItem } from "@/lib/staff/roles";
 import { shiftState, myCredentialWarnings, type ShiftState, type ExpiringCredential } from "@/lib/staff/shift";
 import { factOfTheDay } from "@/lib/staff/history-facts";
+import { firstNameOf } from "@/lib/staff/labels";
+import { currentAnnouncement } from "@/lib/staff/whats-new";
 import StaffClock from "@/app/components/staff/StaffClock";
 import ShortcutGrid from "@/app/components/staff/ShortcutGrid";
 
@@ -34,6 +36,9 @@ interface Overview {
   /** Only fetched when !hasProfile — the one thing that view needs and
    *  the normal one does not (it says "Today", not the clinic's name). */
   orgName: string | null;
+  /** For the "what's new" greeting. Null for the !hasProfile view, which
+   *  never renders that callout. */
+  firstName: string | null;
   outstanding: number;
   needsOnboarding: boolean;
   // Null for anyone who cannot open the register — the query is not run
@@ -83,6 +88,7 @@ export default async function StaffHome() {
         return {
           hasProfile: false,
           orgName: orgRow[0]?.name ?? org,
+          firstName: null,
           outstanding: 0,
           needsOnboarding: false,
           obligations: null,
@@ -99,6 +105,7 @@ export default async function StaffHome() {
       return {
         hasProfile: true,
         orgName: null,
+        firstName: firstNameOf(profile),
         shift: await shiftState(sql, profile.job_role ?? null),
         credentials: await myCredentialWarnings(sql, session.uid),
         outstanding: outstanding.length,
@@ -154,6 +161,8 @@ export default async function StaffHome() {
     );
   }
 
+  const whatsNew = overview?.hasProfile ? currentAnnouncement() : null;
+
   return (
     <div className="st-page">
       <header className="st-page-head">
@@ -174,6 +183,24 @@ export default async function StaffHome() {
           this file cannot verify. */}
       {overview && (
         <p className="st-history-fact">{factOfTheDay(overview.timezone)}</p>
+      )}
+
+      {/* SHORT-LIVED, ON PURPOSE. whatsNew is null once WINDOW_DAYS has
+          passed since it shipped — see lib/staff/whats-new.ts — so this
+          is not a fourth permanent thing competing for the top of the
+          screen. First thing under the header while it's live, because
+          the point is that it gets seen, not read about later. */}
+      {whatsNew && (
+        <Link className="st-callout st-callout-new" href={whatsNew.href}>
+          <span className="st-callout-badge">New</span>
+          <span className="st-callout-title">
+            Hi{overview?.firstName ? `, ${overview.firstName}` : ""} &mdash;
+            here&rsquo;s what&rsquo;s new
+          </span>
+          <span className="st-callout-sub">
+            {whatsNew.blurb} {whatsNew.cta} &rarr;
+          </span>
+        </Link>
       )}
 
       {/* Only reachable by clinical_lead+ — see hasNavAccess above. A plain

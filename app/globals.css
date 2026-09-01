@@ -4227,6 +4227,22 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 .st-callout-title { display: block; font-size: 14px; font-weight: 600; color: var(--ink); }
 .st-callout-sub { display: block; font-size: 12.5px; color: var(--accent); margin-top: 2px; }
 
+/* The "what's new" note — same callout shape, plus a badge so it reads
+   as an announcement rather than a compliance item. */
+.st-callout-new { border-left-color: var(--accent-deep); }
+.st-callout-badge {
+  display: inline-block;
+  background: var(--accent-deep);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+}
+
 /* The refusal, when a corrective action is too short or is one of the
    answers the field exists to catch. Inside the alert box rather than
    under the button, because it is about what was typed. */

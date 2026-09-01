@@ -65,6 +65,17 @@ export function formatTimeOnly(iso: string | null): string {
   });
 }
 
+/** First token of whatever name is on file, for a greeting — "Hello,
+ *  David," not "Hello, David Buch." Same fallback chain /staff/me uses
+ *  to decide what to call somebody, so the two never disagree. */
+export function firstNameOf(
+  profile: { name: string | null; legal_name: string | null } | null | undefined
+): string | null {
+  const full = profile?.name ?? profile?.legal_name ?? null;
+  if (!full) return null;
+  return full.trim().split(/\s+/)[0] || null;
+}
+
 export function formatDate(iso: string | null): string {
   if (!iso) return "—";
   const d = new Date(`${iso.slice(0, 10)}T12:00:00Z`);
