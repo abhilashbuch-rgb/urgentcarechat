@@ -7864,6 +7864,13 @@ insert into staff.facility_templates (facility_type, template_slug) values
   ('med_spa', 'eyewash-autoclave'),
   ('med_spa', 'front-desk-open'),
   ('med_spa', 'front-desk-close'),
+  -- The two added alongside product-lot: a recall is the failure mode
+  -- lot tracking exists to catch, and a monthly review is the record a
+  -- malpractice carrier or a state board asks for first when something
+  -- goes wrong. See the templates below for what each does and does not
+  -- claim to be required by.
+  ('med_spa', 'recall-check'),
+  ('med_spa', 'adverse-event-review'),
 
   -- AMBULATORY SURGERY CENTER.
   ('ambulatory_surgery', 'crash-cart'),
@@ -8136,6 +8143,64 @@ from (values
          "expected": true, "required": false },
        { "id": "manifest_filed", "label": "Recycling manifest filed", "type": "boolean",
          "expected": true, "required": false }
+     ]
+   }
+   $json$),
+
+  -- PRODUCT RECALL CROSS-CHECK. product-lot already answers "which lots
+  -- do we hold"; this is the other half — checking that answer against
+  -- FDA's actual recall list rather than waiting to hear about it from a
+  -- patient. FDA publishes both device and biologic recalls on an
+  -- ongoing, public basis (fda.gov/medical-devices/medical-device-safety
+  -- /medical-device-recalls-and-early-alerts) — this is a genuine best
+  -- practice built on real public infrastructure, not a numbered
+  -- regulatory requirement, and is worded that way below.
+  ('recall-check',
+   'Product recall check',
+   'This month''s injectable and filler lots checked against active FDA recalls.',
+   'clinical', 'monthly', array[]::text[], 32,
+   array['provider']::staff.job_role[],
+   $json$
+   {
+     "standard": "FDA publishes medical device and biologic recalls on an ongoing basis. Once a month, check every lot currently in stock or used this month against FDA's recall list. A recall found this way is one found before a patient tells you about it.",
+     "fields": [
+       { "id": "lots_checked", "label": "Distinct lots on hand or used this month", "type": "number",
+         "min": 0, "step": 1 },
+       { "id": "source", "label": "Checked against", "type": "select",
+         "options": ["FDA medical device recalls", "FDA MedWatch safety alerts", "Manufacturer notice, direct"] },
+       { "id": "recall_found", "label": "Any lot matched an active recall", "type": "boolean",
+         "expected": false },
+       { "id": "action_taken", "label": "If matched, what was done", "type": "text", "required": false,
+         "placeholder": "Quarantined, manufacturer contacted, patients notified per policy" }
+     ]
+   }
+   $json$),
+
+  -- ADVERSE EVENT REVIEW. Deliberately NOT presented as a federal filing
+  -- requirement: FDA's mandatory device-reporting rule, 21 CFR 803,
+  -- excludes a physician's office from the definition of "device user
+  -- facility" (21 CFR 803.3) — a med spa at this scale files nothing
+  -- with FDA for a complication. What actually gets asked for, by a
+  -- malpractice carrier or a state medical board, is a monthly internal
+  -- record: what happened, and that the person medically responsible
+  -- saw it.
+  ('adverse-event-review',
+   'Adverse event review',
+   'This month''s complications, reviewed by the medical director.',
+   'clinical', 'monthly', array[]::text[], 33,
+   array['provider']::staff.job_role[],
+   $json$
+   {
+     "standard": "Not a federal filing requirement at this scale — this is an internal quality record, the one a malpractice carrier or a state board asks for first. Every complication this month, documented and reviewed by whoever is medically responsible.",
+     "fields": [
+       { "id": "events_this_month", "label": "Adverse events or complications this month", "type": "number",
+         "min": 0, "step": 1, "presets": [0, 1, 2] },
+       { "id": "each_documented", "label": "Each one documented in the patient's chart", "type": "boolean",
+         "expected": true, "required": false },
+       { "id": "director_reviewed", "label": "Reviewed by the medical director", "type": "boolean",
+         "expected": true },
+       { "id": "follow_up", "label": "Follow-up or corrective action needed", "type": "text", "required": false,
+         "placeholder": "e.g. additional training, protocol change, none" }
      ]
    }
    $json$)
