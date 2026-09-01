@@ -34,6 +34,8 @@ const ERRORS: Record<string, string> = {
   mdemail: "Check the medical director's alert address.",
   reportemail:
     "A scheduled report needs an address to send to.",
+  billingemail: "Check the billing contact's address.",
+  billingforbidden: "Only an owner or administrator can set the billing contact.",
   save: "That didn't save. Nothing was changed — try again.",
   forbidden: "Only a manager or administrator can change the clinic's settings.",
 };
@@ -47,6 +49,7 @@ interface OrgSettings {
   geofence_mode: string;
   owner_alert_email: string | null;
   medical_director_alert_email: string | null;
+  billing_contact_email: string | null;
 }
 
 export default async function SettingsPage({
@@ -64,7 +67,8 @@ export default async function SettingsPage({
     settings: (
       await sql<OrgSettings[]>`
         select name, timezone, latitude, longitude, geofence_radius_m,
-               geofence_mode, owner_alert_email, medical_director_alert_email
+               geofence_mode, owner_alert_email, medical_director_alert_email,
+               billing_contact_email
           from staff.orgs where slug = ${org}
       `
     )[0],
@@ -280,6 +284,46 @@ export default async function SettingsPage({
           Save settings
         </button>
       </form>
+
+      {/* A SEPARATE FORM, POSTING SOMEWHERE ELSE, ON PURPOSE. Everything
+          above this line is manager-level. This one field is stricter —
+          owner-only, same reasoning as the Clinics link below — and a
+          shared form protected by one role check at the top of one route
+          can only ever be as protected as the loosest thing in it. Its
+          own route re-checks org_admin independently. See
+          supabase/staff-billing-stats.sql. */}
+      {isOwner && (
+        <form
+          className="st-log"
+          method="POST"
+          action="/api/staff/billing-contact"
+        >
+          <section className="st-set-block">
+            <h2 className="st-set-h">Billing contact</h2>
+            <p className="st-set-b">
+              Whoever closes out the front desk each night can send tonight&rsquo;s
+              patient count here as a PDF &mdash; a number and a note, nothing
+              clinical. Leave this blank and the count still saves, it just
+              stays internal.
+            </p>
+
+            <label className="st-field">
+              <span className="st-field-label">Send tonight&rsquo;s count to</span>
+              <input
+                className="st-input"
+                name="billing_contact_email"
+                type="email"
+                defaultValue={s.billing_contact_email ?? ""}
+                placeholder="billing@yourpracticegroup.com"
+              />
+            </label>
+          </section>
+
+          <button className="st-primary" type="submit">
+            Save billing contact
+          </button>
+        </form>
+      )}
 
       {/* BILLING STAYS THE OWNER'S, EVEN THOUGH A MANAGER CAN SEE THIS
           PAGE NOW. Adding a clinic starts a new $149/month subscription
