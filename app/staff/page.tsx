@@ -4,11 +4,12 @@ import { requireStaff } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
 import { getProfile, outstandingFor } from "@/lib/staff/compliance";
 import { summary, type ObligationSummary } from "@/lib/staff/obligations";
-import { ROLE_LABELS, atLeast, navFor, type NavItem } from "@/lib/staff/roles";
+import { ROLE_LABELS, atLeast, runsClinic, navFor, type NavItem } from "@/lib/staff/roles";
 import { shiftState, myCredentialWarnings, type ShiftState, type ExpiringCredential } from "@/lib/staff/shift";
 import { factOfTheDay } from "@/lib/staff/history-facts";
-import { firstNameOf } from "@/lib/staff/labels";
+import { firstNameOf, formatSignedAt } from "@/lib/staff/labels";
 import { currentAnnouncement } from "@/lib/staff/whats-new";
+import { listBulletins, type Bulletin } from "@/lib/staff/bulletins";
 import StaffClock from "@/app/components/staff/StaffClock";
 import ShortcutGrid from "@/app/components/staff/ShortcutGrid";
 
@@ -39,6 +40,13 @@ interface Overview {
   /** For the "what's new" greeting. Null for the !hasProfile view, which
    *  never renders that callout. */
   firstName: string | null;
+  /** Recent clinic notices — see lib/staff/bulletins.ts. Empty, not
+   *  fetched at all, for the !hasProfile view. */
+  bulletins: Bulletin[];
+  /** Owner or manager by ROLE, or the centre admin by JOB — same gate
+   *  the API route re-checks. Hides the compose box rather than showing
+   *  it disabled, since most accounts will never see it. */
+  canPost: boolean;
   outstanding: number;
   needsOnboarding: boolean;
   // Null for anyone who cannot open the register — the query is not run
@@ -89,6 +97,8 @@ export default async function StaffHome() {
           hasProfile: false,
           orgName: orgRow[0]?.name ?? org,
           firstName: null,
+          bulletins: [],
+          canPost: false,
           outstanding: 0,
           needsOnboarding: false,
           obligations: null,
@@ -106,6 +116,8 @@ export default async function StaffHome() {
         hasProfile: true,
         orgName: null,
         firstName: firstNameOf(profile),
+        bulletins: await listBulletins(sql),
+        canPost: runsClinic(session.role, profile.job_role ?? null),
         shift: await shiftState(sql, profile.job_role ?? null),
         credentials: await myCredentialWarnings(sql, session.uid),
         outstanding: outstanding.length,
@@ -273,6 +285,61 @@ export default async function StaffHome() {
             <span className="st-callout-sub">Open the register &rarr;</span>
           </Link>
         )}
+
+      {/* ONE-WAY, ON PURPOSE — a posting board, not a chat. See
+          supabase/staff-bulletins.sql for why: a reply thread the product
+          keeps a copy of is an all-party-consent recording question under
+          Pennsylvania law, and that needs an employment attorney's
+          sign-off before it can exist. Nobody replies inside the product,
+          so nothing here is a captured conversation between two people.
+          Silent for everyone when there's nothing to post and nothing
+          posted, same as the credentials section below. */}
+      {overview?.hasProfile && (overview.canPost || overview.bulletins.length > 0) && (
+        <section className="st-bulletins">
+          <h2 className="st-h2">Notices</h2>
+
+          {overview.canPost && (
+            <form className="st-bulletin-form" method="POST" action="/api/staff/bulletins">
+              <input type="hidden" name="action" value="post" />
+              <textarea
+                name="body"
+                className="st-bulletin-input"
+                placeholder='Post a notice for the team — e.g. "Fridge #2 is being serviced Thursday."'
+                maxLength={500}
+                rows={2}
+                required
+              />
+              <button className="st-board-btn st-bulletin-post" type="submit">
+                Post
+              </button>
+            </form>
+          )}
+
+          {overview.bulletins.length > 0 && (
+            <ul className="st-bulletin-list">
+              {overview.bulletins.map((b) => (
+                <li key={b.id} className="st-bulletin-row">
+                  <div className="st-bulletin-main">
+                    <p className="st-bulletin-body">{b.body}</p>
+                    <span className="st-bulletin-meta">
+                      {b.author_name ?? b.author_email} &middot; {formatSignedAt(b.created_at)}
+                    </span>
+                  </div>
+                  {overview.canPost && (
+                    <form method="POST" action="/api/staff/bulletins">
+                      <input type="hidden" name="action" value="delete" />
+                      <input type="hidden" name="id" value={b.id} />
+                      <button className="st-cust-btn" type="submit">
+                        Remove
+                      </button>
+                    </form>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
 
       {/* ADMIN-TIER ONLY. A plain staff account's Today stays exactly the
           lean, shift-focused screen it already was — see the file header
