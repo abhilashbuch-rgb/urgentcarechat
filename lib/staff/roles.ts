@@ -147,6 +147,11 @@ export const NAV: NavItem[] = [
   // the employer whether or not a manager is on shift.
   { href: "/staff/records", label: "Record an event", minRole: "staff", group: "shift" },
   { href: "/staff/rules", label: "Rules", minRole: "staff", group: "shift" },
+  // A quick number for billing, not a compliance log — see
+  // supabase/staff-billing-stats.sql. Anyone on shift can file it, same
+  // as a log; only the recipient it emails is owner-only, set on
+  // Settings, never here.
+  { href: "/staff/billing-stats", label: "Patient count", minRole: "staff", group: "shift" },
   // Emergency guides. Everyone, every job — the front desk needs the
   // lobby-recognition guide more than anybody, and gating life-safety
   // reference material behind a role is the wrong kind of tidiness.
