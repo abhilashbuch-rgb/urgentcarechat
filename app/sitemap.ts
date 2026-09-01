@@ -23,6 +23,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // the terms.
     { url: `${SITE_URL}/contact`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE_URL}/enterprise`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
+    // A vertical door, same as /enterprise — the same product, described
+    // for a medical spa owner searching in their own vocabulary rather
+    // than urgent care's.
+    { url: `${SITE_URL}/med-spa`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
     { url: `${SITE_URL}/start`, lastModified: now, changeFrequency: "monthly", priority: 0.9 },
     // The demo wizard, at the same priority as the trial form — it is the
     // top of the same funnel and, for anybody who has not heard of this
