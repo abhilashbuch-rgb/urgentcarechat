@@ -5173,6 +5173,60 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 .st-board-btn-later { background: #fff; color: var(--ink-soft); border: 1px solid var(--rule); }
 .st-board-btn-later:hover { background: var(--blue-050); color: var(--ink); }
 
+/* Collapsed-but-tracked section on the board itself. Plain <details> so
+   it works with zero JS; styled just enough that "N hidden" reads as
+   part of the page rather than a raw browser widget. */
+.st-board-hidden { margin-top: 14px; }
+.st-board-hidden > summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  padding: 8px 2px;
+  list-style: none;
+}
+.st-board-hidden > summary::-webkit-details-marker { display: none; }
+.st-board-hidden > summary::before { content: "▸ "; }
+.st-board-hidden[open] > summary::before { content: "▾ "; }
+.st-board-hidden > summary:hover { color: var(--ink); }
+.st-board-hidden .st-board { margin-top: 8px; }
+
+/* ---------- customize my board ---------- */
+
+.st-cust-list { list-style: none; background: #fff; border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; margin-top: 12px; }
+.st-cust-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-top: 1px solid var(--rule);
+}
+.st-cust-row:first-child { border-top: none; }
+.st-cust-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 14px; }
+.st-cust-cat { font-size: 12px; color: var(--ink-soft); }
+.st-cust-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.st-cust-actions form { display: contents; }
+.st-cust-btn {
+  padding: 6px 12px;
+  border-radius: 7px;
+  background: #fff;
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.st-cust-btn:hover { background: var(--blue-050); }
+.st-cust-btn:disabled { color: var(--ink-soft); opacity: .4; cursor: default; }
+.st-cust-btn:disabled:hover { background: #fff; }
+
+@media (max-width: 640px) {
+  .st-cust-row { flex-direction: column; align-items: stretch; gap: 10px; }
+  .st-cust-actions { justify-content: flex-end; }
+}
+
 .st-log { background: #fff; border: 1px solid var(--rule); border-radius: 10px; padding: 20px 22px; }
 
 /* Who and when — printed, not asked. */

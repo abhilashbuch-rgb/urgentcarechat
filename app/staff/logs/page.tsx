@@ -1,8 +1,9 @@
+import Link from "next/link";
 import { requireStaff } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
-import { todaysBoard } from "@/lib/staff/logs";
+import { todaysBoard, type BoardRow } from "@/lib/staff/logs";
 import { getProfile } from "@/lib/staff/compliance";
-import { billingState, paymentLink } from "@/lib/staff/billing";
+import { billingState, paymentLink, type BillingState } from "@/lib/staff/billing";
 import { SLOT_LABELS, currentSlot } from "@/lib/staff/forms";
 import { atLeast } from "@/lib/staff/roles";
 import { formatSignedAt, formatTimeOnly } from "@/lib/staff/labels";
@@ -29,8 +30,9 @@ export default async function LogsBoard({
     return {
       profile: me,
       // Scoped to this person's clinic job. A medical assistant does not
-      // see the front desk's drawer count and vice versa.
-      rows: await todaysBoard(sql, me?.job_role ?? null),
+      // see the front desk's drawer count and vice versa. Also in her
+      // own saved order, if she's set one — see "Customize my board".
+      rows: await todaysBoard(sql, me?.job_role ?? null, session.uid),
       billing: await billingState(sql, org),
     };
   });
@@ -48,17 +50,29 @@ export default async function LogsBoard({
         .sort((a, b) => (a.submitted_at! < b.submitted_at! ? 1 : -1))[0] ?? null
     : null;
   const flagged = rows.filter((r) => r.has_out_of_range).length;
+  // Split for display only — both halves already counted in outstanding
+  // and flagged above, computed from the full, un-split `rows`.
+  const visible = rows.filter((r) => !r.hidden);
+  const hiddenRows = rows.filter((r) => r.hidden);
 
   return (
     <div className="st-page">
-      <header className="st-page-head">
-        <h1 className="st-h1">Logs</h1>
-        <p className="st-page-sub">
-          {outstanding === 0
-            ? "Everything due today is done."
-            : `${outstanding} still due today`}
-          {flagged > 0 && ` · ${flagged} out of range`}
-        </p>
+      <header className="st-page-head st-page-head-row">
+        <div>
+          <h1 className="st-h1">Logs</h1>
+          <p className="st-page-sub">
+            {outstanding === 0
+              ? "Everything due today is done."
+              : `${outstanding} still due today`}
+            {flagged > 0 && ` · ${flagged} out of range`}
+          </p>
+        </div>
+        {/* Reachable from every shift, not just from a settings menu
+            nobody on the floor thinks to open — this is the answer to
+            "why is my board in a different order than hers." */}
+        <Link className="st-quiet" href="/staff/logs/customize">
+          Customize my board
+        </Link>
       </header>
 
       {billing.is_read_only && (
@@ -133,79 +147,97 @@ export default async function LogsBoard({
       )}
 
       <ul className="st-board">
-        {rows.map((r) => {
-          const isNow = r.slot === "" || r.slot === now;
-          const doneAt = r.submitted_at;
-          return (
-            <li
-              key={`${r.template_id}-${r.slot}`}
-              className={`st-board-row${doneAt ? " st-board-done" : ""}${
-                r.has_out_of_range ? " st-board-flag" : ""
-              }`}
-            >
-              <div className="st-board-main">
-                <span className="st-board-name">
-                  {r.name}
-                  {r.slot && (
-                    <span className="st-board-slot">{SLOT_LABELS[r.slot]}</span>
-                  )}
-                </span>
-                {doneAt ? (
-                  <span className="st-board-meta">
-                    {r.submitted_by_name ?? r.submitted_by_email} ·{" "}
-                    {formatSignedAt(doneAt)}
-                  </span>
-                ) : (
-                  <span className="st-board-meta">{r.description}</span>
-                )}
-              </div>
-
-              <div className="st-board-action">
-                {r.has_out_of_range && (
-                  <span className="st-pill st-pill-due">Out of range</span>
-                )}
-                {doneAt ? (
-                  <>
-                    <span className="st-pill st-pill-ok">Done</span>
-                    {/* THE CORRECTION PATH, WHERE THE MISTAKE IS VISIBLE.
-                        Offered on a filed entry rather than hidden in an
-                        admin screen, because the person who knows a
-                        reading is wrong is almost always the person who
-                        typed it, within a minute of typing it. Hidden
-                        here, the alternative they reach for is asking a
-                        manager to "fix it in the system", which is the
-                        habit this product exists to remove. */}
-                    {!billing.is_read_only && r.response_id && (
-                      <a
-                        className="st-board-amend"
-                        href={`/staff/logs/${r.slug}?amend=${r.response_id}${
-                          r.slot ? `&slot=${r.slot}` : ""
-                        }`}
-                      >
-                        Amend
-                      </a>
-                    )}
-                  </>
-                ) : billing.is_read_only ? (
-                  <span className="st-pill st-pill-new">Paused</span>
-                ) : (
-                  <a
-                    className={`st-board-btn${isNow ? "" : " st-board-btn-later"}`}
-                    href={`/staff/logs/${r.slug}${r.slot ? `?slot=${r.slot}` : ""}`}
-                  >
-                    {isNow ? "Fill in" : "Fill in early"}
-                  </a>
-                )}
-              </div>
-            </li>
-          );
-        })}
+        {visible.map((r) => (
+          <BoardListItem key={`${r.template_id}-${r.slot}`} r={r} now={now} billing={billing} />
+        ))}
       </ul>
+
+      {/* COLLAPSED, NEVER DROPPED. Everything in here still counted
+          toward "still due today" above — this is where she put things
+          she doesn't want competing for attention every shift, not
+          where an owed task goes to stop being owed. See
+          staff-board-prefs.sql for why hiding can never do the latter. */}
+      {hiddenRows.length > 0 && (
+        <details className="st-board-hidden">
+          <summary>
+            {hiddenRows.length} hidden from your board
+            {hiddenRows.filter((r) => !r.submitted_at).length > 0 &&
+              ` — ${hiddenRows.filter((r) => !r.submitted_at).length} still due`}
+          </summary>
+          <ul className="st-board">
+            {hiddenRows.map((r) => (
+              <BoardListItem key={`${r.template_id}-${r.slot}`} r={r} now={now} billing={billing} />
+            ))}
+          </ul>
+        </details>
+      )}
 
       <p className="st-foot">
         Rows appear from the form templates for this clinic. A twice-daily form
         shows once per shift; each is its own record.
       </p>
     </div>
+  );
+}
+
+function BoardListItem({
+  r,
+  now,
+  billing,
+}: {
+  r: BoardRow;
+  now: string;
+  billing: BillingState;
+}) {
+  const isNow = r.slot === "" || r.slot === now;
+  const doneAt = r.submitted_at;
+  return (
+    <li
+      className={`st-board-row${doneAt ? " st-board-done" : ""}${
+        r.has_out_of_range ? " st-board-flag" : ""
+      }`}
+    >
+      <div className="st-board-main">
+        <span className="st-board-name">
+          {r.name}
+          {r.slot && <span className="st-board-slot">{SLOT_LABELS[r.slot]}</span>}
+        </span>
+        {doneAt ? (
+          <span className="st-board-meta">
+            {r.submitted_by_name ?? r.submitted_by_email} · {formatSignedAt(doneAt)}
+          </span>
+        ) : (
+          <span className="st-board-meta">{r.description}</span>
+        )}
+      </div>
+
+      <div className="st-board-action">
+        {r.has_out_of_range && <span className="st-pill st-pill-due">Out of range</span>}
+        {doneAt ? (
+          <>
+            <span className="st-pill st-pill-ok">Done</span>
+            {!billing.is_read_only && r.response_id && (
+              <a
+                className="st-board-amend"
+                href={`/staff/logs/${r.slug}?amend=${r.response_id}${
+                  r.slot ? `&slot=${r.slot}` : ""
+                }`}
+              >
+                Amend
+              </a>
+            )}
+          </>
+        ) : billing.is_read_only ? (
+          <span className="st-pill st-pill-new">Paused</span>
+        ) : (
+          <a
+            className={`st-board-btn${isNow ? "" : " st-board-btn-later"}`}
+            href={`/staff/logs/${r.slug}${r.slot ? `?slot=${r.slot}` : ""}`}
+          >
+            {isNow ? "Fill in" : "Fill in early"}
+          </a>
+        )}
+      </div>
+    </li>
   );
 }

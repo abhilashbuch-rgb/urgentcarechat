@@ -20,27 +20,101 @@ export interface BoardRow {
   submitted_by_email: string | null;
   /** True when this task has no job attached, i.e. it is everyone's. */
   everyone?: boolean;
+  /** Collapsed out of this person's daily view by their own preference.
+   *  Never means "not owed" — see staff-board-prefs.sql. Still counted
+   *  toward outstanding/flagged totals by every caller of this row. */
+  hidden: boolean;
 }
 
-/** Today's board, scoped to one person's clinic job.
+/** Today's board, scoped to one person's clinic job, in that person's
+ *  own preferred order.
  *
- *  The filter is staff.brief_matches(), the same function the database
- *  uses — so what a medical assistant sees here and what the database
- *  says they should see cannot drift apart. Separation is strict: only a
- *  template with no job_roles at all is universal, and a person with no
- *  job assigned sees only those. */
+ *  The job filter is staff.brief_matches(), the same function the
+ *  database uses — so what a medical assistant sees here and what the
+ *  database says they should see cannot drift apart. Separation is
+ *  strict: only a template with no job_roles at all is universal, and a
+ *  person with no job assigned sees only those.
+ *
+ *  THE ORDER IS HERS, NOT THE ORIGINAL sort_order, once she has set one.
+ *  staff.log_board_prefs is a left join, not a filter — a row with no
+ *  saved preference still appears, in the template's original position,
+ *  which is why a brand new hire's board looks identical to before this
+ *  existed. Hidden rows are RETURNED, not dropped: dropping them here
+ *  would make the outstanding count on the page silently exclude a
+ *  currently-owed task, which is the exact failure mode a compliance
+ *  board cannot have. */
 export async function todaysBoard(
   sql: StaffSql,
-  jobRole: string | null
+  jobRole: string | null,
+  userId?: string
 ): Promise<BoardRow[]> {
   return sql<BoardRow[]>`
-    select template_id, slug, name, description, category, frequency, slot,
-           response_id, submitted_at::text as submitted_at, has_out_of_range,
-           submitted_by_name, submitted_by_email,
-           cardinality(job_roles) = 0 as everyone
-      from staff.todays_logs
-     where staff.brief_matches(job_roles, ${jobRole}::staff.job_role)
-     order by sort_order, slot
+    select l.template_id, l.slug, l.name, l.description, l.category,
+           l.frequency, l.slot,
+           l.response_id, l.submitted_at::text as submitted_at,
+           l.has_out_of_range,
+           l.submitted_by_name, l.submitted_by_email,
+           cardinality(l.job_roles) = 0 as everyone,
+           coalesce(p.hidden, false) as hidden
+      from staff.todays_logs l
+      left join staff.log_board_prefs p
+             on p.user_id = ${userId ?? null} and p.template_slug = l.slug
+     where staff.brief_matches(l.job_roles, ${jobRole}::staff.job_role)
+     order by coalesce(p.sort_order, l.sort_order), l.slot
+  `;
+}
+
+/** One person's saved order/visibility for their own board — the whole
+ *  set, replacing whatever was there before. Slugs not present in
+ *  `prefs` fall back to the template's default order and stay visible,
+ *  which is what lets "reset" just mean "save an empty list." */
+export async function saveBoardPrefs(
+  sql: StaffSql,
+  org: string,
+  userId: string,
+  prefs: { slug: string; hidden: boolean; sortOrder: number }[]
+): Promise<void> {
+  await sql`delete from staff.log_board_prefs where user_id = ${userId}`;
+  if (prefs.length === 0) return;
+  await sql`
+    insert into staff.log_board_prefs (org_slug, user_id, template_slug, hidden, sort_order)
+    select ${org}, ${userId}, x.slug, x.hidden, x.sort_order
+      from jsonb_to_recordset(${sql.json(prefs.map((p) => ({
+        slug: p.slug,
+        hidden: p.hidden,
+        sort_order: p.sortOrder,
+      })))}) as x(slug text, hidden boolean, sort_order integer)
+  `;
+}
+
+export interface BoardTemplate {
+  slug: string;
+  name: string;
+  category: string | null;
+  hidden: boolean;
+  sort_order: number;
+}
+
+/** One row per TEMPLATE, not per slot — the customize screen moves a
+ *  twice-daily fridge check as one thing, not as separate "AM" and "PM"
+ *  rows that would drift apart from each other. Same job filter as
+ *  todaysBoard(), same left join for the same reason: a template with
+ *  no saved preference still appears, in its default position. */
+export async function boardTemplatesFor(
+  sql: StaffSql,
+  jobRole: string | null,
+  userId: string
+): Promise<BoardTemplate[]> {
+  return sql<BoardTemplate[]>`
+    select t.slug, t.name, t.category,
+           coalesce(p.hidden, false) as hidden,
+           coalesce(p.sort_order, t.sort_order) as sort_order
+      from staff.form_templates t
+      left join staff.log_board_prefs p
+             on p.user_id = ${userId} and p.template_slug = t.slug
+     where t.active
+       and staff.brief_matches(t.job_roles, ${jobRole}::staff.job_role)
+     order by coalesce(p.sort_order, t.sort_order), t.name
   `;
 }
 
