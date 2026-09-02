@@ -18,6 +18,8 @@ export const DOC_TYPES = [
   "malpractice",
   "cme_log",
   "peer_review",
+  "tb_screening",
+  "hepatitis_b_vaccination",
   "other",
 ] as const;
 
@@ -31,6 +33,8 @@ export const DOC_TYPE_LABELS: Record<DocType, string> = {
   malpractice: "Malpractice cover",
   cme_log: "CME record",
   peer_review: "Peer review",
+  tb_screening: "TB screening",
+  hepatitis_b_vaccination: "Hepatitis B vaccination",
   other: "Other",
 };
 
@@ -43,6 +47,8 @@ export const DOC_TYPE_TO_CREDENTIAL: Partial<Record<DocType, string>> = {
   arrt_permit: "arrt",
   board_certification: "board_certification",
   malpractice: "malpractice",
+  tb_screening: "tb_screening",
+  hepatitis_b_vaccination: "hepatitis_b_vaccination",
 };
 
 export interface MyDocument {

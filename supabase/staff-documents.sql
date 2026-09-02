@@ -45,7 +45,8 @@ create table if not exists staff.user_documents (
   -- with an issuer and an expiry.
   doc_type text not null check (doc_type in (
     'bls_cpr', 'state_license', 'arrt_permit', 'board_certification',
-    'malpractice', 'cme_log', 'peer_review', 'other'
+    'malpractice', 'cme_log', 'peer_review',
+    'tb_screening', 'hepatitis_b_vaccination', 'other'
   )),
 
   title text not null,
