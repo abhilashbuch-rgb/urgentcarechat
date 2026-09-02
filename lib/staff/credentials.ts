@@ -51,6 +51,8 @@ export const KIND_LABELS: Record<string, string> = {
   arrt: "ARRT",
   malpractice: "Malpractice cover",
   collaborative_agreement: "Collaborative agreement",
+  tb_screening: "TB screening",
+  hepatitis_b_vaccination: "Hepatitis B vaccination",
   other: "Other",
 };
 

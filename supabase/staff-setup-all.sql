@@ -4329,7 +4329,8 @@ create table if not exists staff.user_documents (
   -- with an issuer and an expiry.
   doc_type text not null check (doc_type in (
     'bls_cpr', 'state_license', 'arrt_permit', 'board_certification',
-    'malpractice', 'cme_log', 'peer_review', 'other'
+    'malpractice', 'cme_log', 'peer_review',
+    'tb_screening', 'hepatitis_b_vaccination', 'other'
   )),
 
   title text not null,
@@ -4448,6 +4449,63 @@ left join staff.users v on v.id = d.verified_by
 where d.active;
 
 grant select on staff.my_documents to staff_app;
+
+
+-- ========== staff-credential-kinds-hr.sql ==========
+
+-- ============================================================
+-- TWO MORE CREDENTIAL KINDS: TB SCREENING, HEPATITIS B
+--
+-- Run AFTER supabase/staff-credentials.sql and staff-documents.sql. Idempotent.
+--
+-- ACHC's Ambulatory Care standards (AC4-2B, AC4-2C) ask every clinic to
+-- track a baseline TB screening and Hepatitis B vaccination status (or a
+-- signed declination) for direct-care personnel, the same way this
+-- roster already tracks BLS/CPR and a state licence. Neither existed as
+-- a credential kind before this file.
+--
+-- ONE FILE, NOTHING REFERENCES THE NEW VALUES. Postgres will not let a
+-- freshly added enum value be used in the same transaction that added
+-- it, and a multi-statement paste runs as one transaction — see
+-- staff-manager-role.sql for the same rule. Nothing below casts a
+-- literal to either new value (no seed row uses them), so there is
+-- nothing here that could trip it.
+-- ============================================================
+
+alter type staff.credential_kind add value if not exists 'tb_screening'
+  after 'collaborative_agreement';
+alter type staff.credential_kind add value if not exists 'hepatitis_b_vaccination'
+  after 'tb_screening';
+
+-- staff.user_documents.doc_type is deliberately a plain text CHECK, not
+-- this enum — see staff-documents.sql's own header for why (a CME log
+-- and a peer review are documents, not credentials with an issuer and
+-- an expiry). Widened to match the two kinds above.
+--
+-- The constraint's name is found rather than assumed: it was declared
+-- inline in the original CREATE TABLE with no name of its own, so
+-- Postgres chose one, and guessing wrong here would silently leave the
+-- old, narrower constraint in place instead of replacing it.
+do $$
+declare
+  c record;
+begin
+  for c in
+    select conname from pg_constraint
+     where conrelid = 'staff.user_documents'::regclass
+       and contype = 'c'
+       and pg_get_constraintdef(oid) ilike '%doc_type%'
+  loop
+    execute format('alter table staff.user_documents drop constraint %I', c.conname);
+  end loop;
+end $$;
+
+alter table staff.user_documents add constraint user_documents_doc_type_check
+  check (doc_type in (
+    'bls_cpr', 'state_license', 'arrt_permit', 'board_certification',
+    'malpractice', 'cme_log', 'peer_review',
+    'tb_screening', 'hepatitis_b_vaccination', 'other'
+  ));
 
 
 -- ========== staff-protocols.sql ==========
@@ -7842,6 +7900,7 @@ insert into staff.facility_templates (facility_type, template_slug) values
   ('urgent_care', 'front-desk-close'),
   ('urgent_care', 'front-desk-eod'),
   ('urgent_care', 'admin-day-sheet'),
+  ('urgent_care', 'fire-safety-check'),
 
   -- PRIMARY CARE & PEDIATRICS. No radiation apron (most have no X-ray)
   -- and no narcotics count (most stock none). The fridge is the whole
@@ -7854,6 +7913,7 @@ insert into staff.facility_templates (facility_type, template_slug) values
   ('primary_care', 'qi-minutes'),
   ('primary_care', 'front-desk-open'),
   ('primary_care', 'front-desk-close'),
+  ('primary_care', 'fire-safety-check'),
 
   -- MEDICAL SPA. Emergency readiness still applies — anaphylaxis after
   -- an injectable is the event this industry actually fears.
@@ -7871,6 +7931,7 @@ insert into staff.facility_templates (facility_type, template_slug) values
   -- claim to be required by.
   ('med_spa', 'recall-check'),
   ('med_spa', 'adverse-event-review'),
+  ('med_spa', 'fire-safety-check'),
 
   -- AMBULATORY SURGERY CENTER.
   ('ambulatory_surgery', 'crash-cart'),
@@ -7881,6 +7942,7 @@ insert into staff.facility_templates (facility_type, template_slug) values
   ('ambulatory_surgery', 'eyewash-autoclave'),
   ('ambulatory_surgery', 'poct-qc'),
   ('ambulatory_surgery', 'qi-minutes'),
+  ('ambulatory_surgery', 'fire-safety-check'),
 
   -- DENTAL & ORAL SURGERY.
   ('dental', 'crash-cart'),
@@ -7888,7 +7950,8 @@ insert into staff.facility_templates (facility_type, template_slug) values
   ('dental', 'sedation-check'),
   ('dental', 'amalgam-separator'),
   ('dental', 'front-desk-open'),
-  ('dental', 'front-desk-close')
+  ('dental', 'front-desk-close'),
+  ('dental', 'fire-safety-check')
 on conflict do nothing;
 
 
@@ -8201,6 +8264,39 @@ from (values
          "expected": true },
        { "id": "follow_up", "label": "Follow-up or corrective action needed", "type": "text", "required": false,
          "placeholder": "e.g. additional training, protocol change, none" }
+     ]
+   }
+   $json$),
+
+  -- FIRE AND LIFE SAFETY. Every ambulatory facility, not one industry —
+  -- ACHC's Ambulatory Care standard AC7-4A asks for exactly this:
+  -- extinguishers, exit lighting and smoke detectors checked, and the
+  -- building's emergency power system tested at least annually. Mapped
+  -- to every facility type below rather than one, since the requirement
+  -- does not vary by what kind of care happens in the building.
+  ('fire-safety-check',
+   'Fire and life safety check',
+   'Extinguishers, exit lighting and smoke detectors, plus the annual emergency-power test.',
+   'operations', 'monthly', array[]::text[], 34,
+   array['center_admin','front_desk']::staff.job_role[],
+   $json$
+   {
+     "standard": "Fire extinguishers, exit signage and emergency lighting, and smoke detectors are checked monthly. The building's emergency power system — alarms, exit lighting, emergency communication — is tested at least annually. A charged extinguisher behind a locked door is not a working one.",
+     "fields": [
+       { "id": "extinguisher_count", "label": "Extinguishers checked", "type": "number",
+         "min": 0, "step": 1 },
+       { "id": "extinguishers_ok", "label": "Gauge in the charged zone, pin and seal intact, unobstructed", "type": "boolean",
+         "expected": true },
+       { "id": "exit_lighting_ok", "label": "Exit signage and emergency lighting illuminated", "type": "boolean",
+         "expected": true },
+       { "id": "smoke_detectors_ok", "label": "Smoke detectors tested and functioning", "type": "boolean",
+         "expected": true },
+       { "id": "no_smoking_posted", "label": "No-smoking signage posted", "type": "boolean",
+         "expected": true, "required": false },
+       { "id": "emergency_power_tested", "label": "Emergency power system tested in the last 12 months", "type": "boolean",
+         "expected": true, "required": false,
+         "help": "Annual, not monthly — mark this once a year, whenever that test is actually done, and leave it as-is the rest of the year." },
+       { "id": "emergency_power_test_date", "label": "Date of that test", "type": "date", "required": false }
      ]
    }
    $json$)

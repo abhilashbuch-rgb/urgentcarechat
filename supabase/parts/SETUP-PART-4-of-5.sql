@@ -499,6 +499,7 @@ insert into staff.facility_templates (facility_type, template_slug) values
   ('urgent_care', 'front-desk-close'),
   ('urgent_care', 'front-desk-eod'),
   ('urgent_care', 'admin-day-sheet'),
+  ('urgent_care', 'fire-safety-check'),
 
   -- PRIMARY CARE & PEDIATRICS. No radiation apron (most have no X-ray)
   -- and no narcotics count (most stock none). The fridge is the whole
@@ -511,6 +512,7 @@ insert into staff.facility_templates (facility_type, template_slug) values
   ('primary_care', 'qi-minutes'),
   ('primary_care', 'front-desk-open'),
   ('primary_care', 'front-desk-close'),
+  ('primary_care', 'fire-safety-check'),
 
   -- MEDICAL SPA. Emergency readiness still applies — anaphylaxis after
   -- an injectable is the event this industry actually fears.
@@ -528,6 +530,7 @@ insert into staff.facility_templates (facility_type, template_slug) values
   -- claim to be required by.
   ('med_spa', 'recall-check'),
   ('med_spa', 'adverse-event-review'),
+  ('med_spa', 'fire-safety-check'),
 
   -- AMBULATORY SURGERY CENTER.
   ('ambulatory_surgery', 'crash-cart'),
@@ -538,6 +541,7 @@ insert into staff.facility_templates (facility_type, template_slug) values
   ('ambulatory_surgery', 'eyewash-autoclave'),
   ('ambulatory_surgery', 'poct-qc'),
   ('ambulatory_surgery', 'qi-minutes'),
+  ('ambulatory_surgery', 'fire-safety-check'),
 
   -- DENTAL & ORAL SURGERY.
   ('dental', 'crash-cart'),
@@ -545,7 +549,8 @@ insert into staff.facility_templates (facility_type, template_slug) values
   ('dental', 'sedation-check'),
   ('dental', 'amalgam-separator'),
   ('dental', 'front-desk-open'),
-  ('dental', 'front-desk-close')
+  ('dental', 'front-desk-close'),
+  ('dental', 'fire-safety-check')
 on conflict do nothing;
 
 
@@ -858,6 +863,39 @@ from (values
          "expected": true },
        { "id": "follow_up", "label": "Follow-up or corrective action needed", "type": "text", "required": false,
          "placeholder": "e.g. additional training, protocol change, none" }
+     ]
+   }
+   $json$),
+
+  -- FIRE AND LIFE SAFETY. Every ambulatory facility, not one industry —
+  -- ACHC's Ambulatory Care standard AC7-4A asks for exactly this:
+  -- extinguishers, exit lighting and smoke detectors checked, and the
+  -- building's emergency power system tested at least annually. Mapped
+  -- to every facility type below rather than one, since the requirement
+  -- does not vary by what kind of care happens in the building.
+  ('fire-safety-check',
+   'Fire and life safety check',
+   'Extinguishers, exit lighting and smoke detectors, plus the annual emergency-power test.',
+   'operations', 'monthly', array[]::text[], 34,
+   array['center_admin','front_desk']::staff.job_role[],
+   $json$
+   {
+     "standard": "Fire extinguishers, exit signage and emergency lighting, and smoke detectors are checked monthly. The building's emergency power system — alarms, exit lighting, emergency communication — is tested at least annually. A charged extinguisher behind a locked door is not a working one.",
+     "fields": [
+       { "id": "extinguisher_count", "label": "Extinguishers checked", "type": "number",
+         "min": 0, "step": 1 },
+       { "id": "extinguishers_ok", "label": "Gauge in the charged zone, pin and seal intact, unobstructed", "type": "boolean",
+         "expected": true },
+       { "id": "exit_lighting_ok", "label": "Exit signage and emergency lighting illuminated", "type": "boolean",
+         "expected": true },
+       { "id": "smoke_detectors_ok", "label": "Smoke detectors tested and functioning", "type": "boolean",
+         "expected": true },
+       { "id": "no_smoking_posted", "label": "No-smoking signage posted", "type": "boolean",
+         "expected": true, "required": false },
+       { "id": "emergency_power_tested", "label": "Emergency power system tested in the last 12 months", "type": "boolean",
+         "expected": true, "required": false,
+         "help": "Annual, not monthly — mark this once a year, whenever that test is actually done, and leave it as-is the rest of the year." },
+       { "id": "emergency_power_test_date", "label": "Date of that test", "type": "date", "required": false }
      ]
    }
    $json$)
