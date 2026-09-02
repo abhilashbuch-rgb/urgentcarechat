@@ -11,9 +11,13 @@
 // anybody. So the price is that this file has to be kept honest by hand,
 // and the comment saying so is the whole mitigation.
 //
-// KEPT SHORT FOR THE SAME REASON. Three archetypes, not five: a prospect
-// is choosing a shape, not filling in a form. Ambulatory surgery and
-// dental exist in the product and are left off the demo deliberately.
+// FIVE ARCHETYPES, MATCHING THE PRODUCT. Ambulatory surgery and dental
+// used to be left off deliberately, on the reasoning that a prospect is
+// choosing a shape, not filling in a form. That held while three covered
+// most of who signed up; it stopped holding once a surgery center owner
+// or a dentist landed here and saw two shapes that were not theirs. The
+// "not a form" argument still governs how each archetype is described —
+// a couple of modules, not every template it actually seeds.
 
 export interface DemoModule {
   key: string;
@@ -85,6 +89,66 @@ const LASER: DemoModule = {
   job: "medical_assistant",
 };
 
+const RECALL_CHECK: DemoModule = {
+  key: "recall_check",
+  slug: "recall-check",
+  label: "Monthly recall check",
+  blurb:
+    "This month's injectable lots checked against FDA's recall list — before a patient tells you about one.",
+  on: true,
+  job: "medical_assistant",
+};
+
+const ADVERSE_EVENT: DemoModule = {
+  key: "adverse_event",
+  slug: "adverse-event-review",
+  label: "Adverse event review",
+  blurb:
+    "Every complication this month, reviewed and signed off by the medical director.",
+  on: true,
+  job: "medical_assistant",
+};
+
+const MH_CART: DemoModule = {
+  key: "mh_cart",
+  slug: "mh-cart",
+  label: "Malignant hyperthermia cart",
+  blurb:
+    "Dantrolene stock and the adjuncts, checked weekly — the MHAUS standard a surveyor checks first.",
+  on: true,
+  job: "medical_assistant",
+};
+
+const STERILE_PROCESSING: DemoModule = {
+  key: "sterile_processing",
+  slug: "sterile-processing",
+  label: "Sterile processing",
+  blurb:
+    "Every load recorded, with the biological indicator that actually proves an instrument is sterile.",
+  on: true,
+  job: "medical_assistant",
+};
+
+const SEDATION: DemoModule = {
+  key: "sedation",
+  slug: "sedation-check",
+  label: "Sedation & nitrous safety",
+  blurb:
+    "Scavenging, monitors, reversal agents and the emergency kit, checked before the first patient.",
+  on: true,
+  job: "medical_assistant",
+};
+
+const AMALGAM: DemoModule = {
+  key: "amalgam",
+  slug: "amalgam-separator",
+  label: "Amalgam separator",
+  blurb:
+    "Canister level and vacuum-line cleaning — EPA's dental effluent rule, 40 CFR Part 441.",
+  on: true,
+  job: "medical_assistant",
+};
+
 export const ARCHETYPES: Archetype[] = [
   {
     key: "urgent_care",
@@ -105,7 +169,21 @@ export const ARCHETYPES: Archetype[] = [
     label: "Med spa",
     phrase: "a med spa",
     blurb: "Injectables, lasers, no walk-in urgent care.",
-    modules: [LASER, AUTOCLAVE],
+    modules: [LASER, AUTOCLAVE, RECALL_CHECK, ADVERSE_EVENT],
+  },
+  {
+    key: "ambulatory_surgery",
+    label: "Surgery center",
+    phrase: "a surgery center",
+    blurb: "Same-day procedures, sedation or general anesthesia, no overnight stay.",
+    modules: [MH_CART, STERILE_PROCESSING],
+  },
+  {
+    key: "dental",
+    label: "Dental",
+    phrase: "a dental practice",
+    blurb: "Oral surgery, sedation, amalgam and sharps handled daily.",
+    modules: [SEDATION, AMALGAM],
   },
 ];
 
@@ -126,7 +204,7 @@ export const REQUIRED: { label: string; why: string }[] = [
   { label: "Crash cart & AED", why: "Emergency readiness" },
   { label: "Controlled substance count", why: "Dual-witness count" },
   { label: "Sharps containers", why: "29 CFR 1910.1030" },
-  { label: "Fire extinguishers", why: "29 CFR 1910.157(e)(2)" },
+  { label: "Fire & life safety", why: "29 CFR 1910.157(e)(2)" },
   { label: "Hazardous chemical inventory", why: "29 CFR 1910.1200" },
   { label: "Exposure & sharps injury", why: "29 CFR 1910.1030(h)" },
 ];
