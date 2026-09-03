@@ -38,17 +38,17 @@ const fraunces = localFont({
 
 import { ROOT_URL as SITE_URL, PRODUCT_NAME, OPERATOR } from "@/lib/site";
 const SITE_DESCRIPTION =
-  "Compliance software for urgent care: daily logs that can't be backdated, staff onboarding with real signatures, and an audit trail nobody can edit. Includes a free patient symptom checker.";
+  "Compliance software for urgent care, primary care, and med spa: daily logs that can't be backdated, staff onboarding with real signatures, and an audit trail nobody can edit. Includes a free patient symptom checker.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: `${PRODUCT_NAME} — compliance software for urgent care`,
+  title: `${PRODUCT_NAME} — compliance software for urgent care, primary care, and med spa`,
   description: SITE_DESCRIPTION,
   alternates: {
     canonical: "/",
   },
   openGraph: {
-    title: `${PRODUCT_NAME} — compliance software for urgent care`,
+    title: `${PRODUCT_NAME} — compliance software for urgent care, primary care, and med spa`,
     description: SITE_DESCRIPTION,
     url: SITE_URL,
     siteName: PRODUCT_NAME,
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: `${PRODUCT_NAME} — compliance software for urgent care`,
+    title: `${PRODUCT_NAME} — compliance software for urgent care, primary care, and med spa`,
     description: SITE_DESCRIPTION,
   },
 };

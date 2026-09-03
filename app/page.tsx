@@ -67,7 +67,7 @@ const INCLUDED = [
 export const metadata: Metadata = {
   title: `${PRODUCT_NAME} — kill the paper binder`,
   description:
-    "Digital compliance logs for urgent care. Crash cart, fridge temperatures and narcotics counts done in seconds on staff phones — geolocation stamped, range alarms enforced, and an audit trail nobody can backdate.",
+    "Digital compliance logs for urgent care, primary care, and med spa. Crash cart, fridge temperatures and narcotics counts done in seconds on staff phones — geolocation stamped, range alarms enforced, and an audit trail nobody can backdate.",
   alternates: { canonical: "/" },
 };
 
