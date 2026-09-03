@@ -19,7 +19,8 @@ import { PRODUCT_WORDS } from "@/lib/site";
 // six values as globals.css and app/icon.svg — if the palette moves,
 // all three move together or the card lies about the brand.
 
-export const alt = "medicin. — compliance software for urgent care";
+export const alt =
+  "medicin. — compliance software for urgent care, primary care, and med spa";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -102,8 +103,15 @@ export default function OpenGraphImage() {
           }}
         />
 
-        <div style={{ display: "flex", fontSize: 44, lineHeight: 1.3 }}>
-          Compliance software for urgent care
+        <div
+          style={{
+            display: "flex",
+            width: 920,
+            fontSize: 38,
+            lineHeight: 1.3,
+          }}
+        >
+          Compliance software for urgent care, primary care, and med spa
         </div>
         <div
           style={{
