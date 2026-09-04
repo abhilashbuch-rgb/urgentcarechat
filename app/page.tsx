@@ -1,3 +1,4 @@
+import BookmarkButton from "@/app/components/BookmarkButton";
 import BrandLockup from "@/app/components/BrandLockup";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -211,6 +212,11 @@ export default function LandingPage() {
             to the day&rsquo;s logs — no browser, no search bar, no password
             typed at 7am.
           </p>
+          <p>
+            No phone in hand? It runs the same in any desktop or laptop
+            browser — bookmark it so it&rsquo;s one click away.
+          </p>
+          <BookmarkButton />
         </section>
       </main>
 
