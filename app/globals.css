@@ -5908,6 +5908,9 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 .mh-install { padding: 48px 0 80px; border-top: 1px solid var(--rule); text-align: center; }
 .mh-install p { font-size: 15px; line-height: 1.65; color: var(--ink-soft); max-width: 54ch; margin: 0 auto; }
 .mh-install strong { color: var(--ink); font-weight: 650; }
+.mh-install p + p { margin-top: 10px; }
+.mh-bookmark { margin-top: 22px; }
+.mh-bookmark-hint { margin-top: 12px !important; font-size: 13px !important; color: var(--ink-soft); }
 
 /* ---------- trial signup ---------- */
 .tr-main { display: flex; align-items: center; justify-content: center; padding: 64px 24px; }
