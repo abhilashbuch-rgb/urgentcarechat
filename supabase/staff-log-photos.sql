@@ -28,6 +28,18 @@
 -- mean sending every clinical photograph to a third-party vision API,
 -- which is the same trade this product already declined for staff
 -- avatars.
+--
+-- THE FRIDGE-TEMPERATURE EXCEPTION, AND WHY IT'S A DIFFERENT TRADE.
+-- app/api/staff/logs/read-digits/route.ts does send a photo to
+-- Anthropic's vision API — but never THIS photo. It's a second,
+-- separate capture (app/components/staff/AiPhotoRead.tsx), cropped on
+-- the phone to just the thermometer's digital display before it ever
+-- leaves the device, and it is never stored anywhere — not in this
+-- bucket, not in staff.log_photos, nowhere. This evidentiary photo
+-- (the full frame, kept forever, exactly what this file is about)
+-- still never goes near a vision API. See
+-- supabase/staff-log-field-capture.sql for what IS recorded about a
+-- photo-assisted reading, and why.
 -- ============================================================
 
 create table if not exists staff.log_photos (

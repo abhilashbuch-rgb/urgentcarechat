@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { downsample as downsampleFile } from "@/lib/staff/image";
 
 // Photo proof for a shift log: the NIST display, the crash cart seal,
 // the POCT read window.
@@ -136,56 +137,10 @@ export default function CameraProof({
 }
 
 /**
- * Re-encode to at most 1600x1200 JPEG at 0.8.
- *
- * createImageBitmap where available — it decodes off the main thread,
- * which on a mid-range Android is the difference between a responsive
- * button and a frozen one. The <img> path is the fallback for Safari
- * versions that lack it.
+ * Re-encode to at most 1600x1200 JPEG at 0.8. See lib/staff/image.ts —
+ * shared with AiPhotoRead.tsx's capture step so there's one copy of the
+ * decode/resize logic, not two.
  */
 async function downsample(file: File): Promise<Blob> {
-  const bitmap = await loadBitmap(file);
-  const scale = Math.min(1, MAX_W / bitmap.width, MAX_H / bitmap.height);
-  const w = Math.round(bitmap.width * scale);
-  const h = Math.round(bitmap.height * scale);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("no 2d context");
-  ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(bitmap, 0, 0, w, h);
-
-  return new Promise((resolve, reject) =>
-    canvas.toBlob(
-      (b) => (b ? resolve(b) : reject(new Error("encode failed"))),
-      "image/jpeg",
-      QUALITY
-    )
-  );
-}
-
-async function loadBitmap(
-  file: File
-): Promise<ImageBitmap | HTMLImageElement> {
-  if (typeof createImageBitmap === "function") {
-    try {
-      return await createImageBitmap(file);
-    } catch {
-      // Falls through to the <img> path.
-    }
-  }
-  const url = URL.createObjectURL(file);
-  try {
-    return await new Promise<HTMLImageElement>((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error("decode failed"));
-      img.src = url;
-    });
-  } finally {
-    // Revoked after the image has loaded; the canvas holds the pixels.
-    setTimeout(() => URL.revokeObjectURL(url), 0);
-  }
+  return downsampleFile(file, MAX_W, MAX_H, QUALITY);
 }
