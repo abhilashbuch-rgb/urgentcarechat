@@ -17,6 +17,28 @@ import type { OrgGeofence } from "@/lib/staff/geo";
 // the record is a number somebody typed and the evidence is a display
 // somebody photographed.
 const PHOTO_FORMS = new Set(["temp-fridge", "crash-cart", "poct-qc"]);
+
+// Starting sentences for the corrective-action box — still fully
+// editable, still has to clear the same twenty-character/no-"n/a" bar
+// as anything typed from scratch. A tap here is a starting point, not a
+// finished answer someone can submit unread.
+const CORRECTIVE_PRESETS: { key: string; label: string; text: string }[] = [
+  {
+    key: "moved_stock",
+    label: "Moved to backup",
+    text: "Moved the stock to the backup unit and tagged it DO NOT USE.",
+  },
+  {
+    key: "called_manufacturer",
+    label: "Called the manufacturer",
+    text: "Called the manufacturer for guidance on the reading.",
+  },
+  {
+    key: "notified_direct",
+    label: "Notified the owner directly",
+    text: "Notified the owner/medical director directly by phone.",
+  },
+];
 const PHOTO_LABELS: Record<string, string> = {
   "temp-fridge": "Photo of the min/max display (required)",
   "crash-cart": "Photo of the breakaway seal (optional)",
@@ -79,6 +101,14 @@ export default function LogForm({
   const [answers, setAnswers] = useState<Answers>(amend ? amend.answers : {});
   const [reason, setReason] = useState("");
   const [corrective, setCorrective] = useState("");
+  // Which quick-fill button (if any) started the corrective action —
+  // "notified_direct" is the one that also pages the owner immediately,
+  // see submit()'s fire-and-forget call to /api/staff/logs/notify-now.
+  // Persists through further edits (someone tapping the button then
+  // adding detail is the expected case, not one that should silently
+  // cancel the page); cleared only by picking a different preset or
+  // clearing the box entirely.
+  const [correctiveReason, setCorrectiveReason] = useState<string | null>(null);
   // The photograph is uploaded AFTER the log is filed, never with it —
   // see app/api/staff/logs/photo/route.ts. A failed upload must not cost
   // the reading.
@@ -218,7 +248,11 @@ export default function LogForm({
     // of it may undo the record or block the redirect: an upload that
     // fails on a bad corridor signal must not make somebody think their
     // reading was lost and file it a second time.
-    if (proof || Object.keys(aiReads).length > 0) {
+    if (
+      proof ||
+      Object.keys(aiReads).length > 0 ||
+      (flagged && correctiveReason === "notified_direct")
+    ) {
       const body = await res.json().catch(() => null);
       if (body?.id) {
         if (proof) {
@@ -230,6 +264,19 @@ export default function LogForm({
             () => null
           );
         }
+        // The immediate page, only when that's the button they used and
+        // only for a flagged log — re-checked server-side regardless.
+        // Never blocks the redirect below; the standard queued excursion
+        // alert already went out inside submit and is unaffected either
+        // way.
+        if (flagged && correctiveReason === "notified_direct") {
+          await fetch("/api/staff/logs/notify-now", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ responseId: body.id }),
+          }).catch(() => null);
+        }
+
         // One record per field a photo read touched — whether what got
         // filed still matches what the photo suggested, or was edited
         // before submitting. Never blocks the redirect below.
@@ -319,14 +366,38 @@ export default function LogForm({
             This log can still be submitted — it has to be, the reading is the
             record. Say what you did about it.
           </p>
+          <div className="st-preset-row" role="group" aria-label="Corrective action starting points">
+            {CORRECTIVE_PRESETS.map((p) => (
+              <button
+                key={p.key}
+                type="button"
+                className={`st-preset-chip${correctiveReason === p.key ? " st-preset-on" : ""}`}
+                onClick={() => {
+                  setCorrective(p.text);
+                  setCorrectiveReason(p.key);
+                }}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
           <textarea
             className="st-textarea"
             value={corrective}
-            onChange={(e) => setCorrective(e.target.value)}
+            onChange={(e) => {
+              setCorrective(e.target.value);
+              if (e.target.value.trim() === "") setCorrectiveReason(null);
+            }}
             rows={3}
             placeholder="e.g. Moved stock to the backup fridge, tagged DO NOT USE, called the manufacturer, notified Dr Buch at 7:15."
             aria-label="Corrective action taken"
           />
+          {correctiveReason === "notified_direct" && (
+            <p className="st-field-hint">
+              Filing this will also email the owner/medical director right
+              now, not just in the usual digest.
+            </p>
+          )}
         </div>
       )}
 
