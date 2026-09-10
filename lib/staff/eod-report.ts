@@ -7,6 +7,7 @@ import {
   gatherEodExtras,
   renderReport,
   totals,
+  staffBreakdown,
   type ReportData,
 } from "@/lib/staff/report";
 
@@ -163,6 +164,7 @@ function bodyFor(
   t: ReturnType<typeof totals>,
   url: string
 ): string {
+  const staff = staffBreakdown(d);
   const lines = [
     `${d.orgName} — end of day, ${d.periodStart}`,
     "",
@@ -172,6 +174,11 @@ function bodyFor(
     `Filed away from the clinic: ${t.offSite}`,
     `Missing a required photo:   ${d.missingPhotos?.length ?? 0}`,
     `Staff who signed in today:  ${d.signins?.length ?? 0}`,
+    "",
+    "Who filed what:",
+    ...(staff.length > 0
+      ? staff.map((s) => `  ${s.name} — ${s.count} logged`)
+      : ["  Nobody filed a log today."]),
     "",
     "The full report — every log, every sign-in, every photo taken — is",
     "attached as a PDF. It also stays viewable, and revocable, at:",
