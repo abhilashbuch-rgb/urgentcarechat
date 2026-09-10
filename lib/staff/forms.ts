@@ -35,6 +35,16 @@ export const fieldSchema = z.discriminatedUnion("type", [
      *  mode, because hiding the real input behind a toggle is what turns
      *  a shortcut into the only way to enter an unusual number. */
     presets: z.array(z.number()).max(6).optional(),
+    /** Offers a "read from photo" control next to this field: photograph
+     *  a digital display, a vision model proposes the number, the person
+     *  confirms or retypes it. Same data-driven shape as `presets` — a
+     *  field turns this on by being written that way, not by a deploy.
+     *  A read is ALWAYS a suggestion: it fills the input exactly like a
+     *  preset chip does, still runs through the same min/max check, and
+     *  is never itself the thing that gets saved. See
+     *  app/components/staff/AiPhotoRead.tsx and
+     *  app/api/staff/logs/read-digits/route.ts. */
+    aiRead: z.boolean().optional(),
   }),
   z.object({ ...baseField, type: z.literal("text"), placeholder: z.string().max(80).optional() }),
   /** A sentence or a paragraph rather than a value: how an injury

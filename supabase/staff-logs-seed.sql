@@ -56,7 +56,7 @@ $json$
     { "id": "unit", "label": "Unit", "type": "select",
       "options": ["Vaccine fridge", "Medication fridge", "Lab reagent fridge"] },
     { "id": "current_f", "label": "Current", "type": "number",
-      "unit": "°F", "min": 36, "max": 46, "step": 0.1 },
+      "unit": "°F", "min": 36, "max": 46, "step": 0.1, "aiRead": true },
     { "id": "min_24h_f", "label": "24-hour minimum", "type": "number",
       "unit": "°F", "min": 36, "max": 46, "step": 0.1 },
     { "id": "max_24h_f", "label": "24-hour maximum", "type": "number",

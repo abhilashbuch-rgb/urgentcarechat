@@ -9,6 +9,7 @@ import {
   type FormSchema,
 } from "@/lib/staff/forms";
 import CameraProof, { type Proof } from "@/app/components/staff/CameraProof";
+import AiPhotoRead from "@/app/components/staff/AiPhotoRead";
 import LocationStamp, { type LocationResult } from "@/app/components/staff/LocationStamp";
 import type { OrgGeofence } from "@/lib/staff/geo";
 
@@ -82,6 +83,12 @@ export default function LogForm({
   // see app/api/staff/logs/photo/route.ts. A failed upload must not cost
   // the reading.
   const [proof, setProof] = useState<Proof | null>(null);
+  // What a vision read proposed for a field, keyed by field id — never
+  // the record itself, just what to compare the confirmed value against
+  // afterward. See app/components/staff/AiPhotoRead.tsx.
+  const [aiReads, setAiReads] = useState<
+    Record<string, { value: number; confidence: "high"; model: string }>
+  >({});
   // Where this is being filed from. Null until the browser answers; the
   // submit button does not wait on it, because a log blocked behind a
   // geolocation timeout is a log filed later from somewhere worse.
@@ -120,6 +127,17 @@ export default function LogForm({
 
   function set(id: string, value: Answers[string]) {
     setAnswers((a) => ({ ...a, [id]: value }));
+  }
+
+  // A read only ever fills the field the way a preset chip would — set()
+  // is the exact same call. aiReads is separate, kept only so submit()
+  // can tell afterward whether the number that actually got confirmed
+  // still matches what the photo suggested, or was edited before filing.
+  function handleAiRead(fieldId: string) {
+    return (value: number, confidence: "high", model: string) => {
+      set(fieldId, value);
+      setAiReads((r) => ({ ...r, [fieldId]: { value, confidence, model } }));
+    };
   }
 
   // Enter advances instead of submitting. On a form of eight numbers, a
@@ -200,16 +218,37 @@ export default function LogForm({
     // of it may undo the record or block the redirect: an upload that
     // fails on a bad corridor signal must not make somebody think their
     // reading was lost and file it a second time.
-    if (proof) {
+    if (proof || Object.keys(aiReads).length > 0) {
       const body = await res.json().catch(() => null);
       if (body?.id) {
-        const fd = new FormData();
-        fd.set("response_id", body.id);
-        fd.set("file", new File([proof.blob], "proof.jpg", { type: proof.blob.type }));
-        fd.set("caption", `${slug} ${slot}`.trim());
-        await fetch("/api/staff/logs/photo", { method: "POST", body: fd }).catch(
-          () => null
-        );
+        if (proof) {
+          const fd = new FormData();
+          fd.set("response_id", body.id);
+          fd.set("file", new File([proof.blob], "proof.jpg", { type: proof.blob.type }));
+          fd.set("caption", `${slug} ${slot}`.trim());
+          await fetch("/api/staff/logs/photo", { method: "POST", body: fd }).catch(
+            () => null
+          );
+        }
+        // One record per field a photo read touched — whether what got
+        // filed still matches what the photo suggested, or was edited
+        // before submitting. Never blocks the redirect below.
+        for (const [fieldId, read] of Object.entries(aiReads)) {
+          const confirmedValue = answers[fieldId];
+          await fetch("/api/staff/logs/field-capture", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              responseId: body.id,
+              fieldId,
+              captureMethod: confirmedValue === read.value ? "photo_confirmed" : "typed",
+              aiValue: read.value,
+              aiConfidence: read.confidence,
+              confirmedValue: typeof confirmedValue === "number" ? confirmedValue : null,
+              model: read.model,
+            }),
+          }).catch(() => null);
+        }
       }
     }
 
@@ -260,9 +299,12 @@ export default function LogForm({
             field={f}
             value={answers[f.id]}
             onChange={(v) => set(f.id, v)}
+            onAiRead={f.type === "number" && f.aiRead ? handleAiRead(f.id) : undefined}
+            suggested={aiReads[f.id] !== undefined && answers[f.id] === aiReads[f.id].value}
             autoFocus={i === 0}
             flagged={check.outOfRange.includes(f.id)}
             missing={showMissing && check.missing.some((m) => m.id === f.id)}
+            disabled={submitting}
           />
         ))}
       </div>
@@ -411,16 +453,22 @@ function FieldRow({
   field,
   value,
   onChange,
+  onAiRead,
+  suggested,
   autoFocus,
   flagged,
   missing,
+  disabled,
 }: {
   field: Field;
   value: Answers[string];
   onChange: (v: Answers[string]) => void;
+  onAiRead?: (value: number, confidence: "high", model: string) => void;
+  suggested?: boolean;
   autoFocus: boolean;
   flagged: boolean;
   missing: boolean;
+  disabled?: boolean;
 }) {
   const cls = `st-log-row${flagged ? " st-log-row-flag" : ""}${
     missing ? " st-log-row-missing" : ""
@@ -481,6 +529,15 @@ function FieldRow({
               />
               {field.unit && <span className="st-num-unit">{field.unit}</span>}
             </div>
+            {onAiRead && (
+              <AiPhotoRead onRead={onAiRead} disabled={disabled} />
+            )}
+            {suggested && (
+              <p className="st-field-hint">
+                Suggested from photo — check the display and confirm, or
+                edit it if it&rsquo;s wrong.
+              </p>
+            )}
           </div>
         )}
 

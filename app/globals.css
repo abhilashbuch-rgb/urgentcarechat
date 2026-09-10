@@ -6345,6 +6345,45 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 .st-proof-actions .st-btn { font-size: 13px; padding: 7px 12px; min-height: 36px; }
 .st-proof-size { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin-right: auto; }
 
+/* ---------- read a number from a photo ---------- */
+
+.st-ai-read { margin-top: 2px; }
+.st-ai-read-btn { font-size: 12.5px; padding: 6px 10px; min-height: 32px; }
+
+/* Post-capture crop step — see PhotoCrop.tsx. A draggable box over the
+   just-taken photo, so "only the box is sent" is something the person
+   did, not a claim the app makes about a guide they may not have lined
+   up. Touch-action none keeps a finger dragging a handle from also
+   scrolling the page underneath it. */
+.st-crop { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.st-crop-wrap {
+  position: relative;
+  max-width: 100%;
+  touch-action: none;
+  align-self: flex-start;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--rule-firm);
+}
+.st-crop-canvas { display: block; width: 100%; height: 100%; }
+.st-crop-box {
+  position: absolute;
+  border: 2px solid var(--volt);
+  background: rgba(34, 211, 238, 0.12);
+  cursor: move;
+  box-shadow: 0 0 0 2000px rgba(10, 37, 64, 0.45);
+}
+.st-crop-handle {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--volt);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(10, 37, 64, 0.4);
+}
+.st-crop-handle-nw, .st-crop-handle-se { cursor: nwse-resize; }
+.st-crop-handle-ne, .st-crop-handle-sw { cursor: nesw-resize; }
+
 /* On a dark ground the mark's tile would disappear into the page, so the
    tile lightens by one step instead of vanishing. Set on the container,
    not the icon, so any lockup inside a dark panel gets it. */
