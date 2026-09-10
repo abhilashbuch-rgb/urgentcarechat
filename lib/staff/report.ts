@@ -105,6 +105,25 @@ export function totals(d: ReportData): ReportTotals {
   };
 }
 
+export interface StaffCount {
+  name: string;
+  count: number;
+}
+
+/** Who filed how many logs in this period, for the EOD email body.
+ *  Derived from the same rows totals() reads — see that function's
+ *  comment on why nothing here is counted a second, independent way. */
+export function staffBreakdown(d: ReportData): StaffCount[] {
+  const counts = new Map<string, number>();
+  for (const r of d.rows) {
+    const name = r.filed_by ?? "Unknown";
+    counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  return Array.from(counts, ([name, count]) => ({ name, count })).sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
+}
+
 export async function gatherReport(
   sql: StaffSql,
   org: string,
