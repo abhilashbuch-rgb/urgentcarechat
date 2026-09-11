@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
     facility?: string;
     demo?: string;
     agreed?: boolean;
+    code?: string;
   };
   try {
     body = await req.json();
@@ -55,6 +56,10 @@ export async function POST(req: NextRequest) {
     : "urgent_care";
   const email = (body.email ?? "").trim().toLowerCase().slice(0, 160);
   const agreed = body.agreed === true;
+  // Empty means "no code" — provision_trial() only redeems a non-blank
+  // one. Trimmed here too so a pasted trailing space isn't the reason a
+  // real code fails.
+  const code = (body.code ?? "").trim().slice(0, 40);
 
   if (clinic.length < 2) {
     return NextResponse.json({ error: "missing_clinic" }, { status: 400 });
@@ -107,14 +112,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const slug = await withOrg("", "platform_super_admin", async (sql) => {
-      const rows = await sql<{ provision_trial: string }[]>`
-        select staff.provision_trial(
-          ${slugFrom(clinic, email)}, ${clinic}, ${email}, 30, ${facility}, ${agreed}
-        )
-      `;
-      return rows[0].provision_trial;
-    });
+    let slug: string;
+    try {
+      slug = await withOrg("", "platform_super_admin", async (sql) => {
+        const rows = await sql<{ provision_trial: string }[]>`
+          select staff.provision_trial(
+            ${slugFrom(clinic, email)}, ${clinic}, ${email}, 30, ${facility},
+            ${agreed}, ${code || null}
+          )
+        `;
+        return rows[0].provision_trial;
+      });
+    } catch (err) {
+      // A code that does not apply refuses the signup rather than
+      // silently granting a plain 30-day trial — see
+      // staff-promo-codes.sql. Named separately from server_error so
+      // the form can say "check your code" instead of "try again",
+      // which is not the fix.
+      const message = err instanceof Error ? err.message : "";
+      if (message.includes("invalid_promo_code")) {
+        return NextResponse.json({ error: "bad_code" }, { status: 400 });
+      }
+      throw err;
+    }
 
     // WHAT THEY ALREADY CHOSE IN THE DEMO.
     //
@@ -152,10 +172,22 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // How long the trial actually is — 30 by default, longer when a
+    // promo code granted more. Read back rather than assumed, so the
+    // confirmation screen never states a number this request did not
+    // actually cause.
+    const trialDays = await withOrg(slug, "platform_super_admin", async (sql) => {
+      const rows = await sql<{ days: number }[]>`
+        select (trial_ends_on - current_date)::int as days
+          from staff.orgs where slug = ${slug}
+      `;
+      return rows[0]?.days ?? 30;
+    });
+
     // The slug is returned so the next screen can name the workspace back
     // to them. It is not a credential — signing in still requires Google
     // plus the invited address.
-    return NextResponse.json({ ok: true, slug, email });
+    return NextResponse.json({ ok: true, slug, email, trialDays });
   } catch (err) {
     console.error(
       "[trial] provisioning failed:",
