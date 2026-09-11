@@ -271,16 +271,26 @@ function paragraph(c: Ctx, s: string, size = 9): void {
   if (line) text(c, line, { size, color: SOFT });
 }
 
+/** A sharp-cornered rectangle as SVG path data — H/V/Z only, no arcs.
+ *  The web mark rounds these corners; the print version doesn't
+ *  bother, since a 3-unit radius is invisible at cover-page size and
+ *  straight lines are the one shape drawSvgPath cannot get subtly
+ *  wrong. */
+function rectPath(x: number, y: number, w: number, h: number): string {
+  return `M${x} ${y} H${x + w} V${y + h} H${x} Z`;
+}
+
 /**
- * The brand mark: the pulse trace whose two peaks are the M.
+ * The brand mark: a fanned stack of filed sheets, verified.
  *
- * Same path as app/icon.svg on a 48-unit grid, drawn as a stroke rather
- * than embedded as a PNG so the cover of a document a surveyor may
- * print at A3 stays sharp — and so the mark cannot drift out of step
- * with the favicon without somebody editing these coordinates.
+ * Same shapes as app/components/BrandIcon.tsx on the same 48-unit
+ * grid, drawn as strokes rather than embedded as a PNG so the cover of
+ * a document a surveyor may print at A3 stays sharp — and so the mark
+ * cannot drift out of step with the favicon without somebody editing
+ * these coordinates.
  *
  * drawSvgPath takes SVG coordinates (y running down) from the given
- * origin, so the path below is the SVG's own string unchanged.
+ * origin, so the paths below are the SVG's own numbers unchanged.
  */
 function drawMark(c: Ctx, x: number, yTop: number, size: number): void {
   const u = size / 48;
@@ -293,37 +303,73 @@ function drawMark(c: Ctx, x: number, yTop: number, size: number): void {
     color: GROUND,
   });
 
-  c.page.drawSvgPath("M6 27 H12 L18 13 L24 31 L30 13 L36 27 H42", {
+  const bar = (bx: number, by: number, opacity: number) =>
+    c.page.drawSvgPath(rectPath(bx, by, 23, 7.4), {
+      x,
+      y: yTop,
+      scale: u,
+      borderColor: VOLT,
+      borderWidth: 2.2 * u,
+      borderLineCap: 1, // round
+      borderOpacity: opacity,
+    });
+
+  bar(9, 28, 0.4);
+  bar(11.5, 20.4, 0.7);
+  bar(14, 12.8, 1);
+
+  // The badge — filled with the tile's own ground so it knocks a clean
+  // hole through the sheets behind it, same technique as the React
+  // component.
+  c.page.drawSvgPath(rectPath(27.5, 25.7, 16, 16), {
+    x,
+    y: yTop,
+    scale: u,
+    color: GROUND,
+    borderColor: VOLT,
+    borderWidth: 1.6 * u,
+    borderLineCap: 1,
+  });
+  c.page.drawSvgPath("M32 33.7 L34.3 36 L38.6 30.5", {
     x,
     y: yTop,
     scale: u,
     borderColor: VOLT,
-    borderWidth: 4.4 * u,
-    borderLineCap: 1, // round
+    borderWidth: 1.6 * u,
+    borderLineCap: 1,
   });
 }
 
 /**
- * The trace, run long across the foot of the cover.
- *
- * The same shape as the mark and the same shape the homepage stands on,
- * so the binder reads as part of the product rather than as a report it
- * happens to emit.
+ * A row of the same fanned sheets, run long across the foot of the
+ * cover — the same mark repeated, not a second motif, so the binder
+ * reads as part of the product rather than as a report it happens to
+ * emit.
  */
 function drawTraceRule(c: Ctx, y: number): void {
   const w = A4.w - M * 2;
-  const scale = w / 240;
-  c.page.drawSvgPath(
-    "M0 14 H26 L38 4 L50 21 L62 4 L74 14 H132 L144 4 L156 21 L168 4 L180 14 H240",
-    {
-      x: M,
-      y: y + 24 * scale,
-      scale,
-      borderColor: VOLT,
-      borderWidth: 1.1,
-      borderLineCap: 1,
-    }
-  );
+  const groups = 4;
+  const groupW = w / groups;
+  // Each repeat is drawn on its own 48-wide, 24-tall local grid, same
+  // proportions as the mark's own stack.
+  const scale = groupW / 48;
+
+  for (let i = 0; i < groups; i++) {
+    const gx = M + i * groupW + groupW * 0.08;
+    const bar = (bx: number, by: number, opacity: number) =>
+      c.page.drawSvgPath(rectPath(bx, by, 34, 6.6), {
+        x: gx,
+        y: y + 24 * scale,
+        scale,
+        borderColor: VOLT,
+        borderWidth: 1.4,
+        borderLineCap: 1,
+        borderOpacity: opacity,
+      });
+    bar(4, 14, 0.35);
+    bar(7, 7.5, 0.6);
+    bar(10, 1, 1);
+  }
 }
 
 /* ---------------------------------------------------------------- */

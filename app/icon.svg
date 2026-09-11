@@ -1,6 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="medicin.">
   <title>medicin.</title>
   <rect width="48" height="48" rx="10" fill="#0b1220"/>
-  <path d="M6 27 H12 L18 13 L24 31 L30 13 L36 27 H42" fill="none" stroke="#22d3ee"
-        stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="9" y="28" width="27" height="7.4" rx="3.4" fill="none" stroke="#22d3ee" stroke-width="2.2" opacity="0.4"/>
+  <rect x="11.5" y="20.4" width="25" height="7.4" rx="3.4" fill="none" stroke="#22d3ee" stroke-width="2.2" opacity="0.7"/>
+  <rect x="14" y="12.8" width="23" height="7.4" rx="3.4" fill="none" stroke="#22d3ee" stroke-width="2.2"/>
+  <circle cx="35.5" cy="33.7" r="8" fill="#0b1220" stroke="#22d3ee" stroke-width="1.6"/>
+  <path d="M32 33.7 L34.3 36 L38.6 30.5" fill="none" stroke="#22d3ee" stroke-width="1.6"
+        stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
