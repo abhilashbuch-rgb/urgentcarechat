@@ -36,14 +36,27 @@ const RULE = "rgba(255,255,255,0.14)";
 
 const MARK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
 <rect width="48" height="48" rx="10" fill="#131c2e"/>
-<path d="M6 27 H12 L18 13 L24 31 L30 13 L36 27 H42" fill="none" stroke="#22d3ee"
- stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+<rect x="9" y="28" width="27" height="7.4" rx="3.4" fill="none" stroke="#22d3ee" stroke-width="1.8" opacity="0.4"/>
+<rect x="11.5" y="20.4" width="25" height="7.4" rx="3.4" fill="none" stroke="#22d3ee" stroke-width="1.8" opacity="0.7"/>
+<rect x="14" y="12.8" width="23" height="7.4" rx="3.4" fill="none" stroke="#22d3ee" stroke-width="1.8"/>
+<circle cx="35.5" cy="33.7" r="8" fill="#131c2e" stroke="#22d3ee" stroke-width="1.3"/>
+<path d="M32 33.7 L34.3 36 L38.6 30.5" fill="none" stroke="#22d3ee" stroke-width="1.3"
+ stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
-// The trace, run long across the foot of the card — the same shape as
-// the mark and the same shape the homepage stands on.
+// A row of the same fanned sheets, run long across the foot of the
+// card — the same shape as the mark, so the card reads as part of the
+// product rather than a generic social preview.
 const TRACE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 24" preserveAspectRatio="none">
-<path d="M0 14 H26 L38 4 L50 21 L62 4 L74 14 H132 L144 4 L156 21 L168 4 L180 14 H240"
- fill="none" stroke="#22d3ee" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+<rect x="4" y="14" width="34" height="6.6" rx="3.3" fill="none" stroke="#22d3ee" stroke-width="1.4" opacity="0.35"/>
+<rect x="7" y="7.5" width="34" height="6.6" rx="3.3" fill="none" stroke="#22d3ee" stroke-width="1.4" opacity="0.6"/>
+<rect x="10" y="1" width="34" height="6.6" rx="3.3" fill="none" stroke="#22d3ee" stroke-width="1.4"/>
+<rect x="106" y="14" width="34" height="6.6" rx="3.3" fill="none" stroke="#22d3ee" stroke-width="1.4" opacity="0.35"/>
+<rect x="109" y="7.5" width="34" height="6.6" rx="3.3" fill="none" stroke="#22d3ee" stroke-width="1.4" opacity="0.6"/>
+<rect x="112" y="1" width="34" height="6.6" rx="3.3" fill="none" stroke="#22d3ee" stroke-width="1.4"/>
+<rect x="204" y="14" width="34" height="6.6" rx="3.3" fill="none" stroke="#22d3ee" stroke-width="1.4" opacity="0.35"/>
+<rect x="207" y="7.5" width="34" height="6.6" rx="3.3" fill="none" stroke="#22d3ee" stroke-width="1.4" opacity="0.6"/>
+<rect x="210" y="1" width="30" height="6.6" rx="3.3" fill="none" stroke="#22d3ee" stroke-width="1.4"/>
+</svg>`;
 
 const TRACE_SRC = `data:image/svg+xml;base64,${Buffer.from(TRACE).toString(
   "base64"
