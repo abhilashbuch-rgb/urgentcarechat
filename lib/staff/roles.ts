@@ -38,6 +38,29 @@ export const JOB_PHRASES: Record<string, string> = {
   center_admin: "as the center admin",
 };
 
+/** medical_assistant reads as a different job depending on what the
+ *  clinic actually is — see the facility_type check in
+ *  staff-facility.sql. A dental practice's chairside clinical role is
+ *  called a dental assistant, not a medical assistant, even though it
+ *  is the exact same staff.job_role value doing the exact same
+ *  sedation-check and amalgam-separator tasks underneath. Forking the
+ *  enum over a title would mean reseeding every dental template's
+ *  job_roles array for a wording difference, so the value stays one
+ *  thing and only the word shown for it changes.
+ *
+ *  Everything else in JOB_LABELS/JOB_PHRASES already reads the same
+ *  across every facility_type this product has today, so this is the
+ *  one case, not the start of a general per-vertical dictionary. */
+export function jobLabel(jobRole: string, facilityType?: string | null): string {
+  if (jobRole === "medical_assistant" && facilityType === "dental") return "Dental assistant";
+  return JOB_LABELS[jobRole] ?? jobRole;
+}
+
+export function jobPhrase(jobRole: string, facilityType?: string | null): string {
+  if (jobRole === "medical_assistant" && facilityType === "dental") return "as a dental assistant";
+  return JOB_PHRASES[jobRole] ?? jobRole;
+}
+
 /** Highest first. Used only for comparisons like "at least a clinical
  *  lead" — never as a substitute for a permission check on data.
  *

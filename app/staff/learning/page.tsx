@@ -1,8 +1,9 @@
 import { requireStaff } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
-import { getProfile } from "@/lib/staff/compliance";
+import { getProfile, facilityTypeFor, zipFor } from "@/lib/staff/compliance";
 import { emergencyGuides } from "@/lib/staff/rounds";
-import { JOB_PHRASES } from "@/lib/staff/roles";
+import { jobPhrase } from "@/lib/staff/roles";
+import { emergencyContactsFor } from "@/lib/staff/emergency-contacts";
 
 // Emergency action guides.
 //
@@ -27,15 +28,24 @@ import { JOB_PHRASES } from "@/lib/staff/roles";
 export const dynamic = "force-dynamic";
 
 export default async function LearningPage() {
-  const { session } = await requireStaff();
+  const { session, org } = await requireStaff();
 
-  const { guides, jobRole } = await withSession(session, async (sql) => {
-    const me = await getProfile(sql, session.uid);
-    const job = me?.job_role ?? null;
-    return { jobRole: job, guides: await emergencyGuides(sql, job) };
-  });
+  const { guides, jobRole, facilityType, contacts, zip } = await withSession(
+    session,
+    async (sql) => {
+      const me = await getProfile(sql, session.uid);
+      const job = me?.job_role ?? null;
+      return {
+        jobRole: job,
+        guides: await emergencyGuides(sql, job),
+        facilityType: await facilityTypeFor(sql, org),
+        contacts: await emergencyContactsFor(sql, org),
+        zip: await zipFor(sql, org),
+      };
+    }
+  );
 
-  const phrase = jobRole ? JOB_PHRASES[jobRole] ?? null : null;
+  const phrase = jobRole ? jobPhrase(jobRole, facilityType) : null;
 
   return (
     <div className="st-page">
@@ -47,6 +57,28 @@ export default async function LearningPage() {
             : "What to do. Read now, not during."}
         </p>
       </header>
+
+      {/* ABOVE EVERYTHING ELSE ON THE PAGE, ON PURPOSE. A guide tells you
+          what to do; these are who to call while you're doing it. See
+          staff-emergency-contacts.sql — every number here is one this
+          clinic actually typed in, never looked up on its behalf. */}
+      {contacts.length > 0 && (
+        <section className="st-emc-list" aria-label="Emergency numbers">
+          <h2 className="st-h2">
+            Emergency numbers{zip ? ` for ${zip}` : ""}
+          </h2>
+          <ul className="st-emc-tiles">
+            {contacts.map((c) => (
+              <li key={c.id}>
+                <a className="st-emc-tile" href={`tel:${c.phone.replace(/[^0-9+]/g, "")}`}>
+                  <span className="st-emc-tile-label">{c.label}</span>
+                  <span className="st-emc-tile-phone">{c.phone}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* Said once, at the top, and it is the most important sentence on
           the page. A guide read for the first time during the emergency

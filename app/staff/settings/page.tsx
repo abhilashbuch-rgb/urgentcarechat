@@ -4,6 +4,13 @@ import { requireStaff } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
 import { atLeast } from "@/lib/staff/roles";
 import AddressLookup from "@/app/components/staff/AddressLookup";
+import {
+  emergencyContactsFor,
+  EMERGENCY_CATEGORIES,
+  CUSTOM_SLOTS,
+  POISON_CONTROL_NUMBER,
+  type FixedCategory,
+} from "@/lib/staff/emergency-contacts";
 
 // The clinic's own settings.
 //
@@ -23,6 +30,8 @@ export const dynamic = "force-dynamic";
 const ERRORS: Record<string, string> = {
   timezone:
     "Use a Region/City name like America/New_York. An abbreviation like EST has no daylight-saving rule, so reminders drift by an hour for half the year.",
+  zip: "That doesn't look like a US zip code — five digits, optionally with a +4.",
+  emergencysave: "That didn't save. Nothing was changed — try again.",
   halfcoord:
     "Fill in both latitude and longitude, or neither. Half a coordinate would place the clinic on the equator.",
   coords: "Those coordinates are out of range.",
@@ -50,6 +59,7 @@ interface OrgSettings {
   owner_alert_email: string | null;
   medical_director_alert_email: string | null;
   billing_contact_email: string | null;
+  zip: string | null;
 }
 
 export default async function SettingsPage({
@@ -68,7 +78,7 @@ export default async function SettingsPage({
       await sql<OrgSettings[]>`
         select name, timezone, latitude, longitude, geofence_radius_m,
                geofence_mode, owner_alert_email, medical_director_alert_email,
-               billing_contact_email
+               billing_contact_email, zip
           from staff.orgs where slug = ${org}
       `
     )[0],
@@ -84,12 +94,20 @@ export default async function SettingsPage({
         select count(*)::text as n from staff.optional_logs
       `
     )[0].n,
+    emergencyContacts: await emergencyContactsFor(sql, org),
   }));
 
   const s = data.settings;
   const has = (c: string) => data.reports.some((r) => r.cadence === c);
   const reportEmail =
     data.reports[0]?.email ?? s.owner_alert_email ?? "";
+
+  const fixedContact = (cat: FixedCategory) =>
+    data.emergencyContacts.find((c) => c.category === cat) ?? null;
+  const customContacts = data.emergencyContacts.filter((c) => c.category === "other");
+  // Every existing custom entry gets its own slot to edit, plus a few
+  // blank ones to add more in the same save — see CUSTOM_SLOTS.
+  const customSlots = Math.max(CUSTOM_SLOTS, customContacts.length + 1);
 
   return (
     <div className="st-page st-page-narrow">
@@ -282,6 +300,111 @@ export default async function SettingsPage({
 
         <button className="st-primary" type="submit">
           Save settings
+        </button>
+      </form>
+
+      {/* A SEPARATE FORM, POSTING SOMEWHERE ELSE, ON PURPOSE — same
+          reason as billing contact below: its own route re-checks
+          manager+ independently. See staff-emergency-contacts.sql for
+          why nothing here is looked up from the zip; every number is
+          one somebody here actually typed in. */}
+      <form
+        className="st-log"
+        method="POST"
+        action="/api/staff/settings/emergency-contacts"
+      >
+        <section className="st-set-block">
+          <h2 className="st-set-h">Emergency numbers</h2>
+          <p className="st-set-b">
+            On staff&rsquo;s Emergencies page, tap-to-call, above everything
+            else. Nothing here is looked up automatically &mdash; a wrong
+            number found confidently during a real emergency is worse than
+            an empty one, so every line below is one your clinic fills in.
+          </p>
+
+          <label className="st-field">
+            <span className="st-field-label">Zip code</span>
+            <input
+              className="st-input"
+              name="zip"
+              defaultValue={s.zip ?? ""}
+              placeholder="07726"
+              inputMode="numeric"
+              maxLength={10}
+            />
+            <span className="st-field-hint">
+              Just a heading for this list &mdash; &ldquo;emergency numbers
+              for 07726&rdquo; &mdash; not used to look anything up.
+            </span>
+          </label>
+
+          {EMERGENCY_CATEGORIES.map((cat) => {
+            const existing = fixedContact(cat.id);
+            return (
+              <div className="st-emc-row" key={cat.id}>
+                <label className="st-field">
+                  <span className="st-field-label">{cat.label}</span>
+                  <input
+                    className="st-input"
+                    name={`${cat.id}_label`}
+                    defaultValue={existing?.label ?? cat.label}
+                    placeholder={cat.label}
+                    aria-label={`${cat.label} — display name`}
+                  />
+                </label>
+                <label className="st-field">
+                  <span className="st-field-label">Number</span>
+                  <input
+                    className="st-input"
+                    name={`${cat.id}_phone`}
+                    type="tel"
+                    defaultValue={existing?.phone ?? ""}
+                    placeholder={
+                      cat.id === "poison_control" ? POISON_CONTROL_NUMBER : "Not set"
+                    }
+                    aria-label={`${cat.label} — phone number`}
+                  />
+                </label>
+              </div>
+            );
+          })}
+
+          <h3 className="st-h2">Anything else worth having on hand</h3>
+          <p className="st-set-b">
+            An on-call medical director, a landlord, an alarm company &mdash;
+            whatever your clinic would otherwise have to look up mid-emergency.
+          </p>
+
+          {Array.from({ length: customSlots }, (_, i) => (
+            <div className="st-emc-row" key={i}>
+              <label className="st-field">
+                <span className="st-field-label">Name</span>
+                <input
+                  className="st-input"
+                  name={`custom_label_${i}`}
+                  defaultValue={customContacts[i]?.label ?? ""}
+                  placeholder="On-call medical director"
+                />
+              </label>
+              <label className="st-field">
+                <span className="st-field-label">Number</span>
+                <input
+                  className="st-input"
+                  name={`custom_phone_${i}`}
+                  type="tel"
+                  defaultValue={customContacts[i]?.phone ?? ""}
+                  placeholder="Not set"
+                />
+              </label>
+            </div>
+          ))}
+          <span className="st-field-hint">
+            Clear both fields on a line and save to remove it.
+          </span>
+        </section>
+
+        <button className="st-primary" type="submit">
+          Save emergency numbers
         </button>
       </form>
 

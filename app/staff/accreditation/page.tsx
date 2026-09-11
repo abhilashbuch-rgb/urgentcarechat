@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { requireStaff } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
-import { atLeast, JOB_LABELS } from "@/lib/staff/roles";
+import { atLeast, jobLabel } from "@/lib/staff/roles";
+import { facilityTypeFor } from "@/lib/staff/compliance";
 import SurveyorLinks from "@/app/components/staff/SurveyorLinks";
 import EmailBinderForm from "@/app/components/staff/EmailBinderForm";
 import { issuedLinks } from "@/lib/staff/surveyor";
@@ -48,7 +49,7 @@ export default async function Accreditation() {
   const { session, org } = await requireStaff();
   if (!atLeast(session.role, "manager")) redirect("/staff");
 
-  const { cells, links } = await withSession(session, async (sql) => ({
+  const { cells, links, facilityType } = await withSession(session, async (sql) => ({
     cells: await sql<Cell[]>`
       select user_id, staff_name, legal_name, job_role, kind, kind_label,
              required, sort_order, expires_on::text as expires_on,
@@ -61,6 +62,7 @@ export default async function Accreditation() {
     // here produced a row shape SurveyorLinks could not render — and
     // worse, one that would drift from the real one on the next change.
     links: await issuedLinks(sql),
+    facilityType: await facilityTypeFor(sql, org),
   }));
 
   // Columns are whatever credentials this clinic's jobs actually require,
@@ -132,7 +134,7 @@ export default async function Accreditation() {
                     <tr key={p.id}>
                       <td className="st-matrix-name">{p.name}</td>
                       <td className="st-matrix-job">
-                        {JOB_LABELS[p.job] ?? p.job}
+                        {jobLabel(p.job, facilityType)}
                       </td>
                       {columns.map((col) => {
                         const cell = at(p.id, col.kind);

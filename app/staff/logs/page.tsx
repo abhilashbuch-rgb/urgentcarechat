@@ -209,6 +209,24 @@ function BoardListItem({
         ) : (
           <span className="st-board-meta">{r.description}</span>
         )}
+
+        {/* A manager's note on THIS filed log — see
+            staff-log-notes.sql. "Got it" is the only thing that ever
+            sets read_at, so once this disappears it is because she
+            tapped it, not because the page merely rendered it once. */}
+        {r.note_body && (
+          <div className={`st-board-note${r.note_read_at ? "" : " st-board-note-new"}`}>
+            <span>{r.note_body}</span>
+            {!r.note_read_at && (
+              <form method="POST" action="/api/staff/logs/notes/ack">
+                <input type="hidden" name="noteId" value={r.note_id ?? ""} />
+                <button className="st-board-note-ack" type="submit">
+                  Got it
+                </button>
+              </form>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="st-board-action">

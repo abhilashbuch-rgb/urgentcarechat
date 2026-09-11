@@ -5071,6 +5071,39 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
   border-top: 1px solid var(--rule);
 }
 
+/* ---------- emergency numbers: tap-to-call, above everything else ---------- */
+
+.st-emc-list { margin-bottom: 20px; }
+.st-emc-tiles {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.st-emc-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: var(--blue-050);
+  text-decoration: none;
+  color: var(--ink);
+}
+.st-emc-tile:hover { background: var(--blue-100); }
+.st-emc-tile-label { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
+.st-emc-tile-phone { font-size: 16px; font-weight: 700; font-family: var(--mono); }
+
+/* ---------- emergency numbers settings form ---------- */
+
+.st-emc-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.st-emc-row .st-field { flex: 1; min-width: 160px; }
+
 /* ---------- staff photos ----------
    Three layers, none of them in the file: the face, a ring in the
    clinic's colour, an optional badge. See supabase/staff-avatars.sql —
@@ -7161,6 +7194,70 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 .st-act-off { margin-left: 8px; font-weight: 600; color: var(--volt-ink); }
 .st-act-reason { font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); margin-top: 6px; }
 .st-pill-old { opacity: .8; }
+
+/* ---------- log notes: one manager's note on one filed log ---------- */
+
+.st-act-note strong { color: var(--ink); }
+.st-act-notify { margin-top: 8px; }
+.st-act-notify > summary {
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  list-style: none;
+}
+.st-act-notify > summary::-webkit-details-marker { display: none; }
+.st-act-notify > summary::before { content: "▸ "; }
+.st-act-notify[open] > summary::before { content: "▾ "; }
+.st-act-notify > summary:hover { color: var(--ink); }
+.st-act-notify-form { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+.st-act-notify-input {
+  flex: 1;
+  min-width: 200px;
+  padding: 6px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 7px;
+  font-size: 12.5px;
+}
+.st-act-notify-btn {
+  padding: 6px 12px;
+  border-radius: 7px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.st-act-notify-btn:hover { background: var(--accent-deep); }
+
+.st-board-note {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  background: var(--blue-050);
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.st-board-note-new { background: var(--blue-100); color: var(--ink); }
+.st-board-note-ack {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.st-board-note-ack:hover { background: var(--accent-deep); }
 
 /* ---------- the accreditation console ---------- */
 /* Two columns because the matrix is wide and everything else is narrow.

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireStaff } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
-import { getProfile, outstandingFor, loadDoc } from "@/lib/staff/compliance";
+import { getProfile, outstandingFor, loadDoc, facilityTypeFor } from "@/lib/staff/compliance";
 import { renderPolicyMarkdown } from "@/lib/staff/markdown";
 import { getTenantBySlug } from "@/lib/tenants";
 import ProfileForm from "@/app/components/staff/ProfileForm";
@@ -10,7 +10,7 @@ import JobConfirm from "@/app/components/staff/JobConfirm";
 import CredentialDates from "@/app/components/staff/CredentialDates";
 import Orientation from "@/app/components/staff/Orientation";
 import { CATEGORY_LABELS } from "@/lib/staff/labels";
-import { JOB_LABELS } from "@/lib/staff/roles";
+import { jobLabel } from "@/lib/staff/roles";
 import {
   onboardingState,
   stepFor,
@@ -47,6 +47,7 @@ export default async function Onboarding() {
 
   const state = await withSession(session, async (sql) => {
     const profile = await getProfile(sql, session.uid);
+    const facilityType = await facilityTypeFor(sql, org);
     const gates = await onboardingState(sql, session.uid);
     const step: Step = gates ? stepFor(gates) : "profile";
 
@@ -84,6 +85,7 @@ export default async function Onboarding() {
     `;
     return {
       profile,
+      facilityType,
       gates,
       step,
       outstanding,
@@ -115,8 +117,8 @@ export default async function Onboarding() {
   const total = FIXED_BEFORE + state.assignedCount + 1;
   const done = stepsDone(state.step, state.assignedCount, state.outstanding.length);
 
-  const jobLabel = state.profile?.job_role
-    ? JOB_LABELS[state.profile.job_role] ?? state.profile.job_role
+  const jobTitle = state.profile?.job_role
+    ? jobLabel(state.profile.job_role, state.facilityType)
     : null;
 
   return (
@@ -138,9 +140,9 @@ export default async function Onboarding() {
             defaultLegalName={state.profile?.legal_name ?? state.profile?.name ?? ""}
           />
         </>
-      ) : state.step === "job" && !state.gates?.job_unassigned && jobLabel && state.profile?.job_role ? (
+      ) : state.step === "job" && !state.gates?.job_unassigned && jobTitle && state.profile?.job_role ? (
         <JobConfirm
-          jobLabel={jobLabel}
+          jobLabel={jobTitle}
           jobRole={state.profile.job_role}
           scope={state.scope}
         />

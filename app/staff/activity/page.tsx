@@ -26,6 +26,7 @@ interface Row {
   slot: string | null;
   submitted_at: string;
   filed_by: string | null;
+  submitted_by: string | null;
   status: string;
   has_out_of_range: boolean;
   corrective_action: string | null;
@@ -35,6 +36,8 @@ interface Row {
   is_amendment: boolean;
   correction_reason: string | null;
   superseded_by: string | null;
+  note_body: string | null;
+  note_read_at: string | null;
 }
 
 function when(iso: string): string {
@@ -49,8 +52,13 @@ function distance(m: number | null): string {
   return m < 1000 ? `${Math.round(m)}m` : `${(m / 1000).toFixed(1)}km`;
 }
 
-export default async function ActivityBoard() {
+export default async function ActivityBoard({
+  searchParams,
+}: {
+  searchParams: Promise<{ noted?: string; e?: string }>;
+}) {
   const { session, org } = await requireStaff();
+  const { noted, e } = await searchParams;
 
   // An MA has no reason to watch the whole clinic file logs, and giving
   // them one turns a compliance tool into a surveillance one — which is
@@ -59,12 +67,16 @@ export default async function ActivityBoard() {
 
   const rows = await withSession(session, (sql) =>
     sql<Row[]>`
-      select id, form_name, slot, submitted_at::text as submitted_at,
-             filed_by, status, has_out_of_range, corrective_action,
-             location_status, filed_distance_m, location_note,
-             is_amendment, correction_reason, superseded_by
-        from staff.activity_today
-       where org_slug = ${org}
+      select a.id, a.form_name, a.slot, a.submitted_at::text as submitted_at,
+             a.filed_by, a.submitted_by, a.status, a.has_out_of_range,
+             a.corrective_action, a.location_status, a.filed_distance_m,
+             a.location_note, a.is_amendment, a.correction_reason,
+             a.superseded_by, n.body as note_body, n.read_at::text as note_read_at
+        from staff.activity_today a
+        -- At most one — staff_log_notes_one_per_response keeps it that
+        -- way — so this is never a fan-out, just an optional attachment.
+        left join staff.log_notes n on n.response_id = a.id
+       where a.org_slug = ${org}
        limit 200
     `
   );
@@ -103,6 +115,19 @@ export default async function ActivityBoard() {
           <span className="st-stat-label">Off site</span>
         </div>
       </section>
+
+      {noted && (
+        <div className="st-notice" role="status">
+          <strong>Sent.</strong>
+          <span>They&rsquo;ll see it on their own board next time they open it.</span>
+        </div>
+      )}
+      {e && (
+        <div className="st-notice st-notice-warn" role="alert">
+          <strong>Not sent</strong>
+          <span>Nothing was recorded &mdash; try again.</span>
+        </div>
+      )}
 
       {rows.length === 0 ? (
         <p className="st-empty">Nothing filed yet today.</p>
@@ -152,6 +177,43 @@ export default async function ActivityBoard() {
                 <p className="st-act-reason">
                   <strong>Filed away from the clinic because:</strong> {r.location_note}
                 </p>
+              )}
+
+              {/* A NOTE ON THIS EXACT LOG, NOT A CHAT. See
+                  staff-log-notes.sql. Only the current head of a chain
+                  gets one — notifying about a version something has
+                  already superseded would point at the wrong record. */}
+              {r.note_body ? (
+                <p className="st-act-reason st-act-note">
+                  <strong>{r.note_read_at ? "Sent, seen:" : "Sent, not yet seen:"}</strong>{" "}
+                  {r.note_body}
+                </p>
+              ) : (
+                !r.superseded_by &&
+                r.submitted_by && (
+                  <details className="st-act-notify">
+                    <summary>Notify {r.filed_by ?? "them"}</summary>
+                    <form
+                      className="st-act-notify-form"
+                      method="POST"
+                      action="/api/staff/logs/notes"
+                    >
+                      <input type="hidden" name="responseId" value={r.id} />
+                      <input
+                        className="st-act-notify-input"
+                        type="text"
+                        name="body"
+                        maxLength={300}
+                        placeholder="Saw the fridge log this morning — nice catch."
+                        aria-label={`Note to ${r.filed_by ?? "the person who filed this"}`}
+                        required
+                      />
+                      <button className="st-act-notify-btn" type="submit">
+                        Send
+                      </button>
+                    </form>
+                  </details>
+                )
               )}
             </li>
           ))}

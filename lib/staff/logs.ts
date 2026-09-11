@@ -24,6 +24,12 @@ export interface BoardRow {
    *  Never means "not owed" — see staff-board-prefs.sql. Still counted
    *  toward outstanding/flagged totals by every caller of this row. */
   hidden: boolean;
+  /** A manager's one note on THIS person's own filed log, if any — see
+   *  staff-log-notes.sql. Never another user's note: the join below is
+   *  keyed to the viewer's own id, same as log_board_prefs. */
+  note_id: string | null;
+  note_body: string | null;
+  note_read_at: string | null;
 }
 
 /** Today's board, scoped to one person's clinic job, in that person's
@@ -55,13 +61,65 @@ export async function todaysBoard(
            l.has_out_of_range,
            l.submitted_by_name, l.submitted_by_email,
            cardinality(l.job_roles) = 0 as everyone,
-           coalesce(p.hidden, false) as hidden
+           coalesce(p.hidden, false) as hidden,
+           n.id as note_id, n.body as note_body,
+           n.read_at::text as note_read_at
       from staff.todays_logs l
       left join staff.log_board_prefs p
              on p.user_id = ${userId ?? null} and p.template_slug = l.slug
+      -- Only ever the viewer's OWN note on their OWN filed log — a note
+      -- addressed to somebody else must never surface on this board.
+      -- See staff-log-notes.sql.
+      left join staff.log_notes n
+             on n.response_id = l.response_id and n.recipient_id = ${userId ?? null}
      where staff.brief_matches(l.job_roles, ${jobRole}::staff.job_role)
      order by coalesce(p.sort_order, l.sort_order), l.slot
   `;
+}
+
+/** One manager's note, pinned to one already-filed log — see
+ *  staff-log-notes.sql for why this is not a chat feature. The
+ *  recipient is read back from the response itself and never trusted
+ *  off the request, same discipline as notify-now's own
+ *  re-verification. Returns null if the response doesn't belong to
+ *  this org; a duplicate note on the same response is a silent no-op
+ *  (the unique index keeps this one note per log, not a thread). */
+export async function noteOnLog(
+  sql: StaffSql,
+  org: string,
+  authorId: string,
+  responseId: string,
+  body: string
+): Promise<{ recipientId: string } | null> {
+  const [row] = await sql<{ submitted_by: string }[]>`
+    select submitted_by from staff.form_responses
+     where id = ${responseId} and org_slug = ${org}
+  `;
+  if (!row) return null;
+
+  await sql`
+    insert into staff.log_notes (org_slug, response_id, author_id, recipient_id, body)
+    values (${org}, ${responseId}, ${authorId}, ${row.submitted_by}, ${body})
+    on conflict (response_id) do nothing
+  `;
+  return { recipientId: row.submitted_by };
+}
+
+/** The recipient tapping "Got it" — the only thing that may ever set
+ *  read_at. Scoped to this user's own note so nobody can acknowledge a
+ *  colleague's. Returns whether a row was actually updated. */
+export async function acknowledgeNote(
+  sql: StaffSql,
+  userId: string,
+  noteId: string
+): Promise<boolean> {
+  const rows = await sql<{ id: string }[]>`
+    update staff.log_notes
+       set read_at = now()
+     where id = ${noteId} and recipient_id = ${userId} and read_at is null
+    returning id
+  `;
+  return rows.length > 0;
 }
 
 /** One person's saved order/visibility for their own board — the whole
