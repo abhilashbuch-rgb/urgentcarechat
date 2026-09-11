@@ -38,10 +38,12 @@ export default function TrialForm({
   const [clinic, setClinic] = useState("");
   const [email, setEmail] = useState("");
   const [facility, setFacility] = useState(demoFacility ?? "urgent_care");
+  const [code, setCode] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  const [doneDays, setDoneDays] = useState(30);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -63,6 +65,7 @@ export default function TrialForm({
         // do not have.
         demo: demoFacility && facility === demoFacility ? demoConfig : undefined,
         agreed,
+        code: code.trim() || undefined,
       }),
     }).catch(() => null);
 
@@ -80,6 +83,13 @@ export default function TrialForm({
         );
         return;
       }
+      if (res?.status === 400) {
+        const body = await res.json().catch(() => null);
+        if (body?.error === "bad_code") {
+          setError("badcode");
+          return;
+        }
+      }
       setError(
         res?.status === 400
           ? "Check the clinic name and email address."
@@ -92,6 +102,8 @@ export default function TrialForm({
       );
       return;
     }
+    const resBody = await res.json().catch(() => null);
+    setDoneDays(typeof resBody?.trialDays === "number" ? resBody.trialDays : 30);
     setDone(email.trim());
   }
 
@@ -109,8 +121,8 @@ export default function TrialForm({
           Sign in and set it up
         </a>
         <p className="tr-fine">
-          30 days, no card. When it ends nothing is deleted — the workspace
-          goes read-only and everything stays exportable.
+          {doneDays} days, no card. When it ends nothing is deleted — the
+          workspace goes read-only and everything stays exportable.
         </p>
         {/* OFFERED HERE AND NOWHERE ELSE ON THE MARKETING SITE.
             A prospect reading pricing on a laptop has no use for a
@@ -201,6 +213,17 @@ export default function TrialForm({
         </span>
       </label>
 
+      <label className="st-field">
+        <span className="st-field-label">Promo code (optional)</span>
+        <input
+          className="st-input"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          placeholder="e.g. from an Instagram post"
+          autoCapitalize="characters"
+        />
+      </label>
+
       {/* THE ONE THING A CHECKBOX HAS TO ACTUALLY DO: gate the button.
           A checkbox that renders but doesn't block submission is a
           decoration, not consent — see supabase/staff-agreement.sql,
@@ -240,6 +263,12 @@ export default function TrialForm({
       ) : error === "agreement_not_accepted" ? (
         <p className="st-sign-error" role="alert">
           Check the Subscription Agreement box above to continue.
+        </p>
+      ) : error === "badcode" ? (
+        <p className="st-sign-error" role="alert">
+          That code isn&rsquo;t valid, or has expired or been fully claimed.
+          Clear it to start the standard 30-day trial instead, or double-check
+          it and try again.
         </p>
       ) : (
         error && (
