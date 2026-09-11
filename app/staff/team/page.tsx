@@ -2,8 +2,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { requireStaff } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
-import { teamStatus } from "@/lib/staff/compliance";
-import { atLeast, ROLE_LABELS, JOB_LABELS } from "@/lib/staff/roles";
+import { teamStatus, facilityTypeFor } from "@/lib/staff/compliance";
+import { atLeast, ROLE_LABELS, JOB_LABELS, jobLabel } from "@/lib/staff/roles";
 import { pending, INVITE_TTL_HOURS } from "@/lib/staff/invites";
 import { seatUsage, unassignedCount, seatBill, money, type SeatRow } from "@/lib/staff/seats";
 import { formatSignedAt } from "@/lib/staff/labels";
@@ -71,7 +71,7 @@ export default async function Team({
 }: {
   searchParams: Promise<{ done?: string; e?: string }>;
 }) {
-  const { session } = await requireStaff();
+  const { session, org } = await requireStaff();
   const { done, e } = await searchParams;
 
   // The nav already hides this link below manager, but hiding a link is
@@ -79,7 +79,7 @@ export default async function Team({
   if (!atLeast(session.role, "manager")) redirect("/staff");
   const isOwner = atLeast(session.role, "org_admin");
 
-  const { team, invites, seats, unassigned, bill } = await withSession(
+  const { team, invites, seats, unassigned, bill, facilityType } = await withSession(
     session,
     async (sql) => ({
       team: await teamStatus(sql),
@@ -87,6 +87,7 @@ export default async function Team({
       seats: await seatUsage(sql),
       unassigned: await unassignedCount(sql),
       bill: await seatBill(sql),
+      facilityType: await facilityTypeFor(sql, org),
     })
   );
   const active = team.filter((m) => m.active);
@@ -155,7 +156,7 @@ export default async function Team({
                   key={s.job_role}
                 >
                   <span className="st-seat-job">
-                    {JOB_LABELS[s.job_role] ?? s.job_role}
+                    {jobLabel(s.job_role, facilityType)}
                     {s.is_override && (
                       <em className="st-seat-deal">your agreed number</em>
                     )}
@@ -235,8 +236,8 @@ export default async function Team({
           <label className="st-field">
             <span className="st-field-label">Job</span>
             <select className="st-input" name="job_role" defaultValue="medical_assistant">
-              {Object.entries(JOB_LABELS).map(([id, label]) => (
-                <option key={id} value={id}>{label}</option>
+              {Object.keys(JOB_LABELS).map((id) => (
+                <option key={id} value={id}>{jobLabel(id, facilityType)}</option>
               ))}
             </select>
           </label>
@@ -299,7 +300,7 @@ export default async function Team({
                         <span className="st-flag-admin">Manager</span>
                       )}
                     </td>
-                    <td>{i.job_role ? JOB_LABELS[i.job_role] ?? i.job_role : "\u2014"}</td>
+                    <td>{i.job_role ? jobLabel(i.job_role, facilityType) : "\u2014"}</td>
                     <td>
                       {/* Expired is shown rather than hidden. An
                           administrator wondering why somebody never

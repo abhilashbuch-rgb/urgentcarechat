@@ -1,8 +1,8 @@
 import { requireStaff } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
-import { getProfile } from "@/lib/staff/compliance";
+import { getProfile, facilityTypeFor } from "@/lib/staff/compliance";
 import { rulesFor } from "@/lib/staff/rules";
-import { JOB_PHRASES } from "@/lib/staff/roles";
+import { jobPhrase } from "@/lib/staff/roles";
 
 // Standing rules: what this job may do, what it may never do, and the
 // directives it works under.
@@ -22,15 +22,19 @@ import { JOB_PHRASES } from "@/lib/staff/roles";
 export const dynamic = "force-dynamic";
 
 export default async function RulesPage() {
-  const { session } = await requireStaff();
+  const { session, org } = await requireStaff();
 
-  const { rules, jobRole } = await withSession(session, async (sql) => {
+  const { rules, jobRole, facilityType } = await withSession(session, async (sql) => {
     const me = await getProfile(sql, session.uid);
     const job = me?.job_role ?? null;
-    return { jobRole: job, rules: await rulesFor(sql, job) };
+    return {
+      jobRole: job,
+      rules: await rulesFor(sql, job),
+      facilityType: await facilityTypeFor(sql, org),
+    };
   });
 
-  const jobPhrase = jobRole ? JOB_PHRASES[jobRole] ?? null : null;
+  const phrase = jobRole ? jobPhrase(jobRole, facilityType) : null;
   const critical = rules.directives.filter((d) => d.critical);
   const rest = rules.directives.filter((d) => !d.critical);
 
@@ -39,8 +43,8 @@ export default async function RulesPage() {
       <header className="st-page-head">
         <h1 className="st-h1">Standing rules</h1>
         <p className="st-page-sub">
-          {jobPhrase
-            ? `What applies to you ${jobPhrase}.`
+          {phrase
+            ? `What applies to you ${phrase}.`
             : "The rules that apply to everyone here."}
         </p>
       </header>

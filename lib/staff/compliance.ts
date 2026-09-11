@@ -26,6 +26,28 @@ export interface PolicyDoc extends OutstandingDoc {
   renew_months: number | null;
 }
 
+/** What kind of clinic this is — urgent_care, med_spa, dental, etc.
+ *  See staff-facility.sql. Exists so a page can pick the right word for
+ *  a job whose title genuinely differs by vertical (a dental practice's
+ *  "medical assistant" is a dental assistant) without forking the
+ *  underlying staff.job_role enum or its task assignments. */
+export async function facilityTypeFor(sql: StaffSql, org: string): Promise<string | null> {
+  const [row] = await sql<{ facility_type: string }[]>`
+    select facility_type from staff.orgs where slug = ${org}
+  `;
+  return row?.facility_type ?? null;
+}
+
+/** The clinic's own zip, for titling the Emergencies page's numbers
+ *  list ("emergency numbers for 07726") — see zipFor's sibling
+ *  facilityTypeFor above and staff-emergency-contacts.sql. */
+export async function zipFor(sql: StaffSql, org: string): Promise<string | null> {
+  const [row] = await sql<{ zip: string | null }[]>`
+    select zip from staff.orgs where slug = ${org}
+  `;
+  return row?.zip ?? null;
+}
+
 export interface Profile {
   id: string;
   email: string;
