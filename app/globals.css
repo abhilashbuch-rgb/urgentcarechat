@@ -3958,7 +3958,11 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
   margin-top: 16px;
   font-size: 11.5px;
   line-height: 1.5;
-  color: var(--ink-faint);
+  /* var(--ink-faint) here was ~3.1:1 against this card's white
+     background — under the 4.5:1 minimum for body text, and this is
+     the first screen anyone signing in reads. --ink-soft is the same
+     color the subtitle above already uses, at ~5.9:1. */
+  color: var(--ink-soft);
 }
 
 .st-choose-clinic { display: flex; flex-direction: column; gap: 8px; }
