@@ -5207,10 +5207,16 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
    purpose, same discipline as --volt everywhere else in this app: it
    means something because it does not appear on every pill. */
 .st-pill-volt { background: var(--volt); color: var(--ground); }
+/* The one pill filled solid instead of tinted — reserved for "this is
+   not done and it is late," the same weight-carries-danger rule as
+   .st-board-overdue below, not a second hue. See the --warn definition
+   at the top of this file for why. */
+.st-pill-warn { background: var(--warn); color: #fff; }
 /* Only pills carrying an icon need flex — a bare text pill stays
    inline-block so it wraps into a line of text the way the others do. */
 .st-pill-icon { display: inline-flex; align-items: center; gap: 4px; }
 .verified-mark { flex-shrink: 0; }
+.overdue-mark { flex-shrink: 0; }
 /* A flex item inside .st-num-field's column would otherwise stretch to
    the input's full width, turning a chip into a bar. */
 .st-range-pill { align-self: flex-start; }
@@ -5248,6 +5254,10 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 .st-board-row:first-child { border-top: none; }
 .st-board-done { background: var(--blue-050); }
 .st-board-flag { background: var(--blue-050); }
+/* Not filed and past due — the same border-left + fill depth as
+   .st-shelf-expired and .st-rule-critical elsewhere in the app, not a
+   new pattern invented for this row. */
+.st-board-overdue { background: var(--blue-050); border-left: 3px solid var(--warn); }
 .st-board-main { min-width: 0; }
 .st-board-name { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
 .st-board-slot {
