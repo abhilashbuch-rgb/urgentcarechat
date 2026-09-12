@@ -5734,21 +5734,14 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 /* THE HERO IS THE EXCEPTION: it spans the window.
    A centred dark card on a white page has two empty margins by
    construction. Running the ground edge to edge removes them without
-   touching the measure — the text still sits in the same 1280 column,
-   it just no longer has a box drawn around it. */
+   touching the measure — the content still sits in the same 1280
+   column, it just no longer has a box drawn around it. */
 .lp-min .lp-main > section.mh-hero {
   max-width: none;
   margin-top: 0;
   border-radius: 0;
   padding-left: 0;
   padding-right: 0;
-}
-.lp-min .mh-hero > *:not(.mh-rule) {
-  max-width: 1280px;
-  margin-left: auto;
-  margin-right: auto;
-  padding-left: 24px;
-  padding-right: 24px;
 }
 /* 48ch against a 1200px block is a short paragraph with half a screen of
    nothing beside it. Still inside a comfortable measure. */
@@ -5762,35 +5755,32 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
    else about the layout changed.
 
    Left-aligned, not centred. Centred hero text is the default every
-   template ships with; a hard left edge with the rule above it gives the
-   block something to sit against. */
+   template ships with; a hard left edge gives the block something to
+   sit against. */
 
 .mh-hero {
   position: relative;
-  /* Bottom padding carries the trace, so it is deliberate space rather
-     than the 100px of dead air the first version left under the CTA. */
-  padding: 78px 34px 104px;
+  padding: 78px 34px;
   border-radius: 20px;
   margin-top: 26px;
   overflow: hidden;
 }
 .mh-dark { background: var(--ground); color: #fff; }
 
-/* THE TRACE RUNS ALONG THE FLOOR, not above the headline.
-   Placed at the top it was clipped by the panel edge and read as a
-   scribble; along the bottom it becomes the line the whole block stands
-   on, which is both better-looking and closer to what it means — a
-   continuous recording underneath everything.
-   Taller and brighter than the first attempt, because at 26px and .5
-   opacity it was invisible at arm's length. */
-.mh-rule {
-  position: absolute;
-  left: 0;
-  bottom: 26px;
-  width: 100%;
-  height: 54px;
-  opacity: .85;
+/* The row the copy and the visual share — see .lp-min .lp-main > section
+   above for why .mh-hero itself carries no horizontal padding: this is
+   where the 1280 column actually lives now. */
+.mh-hero-inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 48px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
 }
+.mh-hero-copy { flex: 1 1 520px; min-width: 0; }
 
 .mh-h1 {
   font-family: var(--serif);
@@ -5853,9 +5843,130 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 .mh-cta-block:hover { background: var(--accent-deep); }
 .mh-cta-note { display: block; margin-top: 14px; font-size: 13px; color: rgba(255, 255, 255, .5); }
 
+/* ---------- the hero's right side: the product, not a photo ----------
+   See HeroVisual() in app/page.tsx for why. Hidden below 900px rather
+   than shrunk — a tilted 380px card has no good small size, and the
+   text-only hero was already the whole design on a phone before this
+   existed. */
+
+.mh-hero-visual {
+  position: relative;
+  flex: 1 1 420px;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.mh-glow {
+  position: absolute;
+  right: -160px;
+  top: -160px;
+  width: 700px;
+  height: 700px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.30) 0%, rgba(34, 211, 238, 0.08) 45%, transparent 70%);
+  pointer-events: none;
+}
+
+/* The brand mark itself, huge and nearly invisible — texture, not a
+   logo repeated. Same shapes as app/components/BrandIcon.tsx. */
+.mh-stack-texture {
+  position: absolute;
+  right: -40px;
+  bottom: -120px;
+  width: 560px;
+  height: 560px;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.mh-device-back {
+  position: absolute;
+  width: 380px;
+  height: 100%;
+  top: 18px;
+  left: -22px;
+  background: #0a1120;
+  border: 1px solid rgba(255, 255, 255, .06);
+  border-radius: 22px;
+  transform: perspective(1400px) rotateY(-9deg) rotateX(3deg);
+}
+
+.mh-device {
+  position: relative;
+  width: 380px;
+  max-width: 100%;
+  background: #0f1a2c;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 22px;
+  padding: 26px 26px 28px;
+  box-shadow: 0 60px 120px rgba(0, 0, 0, .55), 0 0 0 1px rgba(34, 211, 238, .06);
+  transform: perspective(1400px) rotateY(-9deg) rotateX(3deg);
+}
+.mh-device-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+.mh-device-label {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, .55);
+}
+.mh-device-slot {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #67e8f9;
+  background: rgba(34, 211, 238, .12);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+.mh-device-title { font-family: var(--serif); font-weight: 700; font-size: 22px; color: #fff; margin-bottom: 6px; }
+.mh-device-sub { font-family: var(--sans); font-size: 13px; color: rgba(255, 255, 255, .5); margin-bottom: 22px; }
+.mh-device-reading { display: flex; align-items: baseline; gap: 10px; margin-bottom: 22px; }
+.mh-device-value { font-family: var(--mono); font-weight: 700; font-size: 46px; color: #fff; }
+.mh-device-pill {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 12px;
+  color: #06222b;
+  background: var(--volt);
+  padding: 5px 12px;
+  border-radius: 999px;
+}
+.mh-device-sig {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-top: 1px solid rgba(255, 255, 255, .08);
+  padding-top: 18px;
+}
+.mh-device-badge {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--ground);
+  border: 1px solid rgba(34, 211, 238, .3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.mh-device-name { font-family: var(--sans); font-weight: 700; font-size: 14px; color: #fff; }
+.mh-device-meta { font-family: var(--sans); font-weight: 500; font-size: 12px; color: rgba(255, 255, 255, .45); margin-top: 2px; }
+
+@media (max-width: 900px) {
+  .mh-hero-visual { display: none; }
+}
+
 @media (max-width: 620px) {
-  .mh-hero { padding: 54px 22px 78px; border-radius: 16px; margin-top: 14px; }
-  .mh-rule { height: 40px; bottom: 20px; }
+  /* Horizontal spacing on every screen size actually comes from
+     .mh-hero-inner's own padding, not from here — .mh-hero's own
+     left/right padding is always zeroed by the full-bleed rule above.
+     Only the vertical numbers and the corner radius do anything. */
+  .mh-hero { padding: 54px 0; border-radius: 16px; margin-top: 14px; }
 }
 
 .mh-features {
