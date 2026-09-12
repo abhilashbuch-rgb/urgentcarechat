@@ -236,9 +236,14 @@ export async function proxy(request: NextRequest) {
   // so the URL is the credential and must not leak through a Referer
   // header, a search index, or a shared cache. See the surveyor note
   // below — the reasoning is identical and deliberately not duplicated.
+  // Same treatment again for the unsubscribe link: its token travels
+  // as a query param rather than a path segment, but it is still the
+  // whole credential (see app/api/unsubscribe/route.ts), so the same
+  // three headers apply for the same reason.
   if (
     request.nextUrl.pathname.startsWith("/surveyor/") ||
-    request.nextUrl.pathname.startsWith("/report/")
+    request.nextUrl.pathname.startsWith("/report/") ||
+    request.nextUrl.pathname === "/api/unsubscribe"
   ) {
     const res = NextResponse.next();
     res.headers.set("Referrer-Policy", "no-referrer");

@@ -27,6 +27,16 @@ export interface Mail {
   to: string;
   subject: string;
   text: string;
+  /** Optional HTML body, sent alongside `text` where the provider
+   *  supports it. Every existing caller (alerts, EOD reports) omits
+   *  this and gets plain text exactly as before. */
+  html?: string;
+  /** Overrides ALERT_FROM_EMAIL for this one send. Exists for outbound
+   *  campaign mail, which must NEVER share ALERT_FROM_EMAIL's sending
+   *  identity — a spam complaint on a cold-outreach send must not be
+   *  able to throttle deliverability for a compliance alert. See
+   *  isOutreachConfigured() below. */
+  from?: string;
   attachments?: MailAttachment[];
 }
 
@@ -46,6 +56,17 @@ export function isMailConfigured(): boolean {
   return provider() !== null && Boolean(process.env.ALERT_FROM_EMAIL);
 }
 
+/** Cold outreach needs its own sending identity, on its own subdomain
+ *  with its own SPF/DKIM — never ALERT_FROM_EMAIL. Every compliance
+ *  alert this app sends (an out-of-range fridge, an EOD report) goes
+ *  out from that one address today; mixing in unsolicited marketing
+ *  mail risks a spam complaint degrading the sender reputation that
+ *  those alerts depend on. Campaign code passes `from` explicitly on
+ *  every send() call rather than relying on the default. */
+export function isOutreachConfigured(): boolean {
+  return provider() !== null && Boolean(process.env.OUTREACH_FROM_EMAIL);
+}
+
 /**
  * Send one message. Throws on failure so the caller records the error on
  * the queue row and the sweep retries it — a silent failure here would
@@ -54,7 +75,7 @@ export function isMailConfigured(): boolean {
  */
 export async function send(mail: Mail): Promise<void> {
   const p = provider();
-  const from = process.env.ALERT_FROM_EMAIL;
+  const from = mail.from ?? process.env.ALERT_FROM_EMAIL;
   if (!p || !from) throw new Error("mail_not_configured");
 
   // A 10-second ceiling. Without it a hung provider connection holds the
@@ -86,6 +107,7 @@ export async function send(mail: Mail): Promise<void> {
         to: [mail.to],
         subject: mail.subject,
         text: mail.text,
+        html: mail.html,
         attachments: mail.attachments?.map((a) => ({
           filename: a.filename,
           content: b64(a.content),
@@ -106,6 +128,7 @@ export async function send(mail: Mail): Promise<void> {
         To: mail.to,
         Subject: mail.subject,
         TextBody: mail.text,
+        HtmlBody: mail.html,
         MessageStream: "outbound",
         Attachments: mail.attachments?.map((a) => ({
           Name: a.filename,
@@ -126,7 +149,10 @@ export async function send(mail: Mail): Promise<void> {
         personalizations: [{ to: [{ email: mail.to }] }],
         from: { email: from },
         subject: mail.subject,
-        content: [{ type: "text/plain", value: mail.text }],
+        content: [
+          { type: "text/plain", value: mail.text },
+          ...(mail.html ? [{ type: "text/html", value: mail.html }] : []),
+        ],
         attachments: mail.attachments?.map((a) => ({
           content: b64(a.content),
           filename: a.filename,
