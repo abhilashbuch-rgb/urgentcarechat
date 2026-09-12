@@ -69,6 +69,13 @@
      Overdue do the work, and the fill reinforces it. */
   --safe: var(--blue-600);
   --warn: var(--blue-900);
+  /* The one deliberate exception to "one hue" — asked for by name, twice,
+     for exactly one job: a task that is not done and is now late. Not
+     reused for "critical" or "expired" elsewhere, which stay on --warn;
+     spending a second colour on every bad state is what this ramp was
+     built to avoid, spending it on none of them is not what was asked
+     for here. */
+  --danger: #dc2626;
   --rule: #d7e3f0;
   --rule-firm: #b9cee4;
   --shadow: 0 1px 0 rgba(10,37,64,.04), 0 8px 28px -14px rgba(10,37,64,.22);
@@ -5207,11 +5214,10 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
    purpose, same discipline as --volt everywhere else in this app: it
    means something because it does not appear on every pill. */
 .st-pill-volt { background: var(--volt); color: var(--ground); }
-/* The one pill filled solid instead of tinted — reserved for "this is
-   not done and it is late," the same weight-carries-danger rule as
-   .st-board-overdue below, not a second hue. See the --warn definition
-   at the top of this file for why. */
-.st-pill-warn { background: var(--warn); color: #fff; }
+/* The one pill in --danger, not the blue ramp — reserved for exactly
+   one job, "this is not done and it is late." See the --danger
+   definition at the top of this file for why it exists at all. */
+.st-pill-warn { background: var(--danger); color: #fff; }
 /* Only pills carrying an icon need flex — a bare text pill stays
    inline-block so it wraps into a line of text the way the others do. */
 .st-pill-icon { display: inline-flex; align-items: center; gap: 4px; }
@@ -5256,8 +5262,9 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 .st-board-flag { background: var(--blue-050); }
 /* Not filed and past due — the same border-left + fill depth as
    .st-shelf-expired and .st-rule-critical elsewhere in the app, not a
-   new pattern invented for this row. */
-.st-board-overdue { background: var(--blue-050); border-left: 3px solid var(--warn); }
+   new pattern invented for this row — only the colour is different,
+   for the same reason .st-pill-warn's is. */
+.st-board-overdue { background: var(--blue-050); border-left: 3px solid var(--danger); }
 .st-board-main { min-width: 0; }
 .st-board-name { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
 .st-board-slot {
