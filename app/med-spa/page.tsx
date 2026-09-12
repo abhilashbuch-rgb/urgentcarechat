@@ -83,25 +83,29 @@ export default function MedSpaPage() {
 
       <main className="lp-main">
         <section className="mh-hero mh-dark">
-          <h1 className="mh-h1">
-            Kill the paper binder.
-            <br />
-            <span className="mh-h1-accent">Pass every inspection.</span>
-          </h1>
-          <p className="mh-lede">
-            Product lots, laser checks, and every injector&rsquo;s
-            certification &mdash; done in seconds on your staff&rsquo;s
-            phones, and impossible to backdate.
-          </p>
-          <div className="mh-cta-row">
-            <Link className="mh-cta" href="/start">
-              Start the 30-day trial
-            </Link>
-            <Link className="mh-cta-secondary" href="/demo">
-              See a live demo
-            </Link>
+          <div className="mh-hero-inner">
+            <div className="mh-hero-copy">
+              <h1 className="mh-h1">
+                Kill the paper binder.
+                <br />
+                <span className="mh-h1-accent">Pass every inspection.</span>
+              </h1>
+              <p className="mh-lede">
+                Product lots, laser checks, and every injector&rsquo;s
+                certification &mdash; done in seconds on your staff&rsquo;s
+                phones, and impossible to backdate.
+              </p>
+              <div className="mh-cta-row">
+                <Link className="mh-cta" href="/start">
+                  Start the 30-day trial
+                </Link>
+                <Link className="mh-cta-secondary" href="/demo">
+                  See a live demo
+                </Link>
+              </div>
+              <span className="mh-cta-note">No credit card required</span>
+            </div>
           </div>
-          <span className="mh-cta-note">No credit card required</span>
         </section>
 
         <section className="mh-features">

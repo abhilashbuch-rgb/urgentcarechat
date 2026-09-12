@@ -12,6 +12,7 @@ import CameraProof, { type Proof } from "@/app/components/staff/CameraProof";
 import AiPhotoRead from "@/app/components/staff/AiPhotoRead";
 import LocationStamp, { type LocationResult } from "@/app/components/staff/LocationStamp";
 import type { OrgGeofence } from "@/lib/staff/geo";
+import VerifiedMark from "@/app/components/staff/VerifiedMark";
 
 // The three logs where a photograph is worth the extra seconds, because
 // the record is a number somebody typed and the evidence is a display
@@ -600,6 +601,20 @@ function FieldRow({
               />
               {field.unit && <span className="st-num-unit">{field.unit}</span>}
             </div>
+            {/* Positive feedback the moment a reading clears its own
+                range, not only a flag when it doesn't. Mirrors the
+                "In range" pill on the marketing site's hero — same
+                pill, same mark, same word — so the product looks like
+                the same product it's sold as. */}
+            {typeof value === "number" &&
+              !flagged &&
+              !missing &&
+              (field.min !== undefined || field.max !== undefined) && (
+                <span className="st-pill st-pill-volt st-pill-icon st-range-pill">
+                  <VerifiedMark size={12} />
+                  In range
+                </span>
+              )}
             {onAiRead && (
               <AiPhotoRead onRead={onAiRead} disabled={disabled} />
             )}

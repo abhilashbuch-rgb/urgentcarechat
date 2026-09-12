@@ -30,6 +30,13 @@ export interface BoardRow {
   note_id: string | null;
   note_body: string | null;
   note_read_at: string | null;
+  /** Not filed, and past the same due-by-slot threshold as
+   *  staff.overdue_today — an AM task after 11:00 local, a PM task
+   *  within an hour of closing. Computed here rather than read from
+   *  that view because the board needs every row, not just the late
+   *  ones; the where-clause is kept identical on purpose so "late" never
+   *  means two different things depending which screen you're on. */
+  overdue: boolean;
 }
 
 /** Today's board, scoped to one person's clinic job, in that person's
@@ -63,8 +70,16 @@ export async function todaysBoard(
            cardinality(l.job_roles) = 0 as everyone,
            coalesce(p.hidden, false) as hidden,
            n.id as note_id, n.body as note_body,
-           n.read_at::text as note_read_at
+           n.read_at::text as note_read_at,
+           -- Same condition as staff.overdue_today, kept in lockstep on
+           -- purpose — see the note on BoardRow.overdue.
+           l.response_id is null and (
+             (l.slot = 'am' and (now() at time zone o.timezone)::time > time '11:00')
+             or (l.slot = 'pm' and (now() at time zone o.timezone)::time
+                   > (o.operating_hours_end - interval '1 hour'))
+           ) as overdue
       from staff.todays_logs l
+      join staff.orgs o on o.slug = l.org_slug
       left join staff.log_board_prefs p
              on p.user_id = ${userId ?? null} and p.template_slug = l.slug
       -- Only ever the viewer's OWN note on their OWN filed log — a note

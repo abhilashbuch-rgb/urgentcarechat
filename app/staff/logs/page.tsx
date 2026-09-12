@@ -7,6 +7,8 @@ import { billingState, paymentLink, type BillingState } from "@/lib/staff/billin
 import { SLOT_LABELS, currentSlot } from "@/lib/staff/forms";
 import { atLeast } from "@/lib/staff/roles";
 import { formatSignedAt, formatTimeOnly } from "@/lib/staff/labels";
+import VerifiedMark from "@/app/components/staff/VerifiedMark";
+import OverdueMark from "@/app/components/staff/OverdueMark";
 
 // Today's board.
 //
@@ -189,13 +191,16 @@ function BoardListItem({
   now: string;
   billing: BillingState;
 }) {
-  const isNow = r.slot === "" || r.slot === now;
   const doneAt = r.submitted_at;
+  // An overdue AM item viewed in the afternoon is still "now", not
+  // "early" — the slot-equality check alone can't tell late from
+  // premature, only overdue can.
+  const dueNow = r.slot === "" || r.slot === now || r.overdue;
   return (
     <li
       className={`st-board-row${doneAt ? " st-board-done" : ""}${
         r.has_out_of_range ? " st-board-flag" : ""
-      }`}
+      }${!doneAt && r.overdue ? " st-board-overdue" : ""}`}
     >
       <div className="st-board-main">
         <span className="st-board-name">
@@ -233,7 +238,10 @@ function BoardListItem({
         {r.has_out_of_range && <span className="st-pill st-pill-due">Out of range</span>}
         {doneAt ? (
           <>
-            <span className="st-pill st-pill-ok">Done</span>
+            <span className="st-pill st-pill-ok st-pill-icon">
+              <VerifiedMark size={12} />
+              Done
+            </span>
             {!billing.is_read_only && r.response_id && (
               <a
                 className="st-board-amend"
@@ -248,12 +256,20 @@ function BoardListItem({
         ) : billing.is_read_only ? (
           <span className="st-pill st-pill-new">Paused</span>
         ) : (
-          <a
-            className={`st-board-btn${isNow ? "" : " st-board-btn-later"}`}
-            href={`/staff/logs/${r.slug}${r.slot ? `?slot=${r.slot}` : ""}`}
-          >
-            {isNow ? "Fill in" : "Fill in early"}
-          </a>
+          <>
+            {r.overdue && (
+              <span className="st-pill st-pill-warn st-pill-icon">
+                <OverdueMark size={12} />
+                Overdue
+              </span>
+            )}
+            <a
+              className={`st-board-btn${dueNow ? "" : " st-board-btn-later"}`}
+              href={`/staff/logs/${r.slug}${r.slot ? `?slot=${r.slot}` : ""}`}
+            >
+              {dueNow ? "Fill in" : "Fill in early"}
+            </a>
+          </>
         )}
       </div>
     </li>

@@ -72,32 +72,62 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-/** The trace, run the full width as a rule.
+/** The hero's right-hand side: the product itself, not a stock photo.
  *
- *  The same path as the mark, stretched — so the logo is not a badge
- *  sitting in a corner but a shape the page is built out of. This is the
- *  cheapest way to make an identity feel deliberate rather than applied.
+ *  REPLACES A FLAT DARK PANEL AND A THIN TRACE LINE. Neither said
+ *  anything a prospect couldn't already read in the headline. A
+ *  floating card showing one real moment in the app — a reading, in
+ *  range, signed and badge-verified — does the same job a hero photo
+ *  usually does (make the page feel inhabited) while also being the
+ *  first proof of the product a visitor sees, three seconds in.
+ *
+ *  THE BACKGROUND TEXTURE IS THE BRAND MARK, HUGE AND NEARLY
+ *  INVISIBLE — the same stacked-sheets shape as app/components/
+ *  BrandIcon.tsx, not the pulse-trace zigzag this replaced. That
+ *  zigzag survived here as a leftover after the icon itself changed
+ *  everywhere else; this was the one place it was still hiding.
  */
-function PulseRule() {
+function HeroVisual() {
   return (
-    <svg
-      className="mh-rule"
-      viewBox="0 0 240 24"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-    >
-      {/* Two beats and a long lead-out, so it reads as a strip cut from
-          something continuous rather than a repeating pattern. */}
-      <path
-        d="M0 14 H26 L38 4 L50 21 L62 4 L74 14 H132 L144 4 L156 21 L168 4 L180 14 H240"
-        fill="none"
-        stroke="var(--volt)"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        vectorEffect="non-scaling-stroke"
-      />
-    </svg>
+    <div className="mh-hero-visual" aria-hidden="true">
+      <div className="mh-glow" />
+      <svg className="mh-stack-texture" viewBox="0 0 48 48" fill="none">
+        <rect x="9" y="28" width="27" height="7.4" rx="3.4" stroke="#1c3352" strokeWidth="1.4" opacity="0.6" />
+        <rect x="11.5" y="20.4" width="25" height="7.4" rx="3.4" stroke="#1c3352" strokeWidth="1.4" opacity="0.8" />
+        <rect x="14" y="12.8" width="23" height="7.4" rx="3.4" stroke="#1c3352" strokeWidth="1.4" />
+        <circle cx="35.5" cy="33.7" r="8" fill="#0b1220" stroke="#1c3352" strokeWidth="1.4" />
+        <path d="M32 33.7 L34.3 36 L38.6 30.5" stroke="#1c3352" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+
+      <div className="mh-device-back" />
+      <div className="mh-device">
+        <div className="mh-device-top">
+          <span className="mh-device-label">Vaccine fridge</span>
+          <span className="mh-device-slot">AM check</span>
+        </div>
+        <div className="mh-device-title">Current temperature</div>
+        <div className="mh-device-sub">36&ndash;46 &deg;F acceptable range</div>
+        <div className="mh-device-reading">
+          <span className="mh-device-value">38.4&deg;F</span>
+          <span className="mh-device-pill">In range</span>
+        </div>
+        <div className="mh-device-sig">
+          <div className="mh-device-badge">
+            <svg width="20" height="20" viewBox="0 0 48 48">
+              <rect x="9" y="28" width="27" height="7.4" rx="3.4" fill="none" stroke="#22d3ee" strokeWidth="2.6" opacity="0.4" />
+              <rect x="11.5" y="20.4" width="25" height="7.4" rx="3.4" fill="none" stroke="#22d3ee" strokeWidth="2.6" opacity="0.7" />
+              <rect x="14" y="12.8" width="23" height="7.4" rx="3.4" fill="none" stroke="#22d3ee" strokeWidth="2.6" />
+              <circle cx="35.5" cy="33.7" r="8" fill="#0b1220" stroke="#22d3ee" strokeWidth="1.9" />
+              <path d="M32 33.7 L34.3 36 L38.6 30.5" fill="none" stroke="#22d3ee" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <div className="mh-device-sig-text">
+            <div className="mh-device-name">Signed by Dana Whitfield</div>
+            <div className="mh-device-meta">Today, 9:14 AM &middot; On-site</div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -136,25 +166,29 @@ export default function LandingPage() {
             the logo. One near-black block with the trace running across
             it does more than any amount of gradient. */}
         <section className="mh-hero mh-dark">
-          <PulseRule />
-          <h1 className="mh-h1">
-            Kill the paper binder.
-            <br />
-            <span className="mh-h1-accent">Pass every inspection.</span>
-          </h1>
-          <p className="mh-lede">
-            Crash cart checks, fridge curves and narcotics counts, done in
-            seconds on your staff&rsquo;s phones — and impossible to backdate.
-          </p>
-          <div className="mh-cta-row">
-            <Link className="mh-cta" href="/start">
-              Start the 30-day trial
-            </Link>
-            <Link className="mh-cta-secondary" href="/demo">
-              See a live demo
-            </Link>
+          <div className="mh-hero-inner">
+            <div className="mh-hero-copy">
+              <h1 className="mh-h1">
+                Kill the paper binder.
+                <br />
+                <span className="mh-h1-accent">Pass every inspection.</span>
+              </h1>
+              <p className="mh-lede">
+                Crash cart checks, fridge curves and narcotics counts, done in
+                seconds on your staff&rsquo;s phones — and impossible to backdate.
+              </p>
+              <div className="mh-cta-row">
+                <Link className="mh-cta" href="/start">
+                  Start the 30-day trial
+                </Link>
+                <Link className="mh-cta-secondary" href="/demo">
+                  See a live demo
+                </Link>
+              </div>
+              <span className="mh-cta-note">No credit card required</span>
+            </div>
+            <HeroVisual />
           </div>
-          <span className="mh-cta-note">No credit card required</span>
         </section>
 
         <section className="mh-features">
