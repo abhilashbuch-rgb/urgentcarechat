@@ -5201,6 +5201,19 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 .st-pill-ok  { background: var(--blue-050); color: var(--blue-600); }
 .st-pill-due { background: var(--blue-100); color: var(--blue-900); }
 .st-pill-new { background: var(--blue-050); color: var(--ink-soft); }
+/* The one pill that uses the brand accent instead of a system blue —
+   reserved for a reading confirming itself in real time, the same
+   moment the marketing site's hero card shows it. Used sparingly on
+   purpose, same discipline as --volt everywhere else in this app: it
+   means something because it does not appear on every pill. */
+.st-pill-volt { background: var(--volt); color: var(--ground); }
+/* Only pills carrying an icon need flex — a bare text pill stays
+   inline-block so it wraps into a line of text the way the others do. */
+.st-pill-icon { display: inline-flex; align-items: center; gap: 4px; }
+.verified-mark { flex-shrink: 0; }
+/* A flex item inside .st-num-field's column would otherwise stretch to
+   the input's full width, turning a chip into a bar. */
+.st-range-pill { align-self: flex-start; }
 
 @media (max-width: 720px) {
   .st-doc { padding: 20px 18px; font-size: 14.5px; }

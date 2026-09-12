@@ -7,6 +7,7 @@ import { billingState, paymentLink, type BillingState } from "@/lib/staff/billin
 import { SLOT_LABELS, currentSlot } from "@/lib/staff/forms";
 import { atLeast } from "@/lib/staff/roles";
 import { formatSignedAt, formatTimeOnly } from "@/lib/staff/labels";
+import VerifiedMark from "@/app/components/staff/VerifiedMark";
 
 // Today's board.
 //
@@ -233,7 +234,10 @@ function BoardListItem({
         {r.has_out_of_range && <span className="st-pill st-pill-due">Out of range</span>}
         {doneAt ? (
           <>
-            <span className="st-pill st-pill-ok">Done</span>
+            <span className="st-pill st-pill-ok st-pill-icon">
+              <VerifiedMark size={12} />
+              Done
+            </span>
             {!billing.is_read_only && r.response_id && (
               <a
                 className="st-board-amend"
