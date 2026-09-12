@@ -187,19 +187,21 @@ export default async function StaffSignIn({
 
         <EmailSignIn initialEmail={invitedEmail} />
 
+        {/* CUT DOWN FROM TWO SENTENCES EACH. A staff member on this
+            screen wants the code, not an explanation of why there's no
+            Google button — and the earlier, fuller wording was true but
+            unread. Say the one thing that changes what they do next,
+            nothing else. */}
         {!canSignIn && !message && (
           <p className="st-signin-fine">
-            Google sign-in isn&rsquo;t configured on this deployment, so the
-            emailed code is the way in. It works with any address at all
-            &mdash; Microsoft, Google, or the mailbox your practice has
-            always used.
+            No Google sign-in here &mdash; use the emailed code below. Any
+            address works.
           </p>
         )}
 
         <p className="st-signin-fine">
-          Access is by invitation. Proving you hold the address doesn&rsquo;t
-          grant access on its own &mdash; your administrator has to have
-          invited it.
+          Sign-in is invite-only &mdash; holding the address alone
+          won&rsquo;t get you in.
         </p>
       </div>
     </div>
