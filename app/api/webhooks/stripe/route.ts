@@ -95,7 +95,8 @@ export async function POST(req: NextRequest) {
             update staff.orgs
                set stripe_customer_id = ${customer},
                    stripe_subscription_id = ${subscription},
-                   billing_email = coalesce(${email}, billing_email)
+                   billing_email = coalesce(${email}, billing_email),
+                   billing_name = coalesce(${obj.customer_details?.name ?? null}, billing_name)
              where slug = ${slug}
           `;
         }
@@ -115,6 +116,15 @@ export async function POST(req: NextRequest) {
             ${customer}, ${subscription}, ${email}
           )
         `.then((r) => r[0].provision_org);
+        // Not a provision_org argument — that function's signature is
+        // shared with every other caller of it, and this is the one
+        // field only a Stripe checkout ever fills in.
+        if (obj.customer_details?.name) {
+          await sql`
+            update staff.orgs set billing_name = ${obj.customer_details.name}
+             where slug = ${slug}
+          `;
+        }
         return { provisioned: slug };
       }
 
@@ -124,10 +134,25 @@ export async function POST(req: NextRequest) {
              set subscription_status = 'active',
                  is_read_only = false,
                  read_only_since = null,
-                 stripe_subscription_id = coalesce(${subscription}, stripe_subscription_id)
+                 stripe_subscription_id = coalesce(${subscription}, stripe_subscription_id),
+                 billing_name = coalesce(${obj.customer_details?.name ?? null}, billing_name)
            where slug = ${slug}
         `;
         return { org: slug, state: "active" as const };
+      }
+
+      // Card details only — never a reason to change subscription_status
+      // or is_read_only on their own. A card can be attached without a
+      // subscription existing yet, and the ACTIVATE/SUSPEND events above
+      // are still the only things that flip access.
+      if (event.type === "payment_method.attached" && obj.card) {
+        await sql`
+          update staff.orgs
+             set card_brand = coalesce(${obj.card.brand ?? null}, card_brand),
+                 card_last4 = coalesce(${obj.card.last4 ?? null}, card_last4)
+           where slug = ${slug}
+        `;
+        return { org: slug, state: "card_updated" as const };
       }
 
       if (SUSPEND.has(event.type)) {

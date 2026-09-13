@@ -64,6 +64,9 @@ interface OrgSettings {
   plan: string;
   subscription_status: string;
   stripe_customer_id: string | null;
+  billing_name: string | null;
+  card_brand: string | null;
+  card_last4: string | null;
 }
 
 export default async function SettingsPage({
@@ -83,7 +86,7 @@ export default async function SettingsPage({
         select name, timezone, latitude, longitude, geofence_radius_m,
                geofence_mode, owner_alert_email, medical_director_alert_email,
                billing_contact_email, zip, plan, subscription_status,
-               stripe_customer_id
+               stripe_customer_id, billing_name, card_brand, card_last4
           from staff.orgs where slug = ${org}
       `
     )[0],
@@ -427,20 +430,34 @@ export default async function SettingsPage({
             {planStatusLabel(s.subscription_status)}.
           </p>
           {s.stripe_customer_id ? (
-            (() => {
-              const portal = customerPortalLink();
-              return portal ? (
-                <a className="st-btn" href={portal} target="_blank" rel="noreferrer">
-                  Manage billing
-                </a>
-              ) : (
+            <>
+              {(s.billing_name || (s.card_brand && s.card_last4)) && (
                 <p className="st-set-b">
-                  Invoices, the card on file, and cancelling all live on
-                  Stripe&rsquo;s own page &mdash; not configured on this
-                  deployment yet.
+                  {s.billing_name && <>Billed to <strong>{s.billing_name}</strong>. </>}
+                  {s.card_brand && s.card_last4 && (
+                    <>{s.card_brand} ending in {s.card_last4}.</>
+                  )}
                 </p>
-              );
-            })()
+              )}
+              {/* Not a claim this app is making on its own — the row
+                  exists only because Stripe told this exact webhook so,
+                  over a signature. See app/api/webhooks/stripe/route.ts. */}
+              <p className="st-field-hint">Verified with Stripe.</p>
+              {(() => {
+                const portal = customerPortalLink();
+                return portal ? (
+                  <a className="st-btn" href={portal} target="_blank" rel="noreferrer">
+                    Manage billing
+                  </a>
+                ) : (
+                  <p className="st-set-b">
+                    Invoices, the card on file, and cancelling all live on
+                    Stripe&rsquo;s own page &mdash; not configured on this
+                    deployment yet.
+                  </p>
+                );
+              })()}
+            </>
           ) : (
             <p className="st-set-b">
               No billing account yet &mdash; this clinic hasn&rsquo;t

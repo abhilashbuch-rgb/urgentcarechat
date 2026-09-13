@@ -1754,6 +1754,9 @@ alter table staff.orgs add column if not exists subscription_status text not nul
 alter table staff.orgs add column if not exists is_read_only boolean not null default false;
 alter table staff.orgs add column if not exists billing_email text;
 alter table staff.orgs add column if not exists read_only_since timestamptz;
+alter table staff.orgs add column if not exists billing_name text;
+alter table staff.orgs add column if not exists card_brand text;
+alter table staff.orgs add column if not exists card_last4 text;
 
 create unique index if not exists staff_orgs_stripe_customer
   on staff.orgs (stripe_customer_id) where stripe_customer_id is not null;
