@@ -56,7 +56,14 @@
   --bg-sunk: var(--blue-050);
   --ink: var(--blue-900);
   --ink-soft: #48678a;
-  --ink-faint: #7d95ad;
+  /* Was #7d95ad — ~3.1:1 against white, below WCAG AA for the small
+     caption/hint/citation text every single one of this token's ~90
+     uses turned out to be. No use of it anywhere in this file was
+     actually large enough to earn the AA large-text exception, so
+     rather than hunt each selector individually this is now the same
+     value as --ink-soft: still the lighter of the two ink tones by
+     weight and usage, just no longer illegible. */
+  --ink-faint: #48678a;
   --accent: var(--blue-800);
   --accent-deep: var(--blue-900);
   --blue: var(--blue-800);
@@ -1503,7 +1510,10 @@ body {
   --l-card: #ffffff;
   --l-ink: var(--blue-900);
   --l-ink-soft: #48678a;
-  --l-ink-faint: #7d95ad;
+  /* Same fix as --ink-faint above, same reason — every use on the
+     landing pages was small caption/label text, none large enough to
+     earn the WCAG AA exception at the old #7d95ad (~3.1:1). */
+  --l-ink-faint: #48678a;
   --l-teal: var(--blue-800);
   --l-teal-deep: var(--blue-900);
   --l-teal-soft: var(--blue-100);
