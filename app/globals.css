@@ -69,20 +69,34 @@
   --blue: var(--blue-800);
   --blue-deep: var(--blue-900);
 
-  /* State still has to be distinguishable, so it is carried by DEPTH and
-     by an icon, not by hue. "Bad" is the deepest blue with the heaviest
-     fill; "ok" is the lightest. A page that signals danger only by
-     colour fails for a colourblind reader anyway — the words Expired and
-     Overdue do the work, and the fill reinforces it. */
+  /* State used to be carried by depth and an icon alone, deliberately
+     never by hue — see --danger's own history below, added first as
+     "the one exception." Asked, by name, to go further: distinct
+     colours per status, not shades of one blue. So now a genuine
+     three-step status palette exists (good / warn / critical) for
+     exactly that job, reserved for status tags and states and never
+     borrowed for ordinary UI chrome — a button, a nav item, a link
+     stays on the blue/cyan system exactly as before. None of the
+     three ever carries meaning by hue ALONE regardless: every status
+     colour here still ships with a word (Expired, Expiring, Current)
+     and usually an icon, the same discipline this section always
+     had — colour is now doing more work, not the only work. */
   --safe: var(--blue-600);
   --warn: var(--blue-900);
-  /* The one deliberate exception to "one hue" — asked for by name, twice,
-     for exactly one job: a task that is not done and is now late. Not
-     reused for "critical" or "expired" elsewhere, which stay on --warn;
-     spending a second colour on every bad state is what this ramp was
-     built to avoid, spending it on none of them is not what was asked
-     for here. */
   --danger: #dc2626;
+  /* Validated against this file's own --bg (#fff): white text on this
+     green is 5.5:1, the green itself as bare text on white is the
+     same 5.5:1 — safe as a filled pill OR as text, unlike a brighter
+     "success" green, which reads closer to 3:1 either way. */
+  --status-good: #0f7a1a;
+  --status-good-wash: #e7f5e8;
+  /* Amber is inherently light, so it is never text-on-white by
+     itself: --gold-700 (already in this file, for the PDF binder's
+     own accent) stands in as the AA-passing text colour, at 5.05:1 —
+     the raw amber is fill-only, paired with navy text at 8.47:1. */
+  --status-warn: #fab219;
+  --status-warn-text: var(--gold-700);
+  --status-warn-wash: #fff3d6;
   --rule: #d7e3f0;
   --rule-firm: #b9cee4;
   --shadow: 0 1px 0 rgba(10,37,64,.04), 0 8px 28px -14px rgba(10,37,64,.22);
@@ -4047,7 +4061,7 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
   background: var(--blue-050);
   color: var(--ink-soft);
 }
-.st-tag-due { background: var(--blue-100); color: var(--blue-900); }
+.st-tag-due { background: var(--status-warn-wash); color: var(--status-warn-text); }
 .st-doc-citation { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
 
 /* The document itself. Measure capped near 70ch and line-height opened up
@@ -4457,9 +4471,9 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 .st-mycred-expired .st-mycred-state,
 .st-mycred-missing .st-mycred-state {
   font-weight: 650;
-  color: var(--warn);
+  color: var(--danger);
 }
-.st-mycred-expiring .st-mycred-state { color: var(--ink-soft); }
+.st-mycred-expiring .st-mycred-state { color: var(--status-warn-text); font-weight: 600; }
 .st-mycred-go {
   display: inline-block;
   margin-top: 12px;
@@ -4960,8 +4974,8 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 /* State by depth and a word, never by hue alone — the label already
    says Expired, and a red border would be the only signal for a
    colourblind reader. */
-.st-shelf-expired  { border-left: 3px solid var(--warn); background: var(--blue-050); }
-.st-shelf-expiring { border-left: 3px solid var(--blue-600); }
+.st-shelf-expired  { border-left: 3px solid var(--danger); background: var(--blue-050); }
+.st-shelf-expiring { border-left: 3px solid var(--status-warn); }
 .st-shelf-no_date  { border-left: 3px solid var(--rule-firm); }
 
 .st-shelf-main { min-width: 0; }
@@ -4982,10 +4996,10 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 .st-shelf-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .st-shelf-actions .st-btn { font-size: 13px; padding: 7px 12px; min-height: 36px; }
 
-.st-tag-expired  { background: var(--blue-900); color: #fff; }
-.st-tag-expiring { background: var(--blue-100); color: var(--blue-900); }
+.st-tag-expired  { background: var(--danger); color: #fff; }
+.st-tag-expiring { background: var(--status-warn-wash); color: var(--status-warn-text); }
 .st-tag-no_date  { background: var(--bg-sunk); color: var(--ink-soft); }
-.st-tag-current  { background: var(--blue-050); color: var(--blue-600); }
+.st-tag-current  { background: var(--status-good-wash); color: var(--status-good); }
 
 /* ---------- protocol search ---------- */
 
@@ -5216,7 +5230,7 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
   white-space: nowrap;
 }
 .st-pill-ok  { background: var(--blue-050); color: var(--blue-600); }
-.st-pill-due { background: var(--blue-100); color: var(--blue-900); }
+.st-pill-due { background: var(--danger); color: #fff; }
 .st-pill-new { background: var(--blue-050); color: var(--ink-soft); }
 /* The one pill that uses the brand accent instead of a system blue —
    reserved for a reading confirming itself in real time, the same
@@ -6456,14 +6470,14 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
   text-transform: uppercase;
   letter-spacing: .05em;
   color: #fff;
-  background: var(--blue-900);
+  background: var(--danger);
   padding: 2px 6px;
   border-radius: 4px;
 }
 .sv-state { font-size: 12px; font-weight: 600; text-transform: capitalize; }
-.sv-state-expired, .sv-state-critical, .sv-state-overdue { color: var(--blue-900); font-weight: 700; }
-.sv-state-expiring, .sv-state-due_soon { color: var(--blue-600); }
-.sv-state-current, .sv-state-scheduled { color: var(--ink-soft); font-weight: 500; }
+.sv-state-expired, .sv-state-critical, .sv-state-overdue { color: var(--danger); font-weight: 700; }
+.sv-state-expiring, .sv-state-due_soon { color: var(--status-warn-text); }
+.sv-state-current, .sv-state-scheduled { color: var(--status-good); font-weight: 500; }
 
 .sv-foot {
   font-size: 12px;
