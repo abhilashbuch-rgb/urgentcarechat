@@ -7,7 +7,19 @@ import { PRODUCT_NAME } from "@/lib/site";
 // /api/cron/send-follow-ups — Called hourly by Vercel Cron (see
 // vercel.json). Sends the opt-in "how did your visit go?" text for
 // any follow_up_requests that are now due, then marks them sent.
+//
+// UP TO 20 SMS, SEQUENTIALLY, EACH WITH ITS OWN 10-SECOND CEILING (see
+// sendSms's own AbortSignal.timeout) — worst case is a few minutes,
+// not the platform's unconfigured default, which is why this route
+// (unlike every other cron route in this app) was hitting a bare
+// Gateway Timeout daily with no logged error at all: nothing here ever
+// threw, the function was simply killed mid-run with no maxDuration
+// set to give it room.
 // ============================================================
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 
 export async function GET(req: NextRequest) {
   // If CRON_SECRET is configured, require it — Vercel Cron sends this
