@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { requireStaff } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
 import { atLeast } from "@/lib/staff/roles";
+import { customerPortalLink, planStatusLabel } from "@/lib/staff/billing";
 import AddressLookup from "@/app/components/staff/AddressLookup";
 import {
   emergencyContactsFor,
@@ -60,6 +61,9 @@ interface OrgSettings {
   medical_director_alert_email: string | null;
   billing_contact_email: string | null;
   zip: string | null;
+  plan: string;
+  subscription_status: string;
+  stripe_customer_id: string | null;
 }
 
 export default async function SettingsPage({
@@ -78,7 +82,8 @@ export default async function SettingsPage({
       await sql<OrgSettings[]>`
         select name, timezone, latitude, longitude, geofence_radius_m,
                geofence_mode, owner_alert_email, medical_director_alert_email,
-               billing_contact_email, zip
+               billing_contact_email, zip, plan, subscription_status,
+               stripe_customer_id
           from staff.orgs where slug = ${org}
       `
     )[0],
@@ -407,6 +412,43 @@ export default async function SettingsPage({
           Save emergency numbers
         </button>
       </form>
+
+      {/* READ-ONLY, ON PURPOSE. subscription_status is written by exactly
+          one thing — the Stripe webhook, over a signed event (see
+          billingState()'s own comment) — so this section has no form
+          and posts nowhere. Changing the plan, the card, or cancelling
+          all happen on Stripe's own hosted pages; this is a window onto
+          state this app never writes itself. */}
+      {isOwner && (
+        <section className="st-set-block">
+          <h2 className="st-set-h">Plan &amp; billing</h2>
+          <p className="st-set-b">
+            {s.plan.charAt(0).toUpperCase() + s.plan.slice(1)} plan &mdash;{" "}
+            {planStatusLabel(s.subscription_status)}.
+          </p>
+          {s.stripe_customer_id ? (
+            (() => {
+              const portal = customerPortalLink();
+              return portal ? (
+                <a className="st-btn" href={portal} target="_blank" rel="noreferrer">
+                  Manage billing
+                </a>
+              ) : (
+                <p className="st-set-b">
+                  Invoices, the card on file, and cancelling all live on
+                  Stripe&rsquo;s own page &mdash; not configured on this
+                  deployment yet.
+                </p>
+              );
+            })()
+          ) : (
+            <p className="st-set-b">
+              No billing account yet &mdash; this clinic hasn&rsquo;t
+              subscribed.
+            </p>
+          )}
+        </section>
+      )}
 
       {/* A SEPARATE FORM, POSTING SOMEWHERE ELSE, ON PURPOSE. Everything
           above this line is manager-level. This one field is stricter —
