@@ -125,7 +125,17 @@ alter table staff.orgs
   add column if not exists digest_am_at time not null default '09:00';
 
 alter table staff.orgs
-  add column if not exists digest_pm_at time not null default '17:00';
+  add column if not exists digest_pm_at time not null default '21:00';
+
+-- The column above only sets its default at CREATION, so a database
+-- that already has it (every one that has ever run this file before)
+-- keeps whatever default it was created with regardless of the literal
+-- above. This line is what actually moves the default for orgs created
+-- from here on; it does not touch any existing org's own stored value.
+-- Was '17:00' — an owner asking "why no email at 9pm" was finding out
+-- the hard way that end-of-day meant 5pm.
+alter table staff.orgs
+  alter column digest_pm_at set default '21:00';
 
 -- Both addresses render into an email envelope, so they are shaped here
 -- rather than only in a route.
