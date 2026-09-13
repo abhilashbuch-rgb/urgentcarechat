@@ -6775,7 +6775,10 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 .demo-fixed:first-child { border-top: none; }
 .demo-fixed-label { color: var(--ink); font-weight: 600; }
 .demo-fixed-why {
-  color: var(--ink-faint);
+  /* var(--ink-faint) here was ~3.1:1 against white, below WCAG AA for
+     text this size — same failure already fixed once on the sign-in
+     page's fine print (see .st-signin-fine). --ink-soft is ~5.86:1. */
+  color: var(--ink-soft);
   font-family: var(--mono);
   font-size: 11px;
   text-align: right;
@@ -6815,7 +6818,8 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
   margin-top: 10px;
   font-size: 12px;
   line-height: 1.5;
-  color: var(--ink-faint);
+  /* Same WCAG-AA fix as .demo-fixed-why above. */
+  color: var(--ink-soft);
   text-align: center;
 }
 
