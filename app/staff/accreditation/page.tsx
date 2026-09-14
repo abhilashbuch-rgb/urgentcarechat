@@ -5,7 +5,9 @@ import { atLeast, jobLabel } from "@/lib/staff/roles";
 import { facilityTypeFor } from "@/lib/staff/compliance";
 import SurveyorLinks from "@/app/components/staff/SurveyorLinks";
 import EmailBinderForm from "@/app/components/staff/EmailBinderForm";
+import InterviewPrep, { type RolePrep } from "@/app/components/staff/InterviewPrep";
 import { issuedLinks } from "@/lib/staff/surveyor";
+import { interviewPrepFor } from "@/lib/staff/interview-prep";
 
 // The console you open when a surveyor is coming.
 //
@@ -49,21 +51,40 @@ export default async function Accreditation() {
   const { session, org } = await requireStaff();
   if (!atLeast(session.role, "manager")) redirect("/staff");
 
-  const { cells, links, facilityType } = await withSession(session, async (sql) => ({
-    cells: await sql<Cell[]>`
-      select user_id, staff_name, legal_name, job_role, kind, kind_label,
-             required, sort_order, expires_on::text as expires_on,
-             days_left, status
-        from staff.credential_matrix
-       where org_slug = ${org}
-       order by staff_name nulls last, sort_order
-    `,
-    // The same loader /staff/surveyor uses. Hand-rolling a second query
-    // here produced a row shape SurveyorLinks could not render — and
-    // worse, one that would drift from the real one on the next change.
-    links: await issuedLinks(sql),
-    facilityType: await facilityTypeFor(sql, org),
-  }));
+  const { cells, links, facilityType, roles } = await withSession(session, async (sql) => {
+    const facilityType = await facilityTypeFor(sql, org);
+    // X-ray tech is only ever a real job on an urgent-care template —
+    // see the facility_templates seed in staff-facility.sql, which is
+    // the same list a med spa or dental practice's own onboarding
+    // draws from. Asking a med spa to rehearse an x-ray interview would
+    // be prep for a job that doesn't exist there.
+    const jobRoles =
+      facilityType === "urgent_care" || facilityType === null
+        ? ["front_desk", "medical_assistant", "xray_tech", "center_admin"]
+        : ["front_desk", "medical_assistant", "center_admin"];
+
+    return {
+      cells: await sql<Cell[]>`
+        select user_id, staff_name, legal_name, job_role, kind, kind_label,
+               required, sort_order, expires_on::text as expires_on,
+               days_left, status
+          from staff.credential_matrix
+         where org_slug = ${org}
+         order by staff_name nulls last, sort_order
+      `,
+      // The same loader /staff/surveyor uses. Hand-rolling a second query
+      // here produced a row shape SurveyorLinks could not render — and
+      // worse, one that would drift from the real one on the next change.
+      links: await issuedLinks(sql),
+      facilityType,
+      roles: await Promise.all(
+        jobRoles.map(async (jobRole): Promise<RolePrep> => ({
+          jobRole,
+          qas: await interviewPrepFor(sql, jobRole),
+        }))
+      ),
+    };
+  });
 
   // Columns are whatever credentials this clinic's jobs actually require,
   // in the order the requirements declare — not a fixed BLS/ACLS/PALS
@@ -201,6 +222,8 @@ export default async function Accreditation() {
           </section>
         </div>
       </div>
+
+      <InterviewPrep roles={roles} facilityType={facilityType} />
     </div>
   );
 }

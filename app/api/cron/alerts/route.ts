@@ -95,6 +95,7 @@ export async function GET(req: NextRequest) {
               kind: "log",
               subject: d.subject,
               body: d.body,
+              html: d.html,
             });
             // A digest is time-sensitive by definition, so it goes on
             // this sweep rather than waiting for the next one.
@@ -115,7 +116,7 @@ export async function GET(req: NextRequest) {
                  where org_slug = ${slug} and active and wants_digest
               `;
               for (const { email } of optedIn) {
-                await send({ to: email, subject: d.subject, text: d.body }).catch(
+                await send({ to: email, subject: d.subject, text: d.body, html: d.html }).catch(
                   (err) =>
                     console.error(
                       `[cron-alerts] digest to ${email} failed:`,

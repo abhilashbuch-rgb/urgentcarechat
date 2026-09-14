@@ -3,6 +3,11 @@ import { isMailConfigured, send } from "@/lib/mail";
 import { isSmsConfigured, sendSms } from "@/lib/twilio";
 import { ROOT_URL } from "@/lib/site";
 import { missingRequiredPhotos } from "@/lib/staff/report";
+import {
+  renderEmailHtml,
+  wrapPlainAlertHtml,
+  type EmailSection,
+} from "@/lib/staff/email-html";
 
 // Enqueueing alerts, and sweeping the queue.
 //
@@ -17,6 +22,10 @@ export interface AlertInput {
   kind: "excursion" | "log" | "missed_task" | "credential_expiry";
   subject: string;
   body: string;
+  /** Pre-built HTML for this one alert. Only the digest supplies this —
+   *  everything else gets wrapped automatically at send time from its
+   *  plain body, see wrapPlainAlertHtml() in lib/staff/email-html.ts. */
+  html?: string;
   sourceKind?: string;
   sourceId?: string;
   submittedBy?: string;
@@ -62,11 +71,11 @@ export async function enqueue(
   // less than one that arrives once.
   await sql`
     insert into staff.alert_queue
-      (org_slug, kind, urgency, subject, body,
+      (org_slug, kind, urgency, subject, body, html_body,
        source_kind, source_id, submitted_by, payload, hold_until)
     values
       (${input.org}, ${input.kind}, ${urgency}, ${input.subject},
-       ${input.body}, ${input.sourceKind ?? null},
+       ${input.body}, ${input.html ?? null}, ${input.sourceKind ?? null},
        ${input.sourceId ?? null}, ${input.submittedBy ?? null},
        ${sql.json((input.payload ?? {}) as Record<string, never>)},
        ${holdMinutes === null
@@ -177,6 +186,7 @@ export async function sweep(
       kind: string;
       subject: string;
       body: string;
+      html_body: string | null;
       owner_sent_at: string | null;
       director_sent_at: string | null;
       owner_sms_sent_at: string | null;
@@ -184,7 +194,7 @@ export async function sweep(
       attempts: number;
     }[]
   >`
-    select id, kind, subject, body,
+    select id, kind, subject, body, html_body,
            owner_sent_at::text as owner_sent_at,
            director_sent_at::text as director_sent_at,
            owner_sms_sent_at::text as owner_sms_sent_at,
@@ -243,6 +253,12 @@ export async function sweep(
 
     // --- email ---
     if (mailOn) {
+      // Every alert renders as a colored card, not just the digest: a
+      // row the caller gave its own html (the digest) uses that
+      // verbatim; everything else — an excursion, a missed task, a
+      // plain "logged" confirmation — is wrapped from its plain body
+      // here, once, rather than at each of the enqueue() call sites.
+      const html = row.html_body ?? wrapPlainAlertHtml(row.kind, row.subject, row.body);
       for (const [addr, already, mark] of [
         [orgRow.owner_alert_email, ownerOk, "owner"] as const,
         [orgRow.medical_director_alert_email, directorOk, "director"] as const,
@@ -254,6 +270,7 @@ export async function sweep(
             to: addr,
             subject: row.subject,
             text: `${row.body}\n\n${ROOT_URL}/staff`,
+            html,
           });
           if (mark === "owner") ownerOk = true;
           else directorOk = true;
@@ -325,27 +342,50 @@ export async function sweep(
   return { attempted: pending.length, delivered, failed, texted, skipped: null };
 }
 
-/** The AM and PM digest: what got done, what did not, in one message. */
+/**
+ * The AM and PM digest: what got done, what did not, in one message.
+ *
+ * ONE QUERY AGAINST staff.todays_logs FOR EVERYTHING done/outstanding/
+ * flagged, rather than a separate count query and a separate list
+ * query against the same view — a count and a list of the same rows
+ * read twice are two chances to disagree. "Still due" is then the rows
+ * NOT already in staff.overdue_today, so a task past its own deadline
+ * shows once, as late, never twice.
+ */
 export async function digestFor(
   sql: StaffSql,
   org: string
-): Promise<{ subject: string; body: string } | null> {
-  const [counts] = await sql<
-    { done: number; outstanding: number; flagged: number }[]
+): Promise<{ subject: string; body: string; html: string } | null> {
+  const rows = await sql<
+    {
+      template_id: string;
+      name: string;
+      slot: string;
+      response_id: string | null;
+      submitted_at: string | null;
+      submitted_by_name: string | null;
+      has_out_of_range: boolean | null;
+    }[]
   >`
-    select
-      count(*) filter (where response_id is not null)::int as done,
-      count(*) filter (where response_id is null)::int     as outstanding,
-      count(*) filter (where has_out_of_range)::int        as flagged
-    from staff.todays_logs
-   where org_slug = ${org}
+    select template_id, name, slot, response_id,
+           submitted_at::text as submitted_at, submitted_by_name,
+           has_out_of_range
+      from staff.todays_logs
+     where org_slug = ${org}
+     order by slot, name
   `;
-  if (!counts) return null;
+  if (rows.length === 0) return null;
 
-  const late = await sql<{ name: string; slot: string }[]>`
-    select name, slot from staff.overdue_today where org_slug = ${org}
+  const done = rows.filter((r) => r.response_id !== null);
+  const flagged = done.filter((r) => r.has_out_of_range);
+  const outstanding = rows.filter((r) => r.response_id === null);
+
+  const late = await sql<{ template_id: string; name: string; slot: string }[]>`
+    select template_id, name, slot from staff.overdue_today where org_slug = ${org}
     order by slot, name
   `;
+  const lateKeys = new Set(late.map((l) => `${l.template_id}:${l.slot}`));
+  const stillDue = outstanding.filter((r) => !lateKeys.has(`${r.template_id}:${r.slot}`));
 
   // Filed away from the clinic today. Previously this reached the owner
   // only through staff.off_site_filings or the scheduled report — so a
@@ -379,37 +419,65 @@ export async function digestFor(
   // Same non-blocking treatment as everything else on this digest: the
   // reading was never withheld, but a required photo missing from it is
   // exactly the kind of gap this summary exists to surface.
-  const [{ local_today }] = await sql<{ local_today: string }[]>`
-    select (now() at time zone timezone)::date::text as local_today
+  const [tzRow] = await sql<{ local_today: string; timezone: string }[]>`
+    select (now() at time zone timezone)::date::text as local_today, timezone
       from staff.orgs where slug = ${org}
   `;
-  const missingPhotos = await missingRequiredPhotos(sql, org, local_today, local_today);
+  const missingPhotos = await missingRequiredPhotos(
+    sql,
+    org,
+    tzRow.local_today,
+    tzRow.local_today
+  );
+  const timeOf = (iso: string | null) =>
+    iso ? localStamp(tzRow.timezone, new Date(iso)) : null;
 
   // The headline says the answer, not the numbers. Somebody reading this
-  // on a phone at 9am wants to know whether to act, and a subject line
-  // of "12 logs" makes them open the mail to find out.
+  // on a phone wants to know whether to act, and a subject line of "12
+  // logs" makes them open the mail to find out. CRITICAL is what earns
+  // a place in the subject — out of range and already late — because
+  // "still due" is the normal state of a day that isn't over yet.
   const clean =
-    counts.outstanding === 0 &&
-    counts.flagged === 0 &&
+    flagged.length === 0 &&
+    late.length === 0 &&
+    stillDue.length === 0 &&
     offSite.length === 0 &&
     missingPhotos.length === 0;
   const subject = clean
     ? `${org}: all clear`
-    : `${org}: ${
-        counts.flagged > 0 ? `${counts.flagged} out of range` : ""
-      }${counts.flagged > 0 && counts.outstanding > 0 ? ", " : ""}${
-        counts.outstanding > 0 ? `${counts.outstanding} still due` : ""
-      }`;
+    : flagged.length > 0 || late.length > 0
+      ? `${org}: ${flagged.length > 0 ? `${flagged.length} out of range` : ""}${
+          flagged.length > 0 && late.length > 0 ? ", " : ""
+        }${late.length > 0 ? `${late.length} late` : ""}`
+      : `${org}: ${stillDue.length} still due`;
 
   const lines = [
     clean
       ? "Everything due today is done and nothing is out of range."
       : "Not everything is done.",
     "",
-    `Done: ${counts.done}`,
-    `Still due: ${counts.outstanding}`,
-    `Out of range: ${counts.flagged}`,
+    `Done: ${done.length}`,
+    `Still due: ${stillDue.length}`,
+    `Late: ${late.length}`,
+    `Out of range: ${flagged.length}`,
   ];
+
+  if (flagged.length > 0) {
+    lines.push("", "CRITICAL — Out of range:");
+    for (const f of flagged) {
+      lines.push(`  ${f.name} (${f.slot.toUpperCase()}) — ${f.submitted_by_name ?? "unknown"}`);
+    }
+  }
+
+  if (late.length > 0) {
+    lines.push("", "CRITICAL — Already late, not filed:");
+    for (const l of late) lines.push(`  ${l.name} (${l.slot.toUpperCase()})`);
+  }
+
+  if (stillDue.length > 0) {
+    lines.push("", "Still due today (not yet late):");
+    for (const s of stillDue) lines.push(`  ${s.name} (${s.slot.toUpperCase()})`);
+  }
 
   if (offSite.length > 0) {
     lines.push("", "Filed away from the clinic:");
@@ -428,24 +496,6 @@ export async function digestFor(
     }
   }
 
-  if (silent.length > 0) {
-    lines.push("", "Shift sound off during clinic hours:");
-    for (const p of silent) {
-      lines.push(
-        `  ${p.legal_name ?? "unnamed"} — ${p.minutes_off} min`
-      );
-    }
-    lines.push(
-      "  (Reminders still appear on screen. Sound cannot be forced on by",
-      "   the app — a device on silent stays silent.)"
-    );
-  }
-
-  if (late.length > 0) {
-    lines.push("", "Already late:");
-    for (const l of late) lines.push(`  - ${l.name} (${l.slot})`);
-  }
-
   if (missingPhotos.length > 0) {
     lines.push("", "Filed without the required photo:");
     for (const m of missingPhotos) {
@@ -453,7 +503,95 @@ export async function digestFor(
     }
   }
 
-  return { subject, body: lines.join("\n") };
+  if (silent.length > 0) {
+    lines.push("", "Shift sound off during clinic hours:");
+    for (const p of silent) {
+      lines.push(`  ${p.legal_name ?? "unnamed"} — ${p.minutes_off} min`);
+    }
+    lines.push(
+      "  (Reminders still appear on screen. Sound cannot be forced on by",
+      "   the app — a device on silent stays silent.)"
+    );
+  }
+
+  if (done.length > 0) {
+    lines.push("", "Done:");
+    for (const d of done) {
+      const flag = d.has_out_of_range ? " [OUT OF RANGE]" : "";
+      lines.push(`  ${d.name} (${d.slot.toUpperCase()}) — ${d.submitted_by_name ?? "unknown"}${flag}`);
+    }
+  }
+
+  const sections: EmailSection[] = [
+    {
+      heading: "Critical — out of range",
+      tone: "critical",
+      items: flagged.map((f) => ({
+        primary: `${f.name} (${f.slot.toUpperCase()})`,
+        secondary: `Filed by ${f.submitted_by_name ?? "unknown"}${timeOf(f.submitted_at) ? ` · ${timeOf(f.submitted_at)}` : ""}`,
+      })),
+    },
+    {
+      heading: "Critical — already late",
+      tone: "critical",
+      items: late.map((l) => ({
+        primary: `${l.name} (${l.slot.toUpperCase()})`,
+        secondary: "Not filed",
+      })),
+    },
+    {
+      heading: "Still due today",
+      tone: "warn",
+      items: stillDue.map((s) => ({ primary: `${s.name} (${s.slot.toUpperCase()})` })),
+    },
+    {
+      heading: "Filed away from the clinic",
+      tone: "warn",
+      items: offSite.map((o) => ({
+        primary: `${o.form_name} — ${o.filed_by ?? "unknown"}`,
+        secondary:
+          o.location_status === "denied"
+            ? "Location declined"
+            : o.distance_m === null
+              ? `Off site${o.location_note ? ` — "${o.location_note}"` : ""}`
+              : `${o.distance_m} m away${o.location_note ? ` — "${o.location_note}"` : ""}`,
+      })),
+    },
+    {
+      heading: "Filed without the required photo",
+      tone: "warn",
+      items: missingPhotos.map((m) => ({
+        primary: `${m.form_name} — ${m.filed_by ?? "unknown"}`,
+      })),
+    },
+    {
+      heading: "Shift sound off during clinic hours",
+      tone: "muted",
+      items: silent.map((p) => ({
+        primary: `${p.legal_name ?? "unnamed"}`,
+        secondary: `Off ${p.minutes_off} min · reminders still show on screen`,
+      })),
+    },
+    {
+      heading: "Done",
+      tone: "good",
+      items: done.map((d) => ({
+        primary: `${d.name} (${d.slot.toUpperCase()})`,
+        secondary: `${d.submitted_by_name ?? "unknown"}${timeOf(d.submitted_at) ? ` · ${timeOf(d.submitted_at)}` : ""}`,
+      })),
+    },
+  ];
+
+  const html = renderEmailHtml({
+    title: subject,
+    intro: clean
+      ? "Everything due today is done and nothing is out of range."
+      : "Not everything is done.",
+    sections,
+    footerLines: [`${org} · times in ${tzRow.timezone}`],
+  });
+
+  return { subject, body: lines.join("\n"), html };
 }
 
 /**
