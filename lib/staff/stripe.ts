@@ -105,6 +105,9 @@ export interface StripeEvent {
       customer_email?: string | null;
       customer_details?: { email?: string | null; name?: string | null } | null;
       metadata?: Record<string, string> | null;
+      // payment_method.attached only — brand/last4 straight off the
+      // webhook payload, no expansion, no follow-up API call.
+      card?: { brand?: string | null; last4?: string | null } | null;
     };
   };
 }

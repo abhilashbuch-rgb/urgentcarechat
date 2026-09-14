@@ -77,3 +77,111 @@ export function paymentLink(forSlug?: string): string | null {
   if (forSlug) url.searchParams.set("client_reference_id", forSlug);
   return url.toString();
 }
+
+/**
+ * The no-code Customer Portal's own static link, or null when none is
+ * configured. Same shape and same reason as paymentLink() above — no
+ * Stripe API call, no session to create, just a link Stripe's own page
+ * asks a visitor's email against before showing anything. An owner
+ * lands there to see their invoices, change the card on file, or
+ * cancel; none of that touches this app's database directly — the
+ * webhook is still the only writer of subscription_status.
+ *
+ * VALIDATED THE SAME WAY: only Stripe's own hosted domain is accepted,
+ * for the same reason a mistyped value must fail closed rather than
+ * send an owner to put a card into somebody else's page.
+ */
+export function customerPortalLink(): string | null {
+  const raw = process.env.STRIPE_CUSTOMER_PORTAL_LINK?.trim();
+  if (!raw) return null;
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:") return null;
+  const host = url.hostname.toLowerCase();
+  const ok = host === "billing.stripe.com" || host.endsWith(".stripe.com");
+  if (!ok) return null;
+  return url.toString();
+}
+
+/**
+ * A one-click, already-authenticated Customer Portal session — the
+ * "proper" integration over the static link above. This is the one
+ * Stripe API call this codebase makes: POST billing_portal/sessions,
+ * Basic-auth'd with a secret key, returning a session whose url skips
+ * the email-then-magic-code step every visitor to the static link sits
+ * through first.
+ *
+ * OPTIONAL BY DESIGN. STRIPE_SECRET_KEY may not be configured at all —
+ * this integration ran for months on Payment Links and the no-code
+ * portal alone — in which case this returns null and the caller falls
+ * back to customerPortalLink(). A portal session is single-use and
+ * short-lived, so nothing here is cached; every call makes a fresh one.
+ *
+ * Requires a Customer Portal configuration to already exist in the
+ * Stripe dashboard (Settings -> Billing -> Customer portal). Without
+ * one, Stripe's own API rejects the request and this returns null the
+ * same as a missing key — there is nothing this function can configure
+ * on its own behalf.
+ */
+export async function createPortalSession(
+  customerId: string,
+  returnUrl?: string
+): Promise<string | null> {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) return null;
+
+  const body = new URLSearchParams({ customer: customerId });
+  const configId = process.env.STRIPE_PORTAL_CONFIGURATION_ID?.trim();
+  if (configId) body.set("configuration", configId);
+  if (returnUrl) body.set("return_url", returnUrl);
+
+  try {
+    const res = await fetch(
+      "https://api.stripe.com/v1/billing_portal/sessions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${Buffer.from(`${key}:`).toString("base64")}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body,
+        signal: AbortSignal.timeout(10_000),
+      }
+    );
+    if (!res.ok) {
+      console.error("[billing] portal session request failed:", res.status);
+      return null;
+    }
+    const data = (await res.json()) as { url?: string };
+    return typeof data.url === "string" ? data.url : null;
+  } catch (err) {
+    console.error(
+      "[billing] portal session request errored:",
+      err instanceof Error ? err.message : "Unknown"
+    );
+    return null;
+  }
+}
+
+/** Plain-English label for a Stripe subscription status. Falls back to
+ *  the raw value for anything not seen in practice yet (see
+ *  app/api/webhooks/stripe/route.ts, which passes some statuses through
+ *  verbatim) rather than guessing at a label for a state nobody has
+ *  actually observed. */
+export function planStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    trialing: "Trial",
+    active: "Active",
+    past_due: "Payment failed",
+    canceled: "Canceled",
+    unpaid: "Unpaid",
+    incomplete: "Incomplete",
+    incomplete_expired: "Incomplete (expired)",
+    paused: "Paused",
+  };
+  return labels[status] ?? status;
+}
