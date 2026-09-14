@@ -107,6 +107,66 @@ export function customerPortalLink(): string | null {
   return url.toString();
 }
 
+/**
+ * A one-click, already-authenticated Customer Portal session — the
+ * "proper" integration over the static link above. This is the one
+ * Stripe API call this codebase makes: POST billing_portal/sessions,
+ * Basic-auth'd with a secret key, returning a session whose url skips
+ * the email-then-magic-code step every visitor to the static link sits
+ * through first.
+ *
+ * OPTIONAL BY DESIGN. STRIPE_SECRET_KEY may not be configured at all —
+ * this integration ran for months on Payment Links and the no-code
+ * portal alone — in which case this returns null and the caller falls
+ * back to customerPortalLink(). A portal session is single-use and
+ * short-lived, so nothing here is cached; every call makes a fresh one.
+ *
+ * Requires a Customer Portal configuration to already exist in the
+ * Stripe dashboard (Settings -> Billing -> Customer portal). Without
+ * one, Stripe's own API rejects the request and this returns null the
+ * same as a missing key — there is nothing this function can configure
+ * on its own behalf.
+ */
+export async function createPortalSession(
+  customerId: string,
+  returnUrl?: string
+): Promise<string | null> {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) return null;
+
+  const body = new URLSearchParams({ customer: customerId });
+  const configId = process.env.STRIPE_PORTAL_CONFIGURATION_ID?.trim();
+  if (configId) body.set("configuration", configId);
+  if (returnUrl) body.set("return_url", returnUrl);
+
+  try {
+    const res = await fetch(
+      "https://api.stripe.com/v1/billing_portal/sessions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${Buffer.from(`${key}:`).toString("base64")}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body,
+        signal: AbortSignal.timeout(10_000),
+      }
+    );
+    if (!res.ok) {
+      console.error("[billing] portal session request failed:", res.status);
+      return null;
+    }
+    const data = (await res.json()) as { url?: string };
+    return typeof data.url === "string" ? data.url : null;
+  } catch (err) {
+    console.error(
+      "[billing] portal session request errored:",
+      err instanceof Error ? err.message : "Unknown"
+    );
+    return null;
+  }
+}
+
 /** Plain-English label for a Stripe subscription status. Falls back to
  *  the raw value for anything not seen in practice yet (see
  *  app/api/webhooks/stripe/route.ts, which passes some statuses through

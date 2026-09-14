@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { requireStaff } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
 import { atLeast } from "@/lib/staff/roles";
-import { customerPortalLink, planStatusLabel } from "@/lib/staff/billing";
+import { planStatusLabel } from "@/lib/staff/billing";
 import AddressLookup from "@/app/components/staff/AddressLookup";
 import {
   emergencyContactsFor,
@@ -45,7 +45,10 @@ const ERRORS: Record<string, string> = {
   reportemail:
     "A scheduled report needs an address to send to.",
   billingemail: "Check the billing contact's address.",
-  billingforbidden: "Only an owner or administrator can set the billing contact.",
+  billingforbidden: "Only an owner or administrator can manage billing.",
+  nobilling: "No billing account yet — this clinic hasn't subscribed.",
+  noportal:
+    "Stripe's billing page isn't configured on this deployment yet.",
   save: "That didn't save. Nothing was changed — try again.",
   forbidden: "Only a manager or administrator can change the clinic's settings.",
 };
@@ -443,20 +446,12 @@ export default async function SettingsPage({
                   exists only because Stripe told this exact webhook so,
                   over a signature. See app/api/webhooks/stripe/route.ts. */}
               <p className="st-field-hint">Verified with Stripe.</p>
-              {(() => {
-                const portal = customerPortalLink();
-                return portal ? (
-                  <a className="st-btn" href={portal} target="_blank" rel="noreferrer">
-                    Manage billing
-                  </a>
-                ) : (
-                  <p className="st-set-b">
-                    Invoices, the card on file, and cancelling all live on
-                    Stripe&rsquo;s own page &mdash; not configured on this
-                    deployment yet.
-                  </p>
-                );
-              })()}
+              {/* /api/staff/billing-portal decides, per click, between a
+                  one-click authenticated session and the static no-code
+                  link — see that route for why. */}
+              <a className="st-btn" href="/api/staff/billing-portal">
+                Manage billing
+              </a>
             </>
           ) : (
             <p className="st-set-b">
