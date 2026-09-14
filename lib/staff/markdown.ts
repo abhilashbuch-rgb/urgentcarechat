@@ -13,7 +13,7 @@
 // an admin who could inject script into a page every employee is required
 // to read would have a very effective way to harvest sessions.
 
-function escapeHtml(s: string): string {
+export function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

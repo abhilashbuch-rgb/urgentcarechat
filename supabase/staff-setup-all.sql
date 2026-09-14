@@ -5787,6 +5787,8 @@ create index if not exists staff_alert_queue_pending
   on staff.alert_queue (org_slug, urgency, created_at)
   where owner_sent_at is null or director_sent_at is null;
 
+alter table staff.alert_queue add column if not exists html_body text;
+
 create index if not exists staff_alert_queue_digest
   on staff.alert_queue (org_slug, created_at)
   where urgency = 'digest';

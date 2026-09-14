@@ -2,6 +2,7 @@ import { ROOT_URL } from "@/lib/site";
 import { isMailConfigured, send } from "@/lib/mail";
 import { withOrg, type StaffSql } from "@/lib/staff/db";
 import { mintToken, hashToken } from "@/lib/staff/report-schedule";
+import { renderEmailHtml, type EmailSection } from "@/lib/staff/email-html";
 import {
   gatherReport,
   gatherEodExtras,
@@ -127,10 +128,12 @@ export async function sendEodReports(
           returning id
         `;
 
+        const url = `${ROOT_URL}/report/${token}`;
         await send({
           to: r.email,
           subject,
-          text: bodyFor(data, t, `${ROOT_URL}/report/${token}`),
+          text: bodyFor(data, t, url),
+          html: htmlFor(data, t, url),
           attachments: [
             {
               filename: `${org}-eod-${date}.pdf`,
@@ -185,4 +188,74 @@ function bodyFor(
     url,
   ];
   return lines.join("\n");
+}
+
+/** Same data as bodyFor(), as the colored cards the digest already
+ *  uses (lib/staff/email-html.ts) — one system across every alert and
+ *  report email rather than the PDF being the only part that looks
+ *  designed. */
+function htmlFor(d: ReportData, t: ReturnType<typeof totals>, url: string): string {
+  const clean = t.outOfRange === 0 && t.missed === 0;
+  const flagged = d.rows.filter((r) => r.has_out_of_range);
+  const offSite = d.rows.filter(
+    (r) => r.location_status === "off_site" || r.location_status === "denied"
+  );
+  const staff = staffBreakdown(d);
+
+  const sections: EmailSection[] = [
+    {
+      heading: "Out of range",
+      tone: "critical",
+      items: flagged.map((r) => ({
+        primary: `${r.form_name}${r.slot ? ` (${r.slot.toUpperCase()})` : ""} — ${r.filed_by ?? "unknown"}`,
+        secondary: `${(r.out_of_range_fields ?? []).join(", ")}${
+          r.corrective_action ? ` · Corrective action: ${r.corrective_action}` : ""
+        }`,
+      })),
+    },
+    {
+      heading: "Due and not filed",
+      tone: "critical",
+      items: d.missed.map((m) => ({
+        primary: `${m.form_name}${m.slot ? ` (${m.slot.toUpperCase()})` : ""}`,
+      })),
+    },
+    {
+      heading: "Filed away from the clinic",
+      tone: "warn",
+      items: offSite.map((r) => ({
+        primary: `${r.form_name} — ${r.filed_by ?? "unknown"}`,
+        secondary:
+          r.location_status === "denied"
+            ? "Location declined"
+            : r.distance_m === null
+              ? "Off site"
+              : `${r.distance_m} m away`,
+      })),
+    },
+    {
+      heading: "Missing a required photo",
+      tone: "warn",
+      items: (d.missingPhotos ?? []).map((m) => ({
+        primary: `${m.form_name} — ${m.filed_by ?? "unknown"}`,
+      })),
+    },
+    {
+      heading: "Who filed what",
+      tone: "good",
+      items: staff.map((s) => ({ primary: `${s.name} — ${s.count} logged` })),
+    },
+  ];
+
+  return renderEmailHtml({
+    title: `${d.orgName} — end of day, ${d.periodStart}`,
+    intro: clean
+      ? "Nothing needs your attention in this period."
+      : "The full report lists each exception with the time, who filed it, and the corrective action recorded.",
+    sections,
+    footerLines: [
+      `Full report (PDF) and a revocable link: ${url}`,
+      "Generated when opened, so an amended entry shows as amended.",
+    ],
+  });
 }
