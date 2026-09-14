@@ -4687,6 +4687,26 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 }
 .st-rule-cite { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin-top: 8px; }
 
+/* One collapsed <details> per job on the interview-prep panel — same
+   disclosure pattern as .st-board-hidden, so a manager scanning four
+   roles isn't handed four roles' worth of open text at once. */
+.st-interview-role { margin-top: 14px; }
+.st-interview-role > summary {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--ink);
+  padding: 8px 2px;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.st-interview-role > summary::-webkit-details-marker { display: none; }
+.st-interview-role > summary::before { content: "▸ "; color: var(--ink-soft); }
+.st-interview-role[open] > summary::before { content: "▾ "; }
+.st-interview-role .st-rule-list { margin-top: 8px; }
+
 /* ---------- rounds ---------- */
 
 .st-round-list { display: flex; flex-direction: column; gap: 10px; }
