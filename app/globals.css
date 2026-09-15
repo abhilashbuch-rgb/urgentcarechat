@@ -5441,7 +5441,14 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
   border-top: 1px solid var(--rule);
 }
 .st-log-row:first-child { border-top: none; }
-.st-log-row-flag { background: var(--blue-050); box-shadow: inset 3px 0 0 var(--accent); }
+/* Danger, not the accent blue — this row is the reason the whole entry
+   reads as out of range, same border-left treatment as
+   .st-shelf-expired and .st-rule-critical elsewhere in the app. A
+   boolean or select field flagged this way had no visual cue
+   distinguishing it from an ordinary highlighted row, so a form with
+   one flagged checkbox among several fine number fields (each showing
+   its own green "In range" pill) read as entirely clean at a glance. */
+.st-log-row-flag { background: var(--blue-050); box-shadow: inset 3px 0 0 var(--danger); }
 .st-log-row-missing { background: var(--blue-050); box-shadow: inset 3px 0 0 var(--rule-firm); }
 
 .st-log-label { font-size: 14px; font-weight: 550; padding-top: 8px; }

@@ -390,7 +390,7 @@ export default function LogForm({
               if (e.target.value.trim() === "") setCorrectiveReason(null);
             }}
             rows={3}
-            placeholder="e.g. Moved stock to the backup fridge, tagged DO NOT USE, called the manufacturer, notified Dr Buch at 7:15."
+            placeholder="e.g. Moved stock to the backup fridge, tagged DO NOT USE, called the manufacturer, notified the medical director at 7:15."
             aria-label="Corrective action taken"
           />
           {correctiveReason === "notified_direct" && (
