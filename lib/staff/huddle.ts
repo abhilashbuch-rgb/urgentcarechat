@@ -16,27 +16,29 @@ import { listBulletins } from "@/lib/staff/bulletins";
 // the Today page, so what this says and what they see when they open the
 // app cannot disagree.
 
-// One uplifting line to open the day with. Same rotation rule as
-// factOfTheDay() in lib/staff/history-facts.ts — the whole shift reads
-// the same line on the same calendar day, and it changes once a day, not
-// on every send. CURATED, NOT GENERATED: see that file's own note on why
-// — a bar that applies here too, not just to historical facts.
+// One line to open the day with, drawn from Charaka and Sushruta — the
+// physicians whose names are on the two oldest surviving Sanskrit
+// medical texts, Charaka Samhita and Sushruta Samhita (roughly 1st–2nd
+// century CE), on prevention, diet, sleep, and the physician's own
+// conduct toward a patient. Kept close to the most commonly-cited
+// English rendering of each line rather than one scholar's exact
+// wording — translations vary — but every line traces to a real,
+// checkable text, not an invented sentiment. Same rotation rule as
+// factOfTheDay() in lib/staff/history-facts.ts, and the same CURATED,
+// NOT GENERATED bar that file's own note explains.
 const QUOTES: string[] = [
-  "Well begun is half done. — attributed to Aristotle",
-  "The days are long, but the decade is short.",
-  "Quality is not an act, it is a habit. — attributed to Aristotle",
-  "Slow is smooth, and smooth is fast.",
-  "Small, steady steps clear more ground than one big leap.",
-  "The best time to fix a small problem is before it is a big one.",
-  "A calm start makes for a calm shift.",
-  "Every check you file is one less thing anyone has to remember later.",
-  "Good habits are worth being fanatical about. — attributed to John Irving",
-  "Nothing is particularly hard if you divide it into small jobs. — attributed to Henry Ford",
-  "The work is easier when it's shared, and heavier when it's carried alone.",
-  "Progress is progress, no matter how small the step.",
-  "What gets checked gets caught early.",
-  "A clear morning plan is worth an hour of afternoon scrambling.",
-  "Take care of the small things, and the big things take care of themselves.",
+  "Health is known as happiness; disease is known as unhappiness. — Charaka",
+  "It is more important to prevent the occurrence of disease than to seek its cure. — Charaka",
+  "Under a skilled physician, even severe disorders can vanish quickly; under an unskilled one, even the simplest may grow worse. — Charaka",
+  "A life can be lengthened or shortened by nothing more than how it is lived. — Charaka",
+  "Happiness, strength, and a long life all depend on proper rest. — Charaka",
+  "Not for gain, not for any desire of your own — treat every patient solely for their good. — Charaka",
+  "Knowledge without real understanding cannot treat a single patient. — Charaka",
+  "Compassion for the suffering is the first duty of anyone who treats them. — Charaka",
+  "A balanced appetite, steady digestion, and a calm mind — that is what health actually is. — Charaka",
+  "A physician who treats without truly understanding the patient walks without a guide. — Sushruta",
+  "Food, taken well, is the root of health; taken carelessly, the root of disease. — Sushruta",
+  "Surgery, done with skill and care, restores what disease has taken. — Sushruta",
 ];
 
 /** Same idea as factOfTheDay(), a second rotation offset so the quote
