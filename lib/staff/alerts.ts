@@ -8,6 +8,7 @@ import {
   wrapPlainAlertHtml,
   type EmailSection,
 } from "@/lib/staff/email-html";
+import { jobLabel } from "@/lib/staff/roles";
 
 // Enqueueing alerts, and sweeping the queue.
 //
@@ -342,6 +343,64 @@ export async function sweep(
   return { attempted: pending.length, delivered, failed, texted, skipped: null };
 }
 
+/** Display order for the digest's per-role sections. Not alphabetical —
+ *  it follows JOB_LABELS' own order in lib/staff/roles.ts, so a reader
+ *  who already knows that order (the Team page lists jobs the same
+ *  way) isn't learning a second one. "__unassigned__" is appended last,
+ *  never sorted in among real jobs — it isn't one. */
+const ROLE_ORDER = ["front_desk", "medical_assistant", "xray_tech", "provider", "center_admin"];
+const UNASSIGNED = "__unassigned__";
+
+interface RoleTask {
+  name: string;
+  slot: string;
+  late: boolean;
+}
+
+/**
+ * Not-done work, grouped by who is actually on the hook for it — the
+ * thing the flat "Critical / Still due" lists could not answer: is
+ * this five different people's one task each, or one person's whole
+ * morning. A template with more than one job_roles entry (a dual
+ * responsibility, like the narcotics count) appears once per role it
+ * belongs to, on purpose — each accountable person sees it as theirs,
+ * not as a shared line nobody owns.
+ *
+ * job_roles = {} (staff.brief_matches' "everyone") groups under
+ * UNASSIGNED rather than fanning out to every real role, because
+ * fanning it out would overstate five people's responsibility for a
+ * task nobody was actually assigned — the truth is closer to "nobody
+ * was assigned this," which is the point of calling it out at all.
+ */
+function groupByRole(
+  late: { name: string; slot: string; job_roles: string[] }[],
+  stillDue: { name: string; slot: string; job_roles: string[] }[],
+  facilityType: string | null
+): { role: string; label: string; tasks: RoleTask[] }[] {
+  const byRole = new Map<string, RoleTask[]>();
+  const add = (role: string, task: RoleTask) => {
+    const list = byRole.get(role);
+    if (list) list.push(task);
+    else byRole.set(role, [task]);
+  };
+  for (const item of late) {
+    const roles = item.job_roles.length > 0 ? item.job_roles : [UNASSIGNED];
+    for (const role of roles) add(role, { name: item.name, slot: item.slot, late: true });
+  }
+  for (const item of stillDue) {
+    const roles = item.job_roles.length > 0 ? item.job_roles : [UNASSIGNED];
+    for (const role of roles) add(role, { name: item.name, slot: item.slot, late: false });
+  }
+
+  return [...ROLE_ORDER, UNASSIGNED]
+    .filter((role) => byRole.has(role))
+    .map((role) => ({
+      role,
+      label: role === UNASSIGNED ? "Not assigned to a role" : jobLabel(role, facilityType),
+      tasks: byRole.get(role)!,
+    }));
+}
+
 /**
  * The AM and PM digest: what got done, what did not, in one message.
  *
@@ -361,13 +420,14 @@ export async function digestFor(
       template_id: string;
       name: string;
       slot: string;
+      job_roles: string[];
       response_id: string | null;
       submitted_at: string | null;
       submitted_by_name: string | null;
       has_out_of_range: boolean | null;
     }[]
   >`
-    select template_id, name, slot, response_id,
+    select template_id, name, slot, job_roles, response_id,
            submitted_at::text as submitted_at, submitted_by_name,
            has_out_of_range
       from staff.todays_logs
@@ -380,8 +440,10 @@ export async function digestFor(
   const flagged = done.filter((r) => r.has_out_of_range);
   const outstanding = rows.filter((r) => r.response_id === null);
 
-  const late = await sql<{ template_id: string; name: string; slot: string }[]>`
-    select template_id, name, slot from staff.overdue_today where org_slug = ${org}
+  const late = await sql<
+    { template_id: string; name: string; slot: string; job_roles: string[] }[]
+  >`
+    select template_id, name, slot, job_roles from staff.overdue_today where org_slug = ${org}
     order by slot, name
   `;
   const lateKeys = new Set(late.map((l) => `${l.template_id}:${l.slot}`));
@@ -419,8 +481,11 @@ export async function digestFor(
   // Same non-blocking treatment as everything else on this digest: the
   // reading was never withheld, but a required photo missing from it is
   // exactly the kind of gap this summary exists to surface.
-  const [tzRow] = await sql<{ local_today: string; timezone: string }[]>`
-    select (now() at time zone timezone)::date::text as local_today, timezone
+  const [tzRow] = await sql<
+    { local_today: string; timezone: string; facility_type: string | null }[]
+  >`
+    select (now() at time zone timezone)::date::text as local_today, timezone,
+           facility_type
       from staff.orgs where slug = ${org}
   `;
   const missingPhotos = await missingRequiredPhotos(
@@ -431,6 +496,12 @@ export async function digestFor(
   );
   const timeOf = (iso: string | null) =>
     iso ? localStamp(tzRow.timezone, new Date(iso)) : null;
+  // Empty string means "once, any time of day" (see the unnest note on
+  // staff.todays_logs) — appending "()" for those was a real bug, not a
+  // cosmetic one: it read as a slot that was somehow blank rather than
+  // a task with no slot at all.
+  const labelFor = (name: string, slot: string) => (slot ? `${name} (${slot.toUpperCase()})` : name);
+  const roleGroups = groupByRole(late, stillDue, tzRow.facility_type);
 
   // The headline says the answer, not the numbers. Somebody reading this
   // on a phone wants to know whether to act, and a subject line of "12
@@ -465,18 +536,30 @@ export async function digestFor(
   if (flagged.length > 0) {
     lines.push("", "CRITICAL — Out of range:");
     for (const f of flagged) {
-      lines.push(`  ${f.name} (${f.slot.toUpperCase()}) — ${f.submitted_by_name ?? "unknown"}`);
+      lines.push(`  ${labelFor(f.name, f.slot)} — ${f.submitted_by_name ?? "unknown"}`);
     }
   }
 
-  if (late.length > 0) {
-    lines.push("", "CRITICAL — Already late, not filed:");
-    for (const l of late) lines.push(`  ${l.name} (${l.slot.toUpperCase()})`);
-  }
-
-  if (stillDue.length > 0) {
-    lines.push("", "Still due today (not yet late):");
-    for (const s of stillDue) lines.push(`  ${s.name} (${s.slot.toUpperCase()})`);
+  // Grouped by who is actually on the hook, not just severity — see
+  // groupByRole()'s own comment for why a dual-responsibility task
+  // (the narcotics count) appears once per role rather than once,
+  // unowned by either.
+  if (roleGroups.length > 0) {
+    lines.push("", "Not done, by who's responsible:");
+    for (const g of roleGroups) {
+      const lateCount = g.tasks.filter((t) => t.late).length;
+      const dueCount = g.tasks.length - lateCount;
+      const counts = [
+        lateCount > 0 ? `${lateCount} late` : "",
+        dueCount > 0 ? `${dueCount} due` : "",
+      ]
+        .filter(Boolean)
+        .join(", ");
+      lines.push(`  ${g.label} — ${counts}:`);
+      for (const t of g.tasks) {
+        lines.push(`    ${t.late ? "LATE" : "DUE"} — ${labelFor(t.name, t.slot)}`);
+      }
+    }
   }
 
   if (offSite.length > 0) {
@@ -518,7 +601,7 @@ export async function digestFor(
     lines.push("", "Done:");
     for (const d of done) {
       const flag = d.has_out_of_range ? " [OUT OF RANGE]" : "";
-      lines.push(`  ${d.name} (${d.slot.toUpperCase()}) — ${d.submitted_by_name ?? "unknown"}${flag}`);
+      lines.push(`  ${labelFor(d.name, d.slot)} — ${d.submitted_by_name ?? "unknown"}${flag}`);
     }
   }
 
@@ -527,23 +610,31 @@ export async function digestFor(
       heading: "Critical — out of range",
       tone: "critical",
       items: flagged.map((f) => ({
-        primary: `${f.name} (${f.slot.toUpperCase()})`,
+        primary: labelFor(f.name, f.slot),
         secondary: `Filed by ${f.submitted_by_name ?? "unknown"}${timeOf(f.submitted_at) ? ` · ${timeOf(f.submitted_at)}` : ""}`,
       })),
     },
-    {
-      heading: "Critical — already late",
-      tone: "critical",
-      items: late.map((l) => ({
-        primary: `${l.name} (${l.slot.toUpperCase()})`,
-        secondary: "Not filed",
-      })),
-    },
-    {
-      heading: "Still due today",
-      tone: "warn",
-      items: stillDue.map((s) => ({ primary: `${s.name} (${s.slot.toUpperCase()})` })),
-    },
+    // One section per role that owes something — see groupByRole()'s
+    // comment. Late by itself, or mixed with due, tips the section red;
+    // due-only stays amber.
+    ...roleGroups.map((g): EmailSection => {
+      const lateCount = g.tasks.filter((t) => t.late).length;
+      const dueCount = g.tasks.length - lateCount;
+      const counts = [
+        lateCount > 0 ? `${lateCount} late` : "",
+        dueCount > 0 ? `${dueCount} due` : "",
+      ]
+        .filter(Boolean)
+        .join(", ");
+      return {
+        heading: `${g.label} — ${counts}`,
+        tone: lateCount > 0 ? "critical" : "warn",
+        items: g.tasks.map((t) => ({
+          primary: labelFor(t.name, t.slot),
+          secondary: t.late ? "Late — not filed" : "Due today",
+        })),
+      };
+    }),
     {
       heading: "Filed away from the clinic",
       tone: "warn",
@@ -576,7 +667,7 @@ export async function digestFor(
       heading: "Done",
       tone: "good",
       items: done.map((d) => ({
-        primary: `${d.name} (${d.slot.toUpperCase()})`,
+        primary: labelFor(d.name, d.slot),
         secondary: `${d.submitted_by_name ?? "unknown"}${timeOf(d.submitted_at) ? ` · ${timeOf(d.submitted_at)}` : ""}`,
       })),
     },
