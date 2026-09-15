@@ -3,7 +3,7 @@ import { withSession } from "@/lib/staff/db";
 import { getProfile, outstandingFor, signedBy } from "@/lib/staff/compliance";
 import { signinHistory } from "@/lib/staff/signins";
 import { ROLE_LABELS } from "@/lib/staff/roles";
-import { formatSignedAt, formatDate } from "@/lib/staff/labels";
+import { formatSignedAt, formatDate, workdaysLabel } from "@/lib/staff/labels";
 import { getTenantBySlug } from "@/lib/tenants";
 import AvatarUpload from "@/app/components/staff/AvatarUpload";
 import SigninHistory from "@/app/components/staff/SigninHistory";
@@ -47,6 +47,15 @@ export default async function MyRecord({
         select wants_digest from staff.users where id = ${session.uid}
       `
     )[0]?.wants_digest ?? false,
+    // Only your own — see supabase/staff-workdays.sql and the note on
+    // /staff/team/[id]/page.tsx. Setting it stays with a manager;
+    // reading it back is yours alone, same as everything else on this
+    // page.
+    workdays: (
+      await sql<{ workdays: number[] }[]>`
+        select workdays from staff.users where id = ${session.uid}
+      `
+    )[0]?.workdays ?? [],
   }));
   const theme = data.theme;
 
@@ -200,6 +209,18 @@ export default async function MyRecord({
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="st-record-section st-no-print">
+        <h2 className="st-h2">Your schedule</h2>
+        <p className="st-page-sub" style={{ marginBottom: 12 }}>
+          Which days you&rsquo;re expected to work, as set by an
+          administrator &mdash; not a clock, just the schedule the app
+          uses to know when to send you things like the morning huddle.
+          This is yours alone; you can&rsquo;t see anyone else&rsquo;s
+          from here, and a manager sets it, not you.
+        </p>
+        <p className="st-card-value st-card-value-sm">{workdaysLabel(data.workdays)}</p>
       </section>
 
       <section className="st-record-section st-no-print">

@@ -6,8 +6,9 @@ import { teamStatus, facilityTypeFor } from "@/lib/staff/compliance";
 import { atLeast, ROLE_LABELS, JOB_LABELS, jobLabel } from "@/lib/staff/roles";
 import { pending, INVITE_TTL_HOURS } from "@/lib/staff/invites";
 import { seatUsage, unassignedCount, seatBill, money, type SeatRow } from "@/lib/staff/seats";
-import { formatSignedAt } from "@/lib/staff/labels";
+import { formatSignedAt, formatDate } from "@/lib/staff/labels";
 import { profileGaps } from "@/lib/staff/profile-complete";
+import { upcomingAssignments } from "@/lib/staff/shift-assignments";
 
 // Who has completed their packet and who hasn't.
 //
@@ -41,6 +42,7 @@ const NOTICES: Record<string, string> = {
   bad_email: "That doesn't look like an email address.",
   bad_role: "Unrecognised role.",
   invite_failed: "The invitation could not be sent. Nothing was changed.",
+  assignment_saved: "Saved.",
 };
 
 /**
@@ -80,9 +82,8 @@ export default async function Team({
   if (!atLeast(session.role, "manager")) redirect("/staff");
   const isOwner = atLeast(session.role, "org_admin");
 
-  const { team, invites, seats, unassigned, bill, facilityType, gaps } = await withSession(
-    session,
-    async (sql) => ({
+  const { team, invites, seats, unassigned, bill, facilityType, gaps, assignments } =
+    await withSession(session, async (sql) => ({
       team: await teamStatus(sql),
       invites: await pending(sql, session.org ?? ""),
       seats: await seatUsage(sql),
@@ -90,8 +91,8 @@ export default async function Team({
       bill: await seatBill(sql),
       facilityType: await facilityTypeFor(sql, org),
       gaps: await profileGaps(sql, org),
-    })
-  );
+      assignments: await upcomingAssignments(sql, org),
+    }));
   const active = team.filter((m) => m.active);
   const behind = active.filter((m) => m.outstanding_count > 0).length;
   const mfaGaps = active.filter((m) => m.mfa_required && !m.mfa_enrolled).length;
@@ -330,6 +331,69 @@ export default async function Team({
               </tbody>
             </table>
           </div>
+        )}
+      </section>
+
+      {/* ONE DATE, ONE NAME. See the header of
+          supabase/staff-shift-assignments.sql — no login required, and
+          unlike the real weekly schedule this isn't a recurring
+          pattern: pick the date, say who's covering it. Shows up on the
+          "on duty today" banner exactly like a real account once that
+          date arrives (onDutyToday() merges the two). Restricted to
+          front desk and medical assistant for now, matching where the
+          real scheduling work is scoped — not a hard rule, just what's
+          needed today. */}
+      <section className="st-invite" id="assignments">
+        <h2 className="st-h2">Assign a shift</h2>
+        <p className="st-page-sub">
+          Pick a date and say who&rsquo;s covering it &mdash; no address
+          or login needed. It shows up on the &ldquo;on duty
+          today&rdquo; banner on the day itself, the same as anyone with
+          a real account.
+        </p>
+
+        <form className="st-invite-form" method="POST" action="/api/staff/team/assignment">
+          <input type="hidden" name="action" value="add" />
+          <label className="st-field">
+            <span className="st-field-label">Date</span>
+            <input className="st-input" type="date" name="work_date" required />
+          </label>
+          <label className="st-field">
+            <span className="st-field-label">Job</span>
+            <select className="st-input" name="job_role" defaultValue="medical_assistant">
+              <option value="front_desk">{jobLabel("front_desk", facilityType)}</option>
+              <option value="medical_assistant">
+                {jobLabel("medical_assistant", facilityType)}
+              </option>
+            </select>
+          </label>
+          <label className="st-field">
+            <span className="st-field-label">Name</span>
+            <input className="st-input" type="text" name="name" required placeholder="Jane Smith" />
+          </label>
+          <button className="st-primary" type="submit">
+            Assign
+          </button>
+        </form>
+
+        {assignments.length > 0 && (
+          <ul className="st-invite-pending" style={{ marginTop: 16 }}>
+            {assignments.map((a) => (
+              <li key={a.id} className="st-assignment-row">
+                <span className="st-cell-name">{formatDate(a.work_date)}</span>
+                <span className="st-cell-sub">
+                  {jobLabel(a.job_role, facilityType)} &middot; {a.name}
+                </span>
+                <form method="POST" action="/api/staff/team/assignment">
+                  <input type="hidden" name="action" value="delete" />
+                  <input type="hidden" name="id" value={a.id} />
+                  <button className="st-quiet" type="submit">
+                    Remove
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 

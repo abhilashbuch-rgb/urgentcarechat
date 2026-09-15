@@ -2729,6 +2729,35 @@ comment on column staff.orgs.huddle_at is
   'Local time the morning-huddle email goes out to everyone scheduled to work today. See app/api/cron/alerts/route.ts.';
 
 
+-- ========== staff-shift-assignments.sql ==========
+
+create table if not exists staff.shift_assignments (
+  id          uuid primary key default gen_random_uuid(),
+  org_slug    text not null references staff.orgs(slug) on delete cascade,
+  work_date   date not null,
+  job_role    staff.job_role not null,
+  name        text not null,
+  created_by  uuid references staff.users(id),
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists staff_shift_assignments_date
+  on staff.shift_assignments (org_slug, work_date);
+
+alter table staff.shift_assignments enable row level security;
+alter table staff.shift_assignments force row level security;
+drop policy if exists staff_org_isolation on staff.shift_assignments;
+create policy staff_org_isolation on staff.shift_assignments
+  for all
+  using (staff.is_super_admin() or org_slug = staff.current_org())
+  with check (staff.is_super_admin() or org_slug = staff.current_org());
+
+grant select, insert, delete on staff.shift_assignments to staff_app;
+
+comment on table staff.shift_assignments is
+  'One date, one job, one name — no login required. See the header of staff-shift-assignments.sql. Merged into onDutyToday() for today''s date; who may write is app/api/staff/team/assignment/route.ts''s concern, not RLS''s.';
+
+
 -- ========== staff-job-roles-seed.sql ==========
 
 -- ============================================================

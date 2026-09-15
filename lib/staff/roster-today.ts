@@ -1,10 +1,16 @@
 import type { StaffSql } from "@/lib/staff/db";
 import { jobLabel } from "@/lib/staff/roles";
+import { assignmentsToday } from "@/lib/staff/shift-assignments";
 
-// Who is expected to be on duty today, by job — read from
-// staff.users.workdays (see supabase/staff-workdays.sql). Not a clock:
-// nobody here has clocked in, this is the schedule an administrator
-// set, read back.
+// Who is expected to be on duty today, by job — from two sources, read
+// as one list. staff.users.workdays (staff-workdays.sql) is the
+// recurring weekly pattern for someone with a real account;
+// staff.shift_assignments (staff-shift-assignments.sql) is a specific
+// date filled in by hand, name only, no account required. Neither one
+// is a clock — nobody here has clocked in, this is the schedule an
+// administrator set, read back. A name from either source appears the
+// same way: the owner was explicit that whoever is actually covering a
+// job today belongs on this list, real login or not.
 
 export interface OnDutyRole {
   jobRole: string;
@@ -41,6 +47,17 @@ export async function onDutyToday(
     const list = byRole.get(r.job_role);
     if (list) list.push(name);
     else byRole.set(r.job_role, [name]);
+  }
+
+  for (const a of await assignmentsToday(sql, org)) {
+    const list = byRole.get(a.job_role);
+    // Same name assigned twice — a manual entry for a date that also
+    // matches someone's own recurring pattern — reads as one person,
+    // not two, on a screen that's meant to answer "who's in," not
+    // "how many sources agree."
+    if (list) {
+      if (!list.includes(a.name)) list.push(a.name);
+    } else byRole.set(a.job_role, [a.name]);
   }
 
   return order
