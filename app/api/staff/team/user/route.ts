@@ -161,6 +161,23 @@ export async function POST(req: NextRequest) {
         return { ok: "huddle_updated" as const };
       }
 
+      // What this person goes by day to day, if different from their
+      // legal signing name — see supabase/staff-preferred-name.sql.
+      // Purely cosmetic: never touches legal_name, so the e-signature
+      // record stays exactly what they actually signed as.
+      if (action === "set_preferred_name") {
+        const preferredName = String(form.get("preferred_name") ?? "").trim().slice(0, 100);
+        await sql`
+          update staff.users set preferred_name = ${preferredName || null} where id = ${userId}
+        `;
+        await sql`
+          insert into staff.audit_log (org_slug, actor_id, action, entity, entity_id, detail)
+          values (${org}, ${session.uid}, 'preferred_name_changed', 'user', ${userId},
+                  ${sql.json({ preferred_name: preferredName || null })})
+        `;
+        return { ok: "preferred_name_updated" as const };
+      }
+
       // Which days this person normally works — see
       // supabase/staff-workdays.sql. Not a clock, just a schedule an
       // administrator is recording; the checkbox list can be empty
@@ -195,7 +212,8 @@ export async function POST(req: NextRequest) {
     if (
       outcome.ok === "digest_updated" ||
       outcome.ok === "huddle_updated" ||
-      outcome.ok === "workdays_updated"
+      outcome.ok === "workdays_updated" ||
+      outcome.ok === "preferred_name_updated"
     ) {
       return redirectAfterPost(`/staff/team/${userId}?done=${outcome.ok}`);
     }

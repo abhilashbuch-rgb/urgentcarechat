@@ -2758,6 +2758,15 @@ comment on table staff.shift_assignments is
   'One date, one job, one name — no login required. See the header of staff-shift-assignments.sql. Merged into onDutyToday() for today''s date; who may write is app/api/staff/team/assignment/route.ts''s concern, not RLS''s.';
 
 
+-- ========== staff-preferred-name.sql ==========
+
+alter table staff.users
+  add column if not exists preferred_name text;
+
+comment on column staff.users.preferred_name is
+  'What this person goes by day to day, if different from legal_name — shown on the on-duty banner and similar casual displays ONLY. Never read for e-signature, audit, or any compliance document; legal_name remains the record of who signed what.';
+
+
 -- ========== staff-job-roles-seed.sql ==========
 
 -- ============================================================

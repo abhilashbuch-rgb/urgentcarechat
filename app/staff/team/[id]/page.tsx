@@ -94,6 +94,44 @@ export default async function TeamMemberPage({
         </div>
       )}
 
+      {done === "preferred_name_updated" && (
+        <div className="st-notice" role="status">
+          <strong>Updated.</strong>
+          <span>Shows on the on-duty banner from now on.</span>
+        </div>
+      )}
+
+      <section className="st-record-section">
+        <h2 className="st-h2">Goes by</h2>
+        <p className="st-page-sub" style={{ marginBottom: 12 }}>
+          Their name on file is <strong>{member.legal_name ?? member.name ?? member.email}</strong>
+          &nbsp;&mdash; that never changes here, it&rsquo;s what they
+          actually sign documents as. If the floor knows them by a
+          different name, put it here and the &ldquo;on duty
+          today&rdquo; banner uses it instead. Leave it blank to just
+          use the name on file.
+        </p>
+        {canManage ? (
+          <form method="POST" action="/api/staff/team/user">
+            <input type="hidden" name="user_id" value={id} />
+            <input type="hidden" name="action" value="set_preferred_name" />
+            <input
+              className="st-input"
+              type="text"
+              name="preferred_name"
+              defaultValue={member.preferred_name ?? ""}
+              placeholder={member.legal_name ?? member.name ?? ""}
+              style={{ maxWidth: 260 }}
+            />
+            <button className="st-btn" type="submit" style={{ marginTop: 12 }}>
+              Save
+            </button>
+          </form>
+        ) : (
+          <p className="st-page-sub">Set by the owner.</p>
+        )}
+      </section>
+
       <section className="st-record-section">
         <h2 className="st-h2">Profile complete?</h2>
         <p className="st-page-sub" style={{ marginBottom: 12 }}>
