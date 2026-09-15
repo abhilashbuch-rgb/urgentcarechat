@@ -375,8 +375,9 @@ interface RoleTask {
 function groupByRole(
   late: { name: string; slot: string; job_roles: string[] }[],
   stillDue: { name: string; slot: string; job_roles: string[] }[],
-  facilityType: string | null
-): { role: string; label: string; tasks: RoleTask[] }[] {
+  facilityType: string | null,
+  peopleByRole: Map<string, string[]>
+): { role: string; label: string; tasks: RoleTask[]; people: string[] }[] {
   const byRole = new Map<string, RoleTask[]>();
   const add = (role: string, task: RoleTask) => {
     const list = byRole.get(role);
@@ -398,6 +399,12 @@ function groupByRole(
       role,
       label: role === UNASSIGNED ? "Not assigned to a role" : jobLabel(role, facilityType),
       tasks: byRole.get(role)!,
+      // Whoever currently holds this job, by name — never a claim about
+      // WHICH of them owes a given task (the data has no such split),
+      // only who to actually ask. Empty for UNASSIGNED, which is a
+      // property of the TASK (no job_roles at all), not of a job with
+      // no one in it — see the empty case below for that distinction.
+      people: role === UNASSIGNED ? [] : peopleByRole.get(role) ?? [],
     }));
 }
 
@@ -501,7 +508,27 @@ export async function digestFor(
   // cosmetic one: it read as a slot that was somehow blank rather than
   // a task with no slot at all.
   const labelFor = (name: string, slot: string) => (slot ? `${name} (${slot.toUpperCase()})` : name);
-  const roleGroups = groupByRole(late, stillDue, tzRow.facility_type);
+
+  // Who actually holds each job right now, by name — so a section
+  // reads "Medical assistant (Jamie Stevens, Natalia Wade)" rather than
+  // leaving the reader to go find that out themselves. Grouped here
+  // rather than trusted to a join in the main query: a person can hold
+  // only one job_role, so this is one small query, not a fan-out.
+  const staffByRole = await sql<{ legal_name: string | null; job_role: string | null }[]>`
+    select legal_name, job_role from staff.users
+     where org_slug = ${org} and active and job_role is not null
+     order by legal_name
+  `;
+  const peopleByRole = new Map<string, string[]>();
+  for (const s of staffByRole) {
+    if (!s.job_role) continue;
+    const list = peopleByRole.get(s.job_role);
+    const name = s.legal_name ?? "unnamed";
+    if (list) list.push(name);
+    else peopleByRole.set(s.job_role, [name]);
+  }
+
+  const roleGroups = groupByRole(late, stillDue, tzRow.facility_type, peopleByRole);
 
   // The headline says the answer, not the numbers. Somebody reading this
   // on a phone wants to know whether to act, and a subject line of "12
@@ -543,7 +570,9 @@ export async function digestFor(
   // Grouped by who is actually on the hook, not just severity — see
   // groupByRole()'s own comment for why a dual-responsibility task
   // (the narcotics count) appears once per role rather than once,
-  // unowned by either.
+  // unowned by either. Named, not just labeled: a role with nobody in
+  // it right now is a staffing gap, not a scheduling one, and reads
+  // differently on purpose.
   if (roleGroups.length > 0) {
     lines.push("", "Not done, by who's responsible:");
     for (const g of roleGroups) {
@@ -555,7 +584,13 @@ export async function digestFor(
       ]
         .filter(Boolean)
         .join(", ");
-      lines.push(`  ${g.label} — ${counts}:`);
+      const who =
+        g.role === UNASSIGNED
+          ? ""
+          : g.people.length > 0
+            ? ` (${g.people.join(", ")})`
+            : " — nobody currently holds this job";
+      lines.push(`  ${g.label}${who} — ${counts}:`);
       for (const t of g.tasks) {
         lines.push(`    ${t.late ? "LATE" : "DUE"} — ${labelFor(t.name, t.slot)}`);
       }
@@ -616,7 +651,8 @@ export async function digestFor(
     },
     // One section per role that owes something — see groupByRole()'s
     // comment. Late by itself, or mixed with due, tips the section red;
-    // due-only stays amber.
+    // due-only stays amber. A role with nobody currently in it forces
+    // critical regardless of late/due — that is the more urgent gap.
     ...roleGroups.map((g): EmailSection => {
       const lateCount = g.tasks.filter((t) => t.late).length;
       const dueCount = g.tasks.length - lateCount;
@@ -626,9 +662,16 @@ export async function digestFor(
       ]
         .filter(Boolean)
         .join(", ");
+      const noOne = g.role !== UNASSIGNED && g.people.length === 0;
+      const who =
+        g.role === UNASSIGNED
+          ? ""
+          : g.people.length > 0
+            ? ` (${g.people.join(", ")})`
+            : " — nobody currently holds this job";
       return {
-        heading: `${g.label} — ${counts}`,
-        tone: lateCount > 0 ? "critical" : "warn",
+        heading: `${g.label}${who} — ${counts}`,
+        tone: noOne || lateCount > 0 ? "critical" : "warn",
         items: g.tasks.map((t) => ({
           primary: labelFor(t.name, t.slot),
           secondary: t.late ? "Late — not filed" : "Due today",
