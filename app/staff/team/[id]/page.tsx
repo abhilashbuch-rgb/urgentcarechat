@@ -5,6 +5,7 @@ import { withSession } from "@/lib/staff/db";
 import { teamStatus } from "@/lib/staff/compliance";
 import { signinHistory } from "@/lib/staff/signins";
 import { atLeast, ROLE_LABELS } from "@/lib/staff/roles";
+import { profileGaps } from "@/lib/staff/profile-complete";
 import SigninHistory from "@/app/components/staff/SigninHistory";
 
 // One team member, from the administrator's side — currently just their
@@ -42,17 +43,19 @@ export default async function TeamMemberPage({
 
   if (!atLeast(session.role, "manager")) redirect("/staff");
 
-  const { member, signins, timezone } = await withSession(session, async (sql) => {
+  const { member, signins, timezone, gaps } = await withSession(session, async (sql) => {
     const team = await teamStatus(sql);
     const member = team.find((m) => m.user_id === id) ?? null;
-    if (!member) return { member: null, signins: [], timezone: undefined };
+    if (!member) return { member: null, signins: [], timezone: undefined, gaps: [] };
     const [orgRow] = await sql<{ timezone: string }[]>`
       select timezone from staff.orgs where slug = ${org}
     `;
+    const allGaps = await profileGaps(sql, org);
     return {
       member,
       signins: await signinHistory(sql, org, id),
       timezone: orgRow?.timezone,
+      gaps: allGaps.get(id) ?? [],
     };
   });
 
@@ -103,6 +106,30 @@ export default async function TeamMemberPage({
           <span>Their morning-huddle preference now takes effect on the next send.</span>
         </div>
       )}
+
+      <section className="st-record-section">
+        <h2 className="st-h2">Profile complete?</h2>
+        <p className="st-page-sub" style={{ marginBottom: 12 }}>
+          Everything the app knows to check for this person, in one
+          place — required credentials, their work schedule, e-sign
+          consent, and whether anything has actually been uploaded to
+          their document shelf.
+        </p>
+        {gaps.length === 0 ? (
+          <p className="st-page-sub">
+            <span className="st-pill st-pill-ok">Complete</span> Nothing
+            outstanding right now.
+          </p>
+        ) : (
+          <ul className="st-gap-list">
+            {gaps.map((g) => (
+              <li key={g.label} className="st-gap-row">
+                {g.label}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <section className="st-record-section">
         <h2 className="st-h2">Email preferences</h2>
