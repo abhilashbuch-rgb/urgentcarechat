@@ -431,6 +431,11 @@ export async function digestFor(
   );
   const timeOf = (iso: string | null) =>
     iso ? localStamp(tzRow.timezone, new Date(iso)) : null;
+  // Empty string means "once, any time of day" (see the unnest note on
+  // staff.todays_logs) — appending "()" for those was a real bug, not a
+  // cosmetic one: it read as a slot that was somehow blank rather than
+  // a task with no slot at all.
+  const labelFor = (name: string, slot: string) => (slot ? `${name} (${slot.toUpperCase()})` : name);
 
   // The headline says the answer, not the numbers. Somebody reading this
   // on a phone wants to know whether to act, and a subject line of "12
@@ -465,18 +470,18 @@ export async function digestFor(
   if (flagged.length > 0) {
     lines.push("", "CRITICAL — Out of range:");
     for (const f of flagged) {
-      lines.push(`  ${f.name} (${f.slot.toUpperCase()}) — ${f.submitted_by_name ?? "unknown"}`);
+      lines.push(`  ${labelFor(f.name, f.slot)} — ${f.submitted_by_name ?? "unknown"}`);
     }
   }
 
   if (late.length > 0) {
     lines.push("", "CRITICAL — Already late, not filed:");
-    for (const l of late) lines.push(`  ${l.name} (${l.slot.toUpperCase()})`);
+    for (const l of late) lines.push(`  ${labelFor(l.name, l.slot)}`);
   }
 
   if (stillDue.length > 0) {
     lines.push("", "Still due today (not yet late):");
-    for (const s of stillDue) lines.push(`  ${s.name} (${s.slot.toUpperCase()})`);
+    for (const s of stillDue) lines.push(`  ${labelFor(s.name, s.slot)}`);
   }
 
   if (offSite.length > 0) {
@@ -518,7 +523,7 @@ export async function digestFor(
     lines.push("", "Done:");
     for (const d of done) {
       const flag = d.has_out_of_range ? " [OUT OF RANGE]" : "";
-      lines.push(`  ${d.name} (${d.slot.toUpperCase()}) — ${d.submitted_by_name ?? "unknown"}${flag}`);
+      lines.push(`  ${labelFor(d.name, d.slot)} — ${d.submitted_by_name ?? "unknown"}${flag}`);
     }
   }
 
@@ -527,7 +532,7 @@ export async function digestFor(
       heading: "Critical — out of range",
       tone: "critical",
       items: flagged.map((f) => ({
-        primary: `${f.name} (${f.slot.toUpperCase()})`,
+        primary: labelFor(f.name, f.slot),
         secondary: `Filed by ${f.submitted_by_name ?? "unknown"}${timeOf(f.submitted_at) ? ` · ${timeOf(f.submitted_at)}` : ""}`,
       })),
     },
@@ -535,14 +540,14 @@ export async function digestFor(
       heading: "Critical — already late",
       tone: "critical",
       items: late.map((l) => ({
-        primary: `${l.name} (${l.slot.toUpperCase()})`,
+        primary: labelFor(l.name, l.slot),
         secondary: "Not filed",
       })),
     },
     {
       heading: "Still due today",
       tone: "warn",
-      items: stillDue.map((s) => ({ primary: `${s.name} (${s.slot.toUpperCase()})` })),
+      items: stillDue.map((s) => ({ primary: labelFor(s.name, s.slot) })),
     },
     {
       heading: "Filed away from the clinic",
@@ -576,7 +581,7 @@ export async function digestFor(
       heading: "Done",
       tone: "good",
       items: done.map((d) => ({
-        primary: `${d.name} (${d.slot.toUpperCase()})`,
+        primary: labelFor(d.name, d.slot),
         secondary: `${d.submitted_by_name ?? "unknown"}${timeOf(d.submitted_at) ? ` · ${timeOf(d.submitted_at)}` : ""}`,
       })),
     },
