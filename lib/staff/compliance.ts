@@ -170,6 +170,9 @@ export interface TeamMember {
    *  supabase/staff-multisite-worker.sql. Shown on the roster so a
    *  seat count that doesn't match the row count isn't a mystery. */
   is_linked: boolean;
+  /** ISO weekdays (1=Monday..7=Sunday) this person normally works —
+   *  see supabase/staff-workdays.sql. Empty means not set yet. */
+  workdays: number[];
 }
 
 /** The roster, including deactivated people.
@@ -189,6 +192,7 @@ export async function teamStatus(sql: StaffSql): Promise<TeamMember[]> {
            (u.totp_confirmed_at is not null) as mfa_enrolled,
            (u.role = any (o.mfa_required_roles)) as mfa_required,
            (u.person_key <> u.id) as is_linked,
+           u.workdays,
            coalesce(c.assigned_count, 0)::int as assigned_count,
            coalesce(c.outstanding_count, 0)::int as outstanding_count,
            c.last_signed_at::text as last_signed_at

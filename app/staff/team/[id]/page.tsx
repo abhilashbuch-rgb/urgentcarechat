@@ -15,6 +15,20 @@ import SigninHistory from "@/app/components/staff/SigninHistory";
 
 export const dynamic = "force-dynamic";
 
+// ISO weekday numbers, matching staff.users.workdays and every other
+// day-of-week column in this codebase (staff.form_templates.due_weekday
+// — see supabase/staff-due-weekday.sql). Monday first, because that's
+// how a work week reads, not how Postgres' own dow numbering does.
+const WEEKDAYS = [
+  { value: 1, label: "Mon" },
+  { value: 2, label: "Tue" },
+  { value: 3, label: "Wed" },
+  { value: 4, label: "Thu" },
+  { value: 5, label: "Fri" },
+  { value: 6, label: "Sat" },
+  { value: 7, label: "Sun" },
+] as const;
+
 export default async function TeamMemberPage({
   params,
   searchParams,
@@ -76,6 +90,13 @@ export default async function TeamMemberPage({
         </div>
       )}
 
+      {done === "workdays_updated" && (
+        <div className="st-notice" role="status">
+          <strong>Updated.</strong>
+          <span>Their schedule now shows on the Today page&rsquo;s on-duty list.</span>
+        </div>
+      )}
+
       <section className="st-record-section">
         <h2 className="st-h2">Email preferences</h2>
         <p className="st-page-sub" style={{ marginBottom: 12 }}>
@@ -91,6 +112,41 @@ export default async function TeamMemberPage({
             <input type="hidden" name="wants" value={member.wants_digest ? "0" : "1"} />
             <button className="st-btn" type="submit">
               {member.wants_digest ? "Turn off digest emails" : "Turn on digest emails"}
+            </button>
+          </form>
+        ) : (
+          <p className="st-page-sub">Set by the owner.</p>
+        )}
+      </section>
+
+      <section className="st-record-section">
+        <h2 className="st-h2">Schedule</h2>
+        <p className="st-page-sub" style={{ marginBottom: 12 }}>
+          Which days this person normally works &mdash; not a clock, just
+          a schedule. It drives the &ldquo;On duty today&rdquo; list on
+          the Today page, so a shift can see at a glance who today&rsquo;s
+          medical assistant or center admin is expected to be. Leave it
+          blank if this person&rsquo;s days vary too much to say.
+        </p>
+        {canManage ? (
+          <form method="POST" action="/api/staff/team/user">
+            <input type="hidden" name="user_id" value={id} />
+            <input type="hidden" name="action" value="set_workdays" />
+            <div className="st-workday-picker" role="group" aria-label="Workdays">
+              {WEEKDAYS.map((d) => (
+                <label key={d.value} className="st-workday-chip">
+                  <input
+                    type="checkbox"
+                    name="weekday"
+                    value={d.value}
+                    defaultChecked={member.workdays.includes(d.value)}
+                  />
+                  {d.label}
+                </label>
+              ))}
+            </div>
+            <button className="st-btn" type="submit" style={{ marginTop: 12 }}>
+              Save schedule
             </button>
           </form>
         ) : (

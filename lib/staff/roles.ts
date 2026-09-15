@@ -136,14 +136,11 @@ export interface NavItem {
   /** Rendered but inert, with a "coming soon" marker. */
   placeholder?: boolean;
   note?: string;
-  /** Shown only to people who practise: a provider or centre admin by
-   *  JOB, or a clinical lead or above by ROLE. The two are different
-   *  axes and most providers hold the plain "staff" role, so gating this
-   *  on role alone would hide it from exactly the people it is for. */
-  clinicalOnly?: boolean;
-  /** Shown to whoever runs the building — see runsClinic(). Same reason
-   *  as clinicalOnly and a different audience: the centre admin, whose
-   *  account role is usually plain staff. */
+  /** Shown to whoever runs the building — see runsClinic(): the centre
+   *  admin by JOB, or a manager or above by ROLE. The two are different
+   *  axes, and a centre admin's account role is usually plain "staff",
+   *  so gating this on role alone would hide it from exactly the person
+   *  it is for. */
   operatorOnly?: boolean;
   /** Which drawer group this renders under. Absent means standalone,
    *  above the groups — currently only Today. */
@@ -175,10 +172,16 @@ export const NAV: NavItem[] = [
   // as a log; only the recipient it emails is owner-only, set on
   // Settings, never here.
   { href: "/staff/billing-stats", label: "Patient count", minRole: "staff", group: "shift" },
-  // Emergency guides. Everyone, every job — the front desk needs the
-  // lobby-recognition guide more than anybody, and gating life-safety
-  // reference material behind a role is the wrong kind of tidiness.
-  { href: "/staff/learning", label: "Emergencies", minRole: "staff", group: "shift" },
+  // Emergency guides, and — folded into the same page below the
+  // guides — clinical protocol search. Everyone, every job, gets this
+  // link: the front desk needs the lobby-recognition guide more than
+  // anybody, and gating life-safety reference material behind a role
+  // is the wrong kind of tidiness. The protocol-search section inside
+  // the page still checks job/role itself (provider, centre admin, or
+  // clinical_lead+) and simply doesn't render for anyone else — one
+  // door, the same two audiences as before behind it. See
+  // app/staff/learning/page.tsx.
+  { href: "/staff/learning", label: "Emergencies & protocols", minRole: "staff", group: "shift" },
   { href: "/staff/documents", label: "Documents", minRole: "staff", group: "record" },
   // OSHA 300A postings and CLIA renewals are the administrator's
   // register, not a medical assistant's. Carrying it at staff level put
@@ -186,20 +189,6 @@ export const NAV: NavItem[] = [
   // on, and had to learn to ignore — and a nav you learn to ignore is
   // how the useful items lose their meaning too.
   { href: "/staff/obligations", label: "Obligations", minRole: "clinical_lead", group: "clinic" },
-  // Clinical protocol search. Gated by JOB as well as role inside the
-  // page and the route — a provider or centre admin gets it, and so
-  // does a clinical lead, and nobody else. Listed for everyone at
-  // "staff" would be a link that always refuses; listed at
-  // clinical_lead alone would hide it from a provider whose account
-  // role is plain staff, which is most providers. So it is filtered by
-  // job below rather than by minRole.
-  {
-    href: "/staff/protocols",
-    label: "Protocols",
-    minRole: "staff",
-    clinicalOnly: true,
-    group: "shift",
-  },
   // The WHOLE roster: everybody's credentials and the exclusion
   // screening. Leads and administrators. Everyone else has
   // /staff/documents, which is their own shelf and nobody else's.
@@ -238,18 +227,10 @@ export const NAV: NavItem[] = [
 ];
 
 export function navFor(role: StaffRole, jobRole?: string | null): NavItem[] {
-  const clinical =
-    jobRole === "provider" ||
-    jobRole === "center_admin" ||
-    atLeast(role, "clinical_lead");
-
   const operator = runsClinic(role, jobRole);
 
   return NAV.filter(
-    (item) =>
-      atLeast(role, item.minRole) &&
-      (!item.clinicalOnly || clinical) &&
-      (!item.operatorOnly || operator)
+    (item) => atLeast(role, item.minRole) && (!item.operatorOnly || operator)
   );
 }
 

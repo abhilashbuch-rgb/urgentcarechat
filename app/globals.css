@@ -4484,6 +4484,30 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 }
 .st-mycred-go:hover { text-decoration: underline; }
 
+/* ---------- on duty today ---------- */
+/* Same card shape as .st-mycreds just above — a short, silent-when-
+   empty list, not a new visual language for one more section. */
+.st-onduty {
+  background: var(--bg-sunk);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+.st-onduty-list { list-style: none; margin: 0; }
+.st-onduty-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-top: 1px solid var(--rule);
+  font-size: 13.5px;
+}
+.st-onduty-row:first-child { border-top: none; }
+.st-onduty-role { font-weight: 600; color: var(--ink); }
+.st-onduty-people { color: var(--ink-soft); text-align: right; }
+
 /* ---------- clinic notices (one-way bulletin board) ---------- */
 
 .st-bulletins {
@@ -5126,6 +5150,25 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
   border-top: 1px solid var(--rule);
 }
 
+/* Protocols, folded into this page — same collapsed-<details> pattern
+   as .st-board-hidden and .st-act-notify: zero JS, closed on every
+   fresh load. */
+.st-emg-protocols {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--rule);
+}
+.st-emg-protocols > summary {
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 650;
+  color: var(--ink);
+  list-style: none;
+}
+.st-emg-protocols > summary::-webkit-details-marker { display: none; }
+.st-emg-protocols > summary::before { content: "▸ "; color: var(--ink-soft); }
+.st-emg-protocols[open] > summary::before { content: "▾ "; }
+
 /* ---------- emergency numbers: tap-to-call, above everything else ---------- */
 
 .st-emc-list { margin-bottom: 20px; }
@@ -5441,7 +5484,14 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
   border-top: 1px solid var(--rule);
 }
 .st-log-row:first-child { border-top: none; }
-.st-log-row-flag { background: var(--blue-050); box-shadow: inset 3px 0 0 var(--accent); }
+/* Danger, not the accent blue — this row is the reason the whole entry
+   reads as out of range, same border-left treatment as
+   .st-shelf-expired and .st-rule-critical elsewhere in the app. A
+   boolean or select field flagged this way had no visual cue
+   distinguishing it from an ordinary highlighted row, so a form with
+   one flagged checkbox among several fine number fields (each showing
+   its own green "In range" pill) read as entirely clean at a glance. */
+.st-log-row-flag { background: var(--blue-050); box-shadow: inset 3px 0 0 var(--danger); }
 .st-log-row-missing { background: var(--blue-050); box-shadow: inset 3px 0 0 var(--rule-firm); }
 
 .st-log-label { font-size: 14px; font-weight: 550; padding-top: 8px; }
@@ -5521,6 +5571,31 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
   color: #fff;
 }
 .st-toggle-on:hover { background: var(--blue-deep); }
+
+/* A checkbox group that reads like the button chips just above, with
+   no JS: :has(:checked) does the highlighting a controlled component
+   would otherwise need to. */
+.st-workday-picker { display: flex; gap: 6px; flex-wrap: wrap; }
+.st-workday-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border: 1px solid var(--rule);
+  border-radius: 7px;
+  background: #fff;
+  font-size: 13.5px;
+  font-weight: 550;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.st-workday-chip:hover { background: var(--blue-050); }
+.st-workday-chip:has(:checked) {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #fff;
+}
+.st-workday-chip input { accent-color: #fff; }
 
 .st-textarea {
   width: 100%;
