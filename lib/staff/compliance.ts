@@ -154,6 +154,10 @@ export interface TeamMember {
   email: string;
   name: string | null;
   legal_name: string | null;
+  /** What they go by day to day, if different from legal_name — see
+   *  supabase/staff-preferred-name.sql. Never used for anything a
+   *  signature or an audit trail depends on. */
+  preferred_name: string | null;
   job_title: string | null;
   role: StaffRole;
   start_date: string | null;
@@ -187,7 +191,7 @@ export interface TeamMember {
  *  reads staff.users directly and joins the counts on. */
 export async function teamStatus(sql: StaffSql): Promise<TeamMember[]> {
   return sql<TeamMember[]>`
-    select u.id as user_id, u.email, u.name, u.legal_name, u.job_title, u.role,
+    select u.id as user_id, u.email, u.name, u.legal_name, u.preferred_name, u.job_title, u.role,
            u.start_date::text as start_date,
            u.esign_consented_at::text as esign_consented_at,
            u.active,
