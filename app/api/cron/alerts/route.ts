@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withOrg, isDatabaseConfigured } from "@/lib/staff/db";
 import { sweep, digestFor, enqueue, localStamp } from "@/lib/staff/alerts";
+import { huddleRecipientsToday, huddleFor } from "@/lib/staff/huddle";
 import { isMailConfigured, send } from "@/lib/mail";
 
 // GET /api/cron/alerts — deliver queued alerts, and file the digests.
 //
-// Runs hourly. Three things happen, in this order:
+// Runs hourly. Four things happen, in this order:
 //
 //   1. Urgent alerts that have not gone yet are sent. Excursions and
 //      missed tasks, individually, immediately.
@@ -13,7 +14,11 @@ import { isMailConfigured, send } from "@/lib/mail";
 //      urgent. Derived from the clinic's own clock, so nothing here can
 //      go stale.
 //   3. If this hour matches the clinic's AM or PM digest time, one
-//      summary is enqueued and sent.
+//      whole-clinic summary is enqueued and sent.
+//   4. If this hour matches the clinic's morning-huddle time, one
+//      good-morning email goes to each person scheduled to work today —
+//      see lib/staff/huddle.ts. Its own time, not digest_am_at: a clinic
+//      can want the huddle at 8 and the digest at 9.
 //
 // WHY HOURLY AND NOT EVERY MINUTE. The two things people actually need
 // are "tell me now" for an excursion and "tell me at 9 and at 5" for
@@ -42,8 +47,8 @@ export async function GET(req: NextRequest) {
   // and sets the org context per iteration. There is no session here to
   // derive it from, which is exactly why withOrg exists.
   const orgs = await withOrg("", "platform_super_admin", (sql) =>
-    sql<{ slug: string; due: boolean; timezone: string }[]>`
-      select slug, timezone,
+    sql<{ slug: string; due: boolean; huddleDue: boolean; timezone: string; facilityType: string | null }[]>`
+      select slug, timezone, facility_type as "facilityType",
              -- Is this the hour of a digest, in the clinic's own zone?
              (
                date_trunc('hour', now() at time zone timezone)
@@ -51,7 +56,15 @@ export async function GET(req: NextRequest) {
                or
                date_trunc('hour', now() at time zone timezone)
                  = date_trunc('hour', (now() at time zone timezone)::date + digest_pm_at)
-             ) as due
+             ) as due,
+             -- Same test, against the morning-huddle time. Its own
+             -- column rather than reusing digest_am_at: the owner may
+             -- want the digest at 9 and the huddle at 8, which is
+             -- exactly what they asked for.
+             (
+               date_trunc('hour', now() at time zone timezone)
+                 = date_trunc('hour', (now() at time zone timezone)::date + huddle_at)
+             ) as "huddleDue"
         from staff.orgs
        where active
     `
@@ -59,7 +72,7 @@ export async function GET(req: NextRequest) {
 
   const results: Record<string, unknown>[] = [];
 
-  for (const { slug, due, timezone } of orgs) {
+  for (const { slug, due, huddleDue, timezone, facilityType } of orgs) {
     try {
       const outcome = await withOrg(slug, "platform_super_admin", async (sql) => {
         // Newly-late tasks. The unique index on (org, source_kind,
@@ -128,7 +141,29 @@ export async function GET(req: NextRequest) {
           }
         }
 
-        return sweep(sql, slug);
+        // The morning huddle: one email per person scheduled to work
+        // today, not the whole-clinic digest above. Best-effort, same as
+        // the opted-in digest copies just above — this is the one
+        // message in the whole cron where a single provider hiccup
+        // costs one reader one morning's email, not a retried alert.
+        let huddled = 0;
+        if (huddleDue && isMailConfigured()) {
+          const recipients = await huddleRecipientsToday(sql, slug);
+          for (const r of recipients) {
+            try {
+              const h = await huddleFor(sql, slug, r, timezone, facilityType);
+              await send({ to: r.email, subject: h.subject, text: h.body, html: h.html });
+              huddled += 1;
+            } catch (err) {
+              console.error(
+                `[cron-alerts] huddle to ${r.email} failed:`,
+                err instanceof Error ? err.message : "Unknown"
+              );
+            }
+          }
+        }
+
+        return { ...(await sweep(sql, slug)), huddled };
       });
       results.push({ org: slug, ...outcome });
     } catch (err) {

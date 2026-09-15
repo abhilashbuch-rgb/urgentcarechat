@@ -4508,6 +4508,18 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 .st-onduty-role { font-weight: 600; color: var(--ink); }
 .st-onduty-people { color: var(--ink-soft); text-align: right; }
 
+/* profileGaps() (lib/staff/profile-complete.ts), on the team member
+   page — same row rhythm as .st-onduty-list, amber left edge rather
+   than a full warning card, since this is a checklist, not an alert. */
+.st-gap-list { list-style: none; margin: 0; padding: 0; }
+.st-gap-row {
+  padding: 9px 0 9px 12px;
+  border-top: 1px solid var(--rule);
+  border-left: 3px solid var(--status-warn);
+  color: var(--ink);
+}
+.st-gap-row:first-child { border-top: none; }
+
 /* ---------- clinic notices (one-way bulletin board) ---------- */
 
 .st-bulletins {
@@ -7131,6 +7143,21 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
   border-radius: 999px;
   font-size: 11px;
   color: var(--accent);
+  white-space: nowrap;
+}
+
+/* A roster-scan flag for profileGaps() (lib/staff/profile-complete.ts)
+   — amber like the rest of the app's "needs attention, not broken"
+   states (.st-pill-new, --status-warn), never the danger red an actual
+   out-of-range reading gets. */
+.st-flag-gap {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border: 1px solid var(--status-warn);
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--status-warn-text);
   white-space: nowrap;
 }
 

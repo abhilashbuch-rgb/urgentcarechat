@@ -5,6 +5,7 @@ import { withSession } from "@/lib/staff/db";
 import { teamStatus } from "@/lib/staff/compliance";
 import { signinHistory } from "@/lib/staff/signins";
 import { atLeast, ROLE_LABELS } from "@/lib/staff/roles";
+import { profileGaps } from "@/lib/staff/profile-complete";
 import SigninHistory from "@/app/components/staff/SigninHistory";
 
 // One team member, from the administrator's side — currently just their
@@ -42,17 +43,19 @@ export default async function TeamMemberPage({
 
   if (!atLeast(session.role, "manager")) redirect("/staff");
 
-  const { member, signins, timezone } = await withSession(session, async (sql) => {
+  const { member, signins, timezone, gaps } = await withSession(session, async (sql) => {
     const team = await teamStatus(sql);
     const member = team.find((m) => m.user_id === id) ?? null;
-    if (!member) return { member: null, signins: [], timezone: undefined };
+    if (!member) return { member: null, signins: [], timezone: undefined, gaps: [] };
     const [orgRow] = await sql<{ timezone: string }[]>`
       select timezone from staff.orgs where slug = ${org}
     `;
+    const allGaps = await profileGaps(sql, org);
     return {
       member,
       signins: await signinHistory(sql, org, id),
       timezone: orgRow?.timezone,
+      gaps: allGaps.get(id) ?? [],
     };
   });
 
@@ -97,6 +100,37 @@ export default async function TeamMemberPage({
         </div>
       )}
 
+      {done === "huddle_updated" && (
+        <div className="st-notice" role="status">
+          <strong>Updated.</strong>
+          <span>Their morning-huddle preference now takes effect on the next send.</span>
+        </div>
+      )}
+
+      <section className="st-record-section">
+        <h2 className="st-h2">Profile complete?</h2>
+        <p className="st-page-sub" style={{ marginBottom: 12 }}>
+          Everything the app knows to check for this person, in one
+          place — required credentials, their work schedule, e-sign
+          consent, and whether anything has actually been uploaded to
+          their document shelf.
+        </p>
+        {gaps.length === 0 ? (
+          <p className="st-page-sub">
+            <span className="st-pill st-pill-ok">Complete</span> Nothing
+            outstanding right now.
+          </p>
+        ) : (
+          <ul className="st-gap-list">
+            {gaps.map((g) => (
+              <li key={g.label} className="st-gap-row">
+                {g.label}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       <section className="st-record-section">
         <h2 className="st-h2">Email preferences</h2>
         <p className="st-page-sub" style={{ marginBottom: 12 }}>
@@ -120,13 +154,43 @@ export default async function TeamMemberPage({
       </section>
 
       <section className="st-record-section">
+        <h2 className="st-h2">Morning huddle</h2>
+        <p className="st-page-sub" style={{ marginBottom: 12 }}>
+          A good-morning email at the start of their shift — their agenda
+          for the day, any notes from the center admin, and a quote. On
+          by default for every day their schedule below says they work;
+          turning it off here just means this one person stops getting
+          it, on any day.
+        </p>
+        {canManage ? (
+          <form method="POST" action="/api/staff/team/user">
+            <input type="hidden" name="user_id" value={id} />
+            <input type="hidden" name="action" value="toggle_huddle" />
+            <input
+              type="hidden"
+              name="wants"
+              value={member.wants_morning_huddle ? "0" : "1"}
+            />
+            <button className="st-btn" type="submit">
+              {member.wants_morning_huddle
+                ? "Turn off the morning huddle"
+                : "Turn on the morning huddle"}
+            </button>
+          </form>
+        ) : (
+          <p className="st-page-sub">Set by the owner.</p>
+        )}
+      </section>
+
+      <section className="st-record-section">
         <h2 className="st-h2">Schedule</h2>
         <p className="st-page-sub" style={{ marginBottom: 12 }}>
           Which days this person normally works &mdash; not a clock, just
           a schedule. It drives the &ldquo;On duty today&rdquo; list on
-          the Today page, so a shift can see at a glance who today&rsquo;s
-          medical assistant or center admin is expected to be. Leave it
-          blank if this person&rsquo;s days vary too much to say.
+          the Today page and who gets the morning huddle above, so a
+          shift can see at a glance who today&rsquo;s medical assistant
+          or center admin is expected to be. Leave it blank if this
+          person&rsquo;s days vary too much to say.
         </p>
         {canManage ? (
           <form method="POST" action="/api/staff/team/user">

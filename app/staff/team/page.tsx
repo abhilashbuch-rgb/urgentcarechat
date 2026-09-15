@@ -7,6 +7,7 @@ import { atLeast, ROLE_LABELS, JOB_LABELS, jobLabel } from "@/lib/staff/roles";
 import { pending, INVITE_TTL_HOURS } from "@/lib/staff/invites";
 import { seatUsage, unassignedCount, seatBill, money, type SeatRow } from "@/lib/staff/seats";
 import { formatSignedAt } from "@/lib/staff/labels";
+import { profileGaps } from "@/lib/staff/profile-complete";
 
 // Who has completed their packet and who hasn't.
 //
@@ -79,7 +80,7 @@ export default async function Team({
   if (!atLeast(session.role, "manager")) redirect("/staff");
   const isOwner = atLeast(session.role, "org_admin");
 
-  const { team, invites, seats, unassigned, bill, facilityType } = await withSession(
+  const { team, invites, seats, unassigned, bill, facilityType, gaps } = await withSession(
     session,
     async (sql) => ({
       team: await teamStatus(sql),
@@ -88,11 +89,13 @@ export default async function Team({
       unassigned: await unassignedCount(sql),
       bill: await seatBill(sql),
       facilityType: await facilityTypeFor(sql, org),
+      gaps: await profileGaps(sql, org),
     })
   );
   const active = team.filter((m) => m.active);
   const behind = active.filter((m) => m.outstanding_count > 0).length;
   const mfaGaps = active.filter((m) => m.mfa_required && !m.mfa_enrolled).length;
+  const incompleteProfiles = active.filter((m) => (gaps.get(m.user_id)?.length ?? 0) > 0).length;
 
   return (
     <div className="st-page">
@@ -103,6 +106,7 @@ export default async function Team({
             {active.length} active {active.length === 1 ? "person" : "people"}
             {behind > 0 ? ` · ${behind} with outstanding documents` : " · all current"}
             {mfaGaps > 0 && ` · ${mfaGaps} without a second factor`}
+            {incompleteProfiles > 0 && ` · ${incompleteProfiles} with an incomplete profile`}
           </p>
         </div>
         {/* One obvious way in, from the top of the screen — not a form
@@ -345,6 +349,7 @@ export default async function Team({
           <tbody>
             {team.map((m) => {
               const signedCount = m.assigned_count - m.outstanding_count;
+              const memberGaps = gaps.get(m.user_id) ?? [];
               return (
                 <tr key={m.user_id} className={m.active ? "" : "st-row-off"}>
                   <td>
@@ -357,6 +362,20 @@ export default async function Team({
                         title="Home clinic is one of your other locations — not counted in this clinic's seats."
                       >
                         Linked
+                      </span>
+                    )}
+                    {/* A quick-scan flag, not the detail — open the
+                        person's own page (linked from the "Last sign-in"
+                        cell below) for the actual list of what's
+                        outstanding. */}
+                    {memberGaps.length > 0 && (
+                      <span
+                        className="st-flag-gap"
+                        title={memberGaps.map((g) => g.label).join(", ")}
+                      >
+                        {memberGaps.length === 1
+                          ? "1 gap"
+                          : `${memberGaps.length} gaps`}
                       </span>
                     )}
                     <span className="st-cell-sub">
