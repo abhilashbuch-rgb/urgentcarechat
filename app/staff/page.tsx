@@ -376,13 +376,15 @@ export default async function StaffHome() {
         </section>
       )}
 
-      {/* ADMIN-TIER ONLY. A plain staff account's Today stays exactly the
-          lean, shift-focused screen it already was — see the file header
-          comment on why that was deliberate. An administrator's version
-          of "what do I owe this shift" also includes "who do I need to
-          add or remove," and that answer was two taps into a menu
-          instead of on the screen they land on. */}
-      {hasNavAccess && overview && overview.shortcuts.length > 0 && (
+      {/* EVERYONE, SCOPED BY THE SAME navFor() THE DRAWER USES. A medical
+          assistant's shortcuts are Logs, Rounds, Record an event,
+          Documents, her own record — the job-relevant handful navFor()
+          already filters down to for a plain staff role. Nothing
+          admin-only leaks in here; there is no second list to keep in
+          sync, just the nav's own output laid out as tiles. An
+          administrator's version also includes Team, Settings, and the
+          rest they're entitled to — same mechanism, more items. */}
+      {overview && overview.shortcuts.length > 0 && (
         <section className="st-shortcuts-section">
           <h2 className="st-h2">Shortcuts</h2>
           <ShortcutGrid items={overview.shortcuts} />
