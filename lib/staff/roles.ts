@@ -234,6 +234,44 @@ export function navFor(role: StaffRole, jobRole?: string | null): NavItem[] {
   );
 }
 
+// Which shortcut a job reaches for first, on the Today page's tile grid
+// — see app/components/staff/ShortcutGrid.tsx. Resequences navFor()'s
+// own output; adds and removes nothing, so a tile can never appear here
+// that the drawer nav itself would refuse.
+//
+// ONLY FRONT_DESK HAS AN OVERRIDE. Every other job — medical_assistant
+// included — keeps navFor()'s declaration order, which already leads
+// with the clinical tools (Logs, Rounds) most jobs reach for first, and
+// there's no equally concrete reason on file to reorder it further.
+// Front desk is different for a documented reason: the emergencies page
+// itself says "the front desk needs the lobby-recognition guide more
+// than anybody" (app/staff/learning/page.tsx), and Patient count is a
+// front-desk metric by name (see supabase/staff-billing-stats.sql).
+const SHORTCUT_PRIORITY: Partial<Record<string, string[]>> = {
+  front_desk: [
+    "/staff/learning",
+    "/staff/billing-stats",
+    "/staff/records",
+    "/staff/logs",
+    "/staff/rounds",
+    "/staff/rules",
+    "/staff/documents",
+    "/staff/me",
+  ],
+};
+
+export function shortcutsFor(role: StaffRole, jobRole?: string | null): NavItem[] {
+  const items = navFor(role, jobRole);
+  const priority = jobRole ? SHORTCUT_PRIORITY[jobRole] : undefined;
+  if (!priority) return items;
+
+  return [...items].sort((a, b) => {
+    const ai = priority.indexOf(a.href);
+    const bi = priority.indexOf(b.href);
+    return (ai === -1 ? priority.length : ai) - (bi === -1 ? priority.length : bi);
+  });
+}
+
 export interface NavGroupResult {
   group: NavGroup;
   label: string;

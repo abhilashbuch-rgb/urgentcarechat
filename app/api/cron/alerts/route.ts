@@ -14,7 +14,10 @@ import { isMailConfigured, send } from "@/lib/mail";
 //      urgent. Derived from the clinic's own clock, so nothing here can
 //      go stale.
 //   3. If this hour matches the clinic's AM or PM digest time, one
-//      whole-clinic summary is enqueued and sent.
+//      whole-clinic summary is enqueued and sent — except to admin
+//      accounts on the PM run, who get the same evening's numbers as
+//      the fuller EOD report instead (see the note where optedIn is
+//      built, below).
 //   4. If this hour matches the clinic's morning-huddle time, one
 //      good-morning email goes to each person scheduled to work today —
 //      see lib/staff/huddle.ts. Its own time, not digest_am_at: a clinic
@@ -47,7 +50,14 @@ export async function GET(req: NextRequest) {
   // and sets the org context per iteration. There is no session here to
   // derive it from, which is exactly why withOrg exists.
   const orgs = await withOrg("", "platform_super_admin", (sql) =>
-    sql<{ slug: string; due: boolean; huddleDue: boolean; timezone: string; facilityType: string | null }[]>`
+    sql<{
+      slug: string;
+      due: boolean;
+      pmDue: boolean;
+      huddleDue: boolean;
+      timezone: string;
+      facilityType: string | null;
+    }[]>`
       select slug, timezone, facility_type as "facilityType",
              -- Is this the hour of a digest, in the clinic's own zone?
              (
@@ -57,6 +67,13 @@ export async function GET(req: NextRequest) {
                date_trunc('hour', now() at time zone timezone)
                  = date_trunc('hour', (now() at time zone timezone)::date + digest_pm_at)
              ) as due,
+             -- The PM half specifically — see the "admins" branch below
+             -- for why this needs to be its own flag rather than folded
+             -- into "due".
+             (
+               date_trunc('hour', now() at time zone timezone)
+                 = date_trunc('hour', (now() at time zone timezone)::date + digest_pm_at)
+             ) as "pmDue",
              -- Same test, against the morning-huddle time. Its own
              -- column rather than reusing digest_am_at: the owner may
              -- want the digest at 9 and the huddle at 8, which is
@@ -72,7 +89,7 @@ export async function GET(req: NextRequest) {
 
   const results: Record<string, unknown>[] = [];
 
-  for (const { slug, due, huddleDue, timezone, facilityType } of orgs) {
+  for (const { slug, due, pmDue, huddleDue, timezone, facilityType } of orgs) {
     try {
       const outcome = await withOrg(slug, "platform_super_admin", async (sql) => {
         // Newly-late tasks. The unique index on (org, source_kind,
@@ -123,11 +140,29 @@ export async function GET(req: NextRequest) {
             // so a single provider hiccup costs a reader one digest, not
             // a retried alert somebody is relying on. sweep() below still
             // owns the owner/director copy, with its usual retries.
+            //
+            // ORG_ADMIN / PLATFORM_SUPER_ADMIN SKIPPED ON THE PM RUN,
+            // SPECIFICALLY. sendEodReports() (lib/staff/eod-report.ts,
+            // fired by the same digest_pm_at hour from
+            // app/api/cron/reports/route.ts) already sends every admin
+            // account the same evening's out-of-range/late/off-site/
+            // who-filed-what content, as a PDF they cannot opt out of —
+            // "administering the clinic carries seeing this by default,"
+            // per that file's own header. Sending the HTML digest too
+            // was the same evening's numbers twice, in two formats, to
+            // the same inbox. The AM run is untouched: there is no
+            // morning EOD report to duplicate.
             if (isMailConfigured()) {
-              const optedIn = await sql<{ email: string }[]>`
-                select email from staff.users
-                 where org_slug = ${slug} and active and wants_digest
-              `;
+              const optedIn = pmDue
+                ? await sql<{ email: string }[]>`
+                    select email from staff.users
+                     where org_slug = ${slug} and active and wants_digest
+                       and role not in ('org_admin', 'platform_super_admin')
+                  `
+                : await sql<{ email: string }[]>`
+                    select email from staff.users
+                     where org_slug = ${slug} and active and wants_digest
+                  `;
               for (const { email } of optedIn) {
                 await send({ to: email, subject: d.subject, text: d.body, html: d.html }).catch(
                   (err) =>

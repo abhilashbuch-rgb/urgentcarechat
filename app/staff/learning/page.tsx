@@ -156,7 +156,7 @@ export default async function LearningPage() {
           allowed; not shown at all, not shown-then-refused, for anyone
           else. */}
       {seesProtocols && (
-        <details className="st-emg-protocols">
+        <details className="st-emg-protocols" id="protocols">
           <summary>Protocols</summary>
           <p className="st-page-sub" style={{ marginTop: 8 }}>
             Your clinic&rsquo;s protocols and the guidance loaded alongside
