@@ -9956,29 +9956,25 @@ where t.active
 grant select on staff.todays_logs to staff_app;
 
 -- ============================================================
--- THE SCHEDULE — one or two periodic tasks a day, Monday to Friday
+-- THE SCHEDULE — Monday, Tuesday and Friday only
 --
--- Applied to every org's own copy of these templates, plus the
--- _library source rows so a clinic provisioned after this file runs
--- inherits the same schedule instead of everything landing on day one
--- again. Grouped by which weekday, not by table row, so the spread is
--- easy to read back later.
+-- Revised from the original five-day spread: the operator wants three
+-- main check days, not one task trickling in on every single day of
+-- the week. Applied to every org's own copy of these templates, plus
+-- the _library source rows so a clinic provisioned after this file
+-- runs inherits the same schedule instead of everything landing on
+-- day one again. Grouped by which weekday, not by table row, so the
+-- spread is easy to read back later.
 -- ============================================================
 
 update staff.form_templates set due_weekday = 1  -- Monday
- where slug in ('eyewash-autoclave', 'fire-extinguisher');
+ where slug in ('eyewash-autoclave', 'fire-extinguisher', 'equipment-calibration');
 
 update staff.form_templates set due_weekday = 2  -- Tuesday
- where slug in ('poct-qc', 'urinalysis-qc');
-
-update staff.form_templates set due_weekday = 3  -- Wednesday
- where slug in ('equipment-calibration', 'radiation-apron');
-
-update staff.form_templates set due_weekday = 4  -- Thursday
- where slug = 'qi-minutes';
+ where slug in ('poct-qc', 'urinalysis-qc', 'radiation-apron');
 
 update staff.form_templates set due_weekday = 5  -- Friday
- where slug = 'hazcom-inventory';
+ where slug in ('qi-minutes', 'hazcom-inventory');
 
 -- ============================================================
 -- THE THREE THAT BELONGED TO NOBODY
