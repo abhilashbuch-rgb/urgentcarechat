@@ -2,10 +2,16 @@ import { requireStaff } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
 import { getProfile, facilityTypeFor, zipFor } from "@/lib/staff/compliance";
 import { emergencyGuides } from "@/lib/staff/rounds";
-import { jobPhrase } from "@/lib/staff/roles";
+import { jobPhrase, atLeast } from "@/lib/staff/roles";
 import { emergencyContactsFor } from "@/lib/staff/emergency-contacts";
+import ProtocolSearch from "@/app/components/staff/ProtocolSearch";
 
-// Emergency action guides.
+// Emergency action guides — and, folded in below them, clinical
+// protocol search. Two features that used to be two separate nav
+// entries and two separate pages; combined here into one door because
+// they were the two items under "reference material for a shift" and
+// having both listed read as more redundancy than the actual gap
+// between them (open to everyone vs. clinical staff only) justified.
 //
 // EVERY STEP OF EVERY GUIDE IS ON THE PAGE. No stepper, no Next button,
 // no attestation, and nothing collapsed by default. That is the exact
@@ -22,8 +28,12 @@ import { emergencyContactsFor } from "@/lib/staff/emergency-contacts";
 // refuses a run against these outright — see the trigger in
 // supabase/staff-emergency.sql.
 //
-// AND IT IS A STATIC SERVER PAGE with no client JavaScript, so it
-// renders on a bad connection in a back corridor.
+// THE EMERGENCY GUIDES THEMSELVES STAY A STATIC SERVER RENDER with no
+// client JavaScript, so they render on a bad connection in a back
+// corridor. The protocol search below them is its own client component,
+// same as it always was on its own page — combining the two pages does
+// not make the guides depend on it; collapsed inside a plain <details>,
+// it costs nothing until somebody who can use it actually opens it.
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +56,13 @@ export default async function LearningPage() {
   );
 
   const phrase = jobRole ? jobPhrase(jobRole, facilityType) : null;
+
+  // Same audience Protocols always had on its own page: a provider or
+  // centre admin by job, or a clinical lead or above by role. Nobody
+  // else even sees the section exists — this is a fold-in, not a
+  // widening of who protocol search is for.
+  const clinical = jobRole === "provider" || jobRole === "center_admin";
+  const seesProtocols = clinical || atLeast(session.role, "clinical_lead");
 
   return (
     <div className="st-page">
@@ -130,6 +147,31 @@ export default async function LearningPage() {
           </p>
         </section>
       ))}
+
+      {/* Folded in from the old standalone /staff/protocols page —
+          collapsed by default, same reason as .st-board-hidden and
+          .st-act-notify elsewhere in the app: zero JS to render closed,
+          and closed on every fresh load rather than remembering it was
+          open last time. Rendered only for the audience that page ever
+          allowed; not shown at all, not shown-then-refused, for anyone
+          else. */}
+      {seesProtocols && (
+        <details className="st-emg-protocols">
+          <summary>Protocols</summary>
+          <p className="st-page-sub" style={{ marginTop: 8 }}>
+            Your clinic&rsquo;s protocols and the guidance loaded alongside
+            them, searchable. Results are the text as written, with its
+            source.
+          </p>
+          <ProtocolSearch />
+          <p className="st-sign-fine">
+            This searches documents. It does not give advice, work out a
+            dose, or know anything about the patient in front of you
+            &mdash; it finds the passage and shows you who wrote it and
+            when.
+          </p>
+        </details>
+      )}
     </div>
   );
 }

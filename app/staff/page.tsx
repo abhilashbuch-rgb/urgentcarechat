@@ -10,6 +10,7 @@ import { factOfTheDay } from "@/lib/staff/history-facts";
 import { firstNameOf, formatSignedAt } from "@/lib/staff/labels";
 import { currentAnnouncement } from "@/lib/staff/whats-new";
 import { listBulletins, type Bulletin } from "@/lib/staff/bulletins";
+import { onDutyToday, type OnDutyRole } from "@/lib/staff/roster-today";
 import StaffClock from "@/app/components/staff/StaffClock";
 import ShortcutGrid from "@/app/components/staff/ShortcutGrid";
 
@@ -59,6 +60,11 @@ interface Overview {
    *  here rather than in the component so it uses the same job_role the
    *  rest of this page already resolved, instead of a second lookup. */
   shortcuts: NavItem[];
+  /** Who is scheduled today, by job — see lib/staff/roster-today.ts.
+   *  Shown to everyone, not just admin-tier: a front desk hire on their
+   *  third shift benefits from knowing who the MA on today is at least
+   *  as much as an owner does. */
+  onDuty: OnDutyRole[];
 }
 
 export default async function StaffHome() {
@@ -90,8 +96,10 @@ export default async function StaffHome() {
         // Overview.hasProfile comment. Nothing below the profile row
         // means anything for this person in this org, so it isn't
         // queried.
-        const orgRow = await sql<{ name: string; timezone: string }[]>`
-          select name, timezone from staff.orgs where slug = ${org}
+        const orgRow = await sql<
+          { name: string; timezone: string; facility_type: string | null }[]
+        >`
+          select name, timezone, facility_type from staff.orgs where slug = ${org}
         `;
         return {
           hasProfile: false,
@@ -106,11 +114,14 @@ export default async function StaffHome() {
           credentials: [],
           timezone: orgRow[0]?.timezone ?? "America/New_York",
           shortcuts: navFor(session.role, null),
+          onDuty: await onDutyToday(sql, org, orgRow[0]?.facility_type ?? null),
         };
       }
       const outstanding = await outstandingFor(sql, session.uid);
-      const [orgRow] = await sql<{ timezone: string }[]>`
-        select timezone from staff.orgs where slug = ${org}
+      const [orgRow] = await sql<
+        { timezone: string; facility_type: string | null }[]
+      >`
+        select timezone, facility_type from staff.orgs where slug = ${org}
       `;
       return {
         hasProfile: true,
@@ -125,6 +136,7 @@ export default async function StaffHome() {
         obligations: seesObligations ? await summary(sql, org) : null,
         timezone: orgRow?.timezone ?? "America/New_York",
         shortcuts: navFor(session.role, profile.job_role ?? null),
+        onDuty: await onDutyToday(sql, org, orgRow?.facility_type ?? null),
       };
     });
   } catch (err) {
@@ -285,6 +297,29 @@ export default async function StaffHome() {
             <span className="st-callout-sub">Open the register &rarr;</span>
           </Link>
         )}
+
+      {/* WHO'S EXPECTED, NOT WHO'S CLOCKED IN. Read from the schedule an
+          administrator set on each person's Team page (workdays), not
+          from any sign-in — see lib/staff/roster-today.ts. Informational
+          rather than urgent or personal, which is why it sits after the
+          actionable callouts above and before the social Notices below.
+          Shown to everyone: a front desk hire on their third shift wants
+          to know who today's medical assistant is as much as an owner
+          does. Silent, same as everything else here, when nobody has
+          been scheduled at all yet. */}
+      {overview && overview.onDuty.length > 0 && (
+        <section className="st-onduty">
+          <h2 className="st-h2">On duty today</h2>
+          <ul className="st-onduty-list">
+            {overview.onDuty.map((r) => (
+              <li key={r.jobRole} className="st-onduty-row">
+                <span className="st-onduty-role">{r.label}</span>
+                <span className="st-onduty-people">{r.people.join(", ")}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* ONE-WAY, ON PURPOSE — a posting board, not a chat. See
           supabase/staff-bulletins.sql for why: a reply thread the product

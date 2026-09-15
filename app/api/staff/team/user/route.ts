@@ -144,6 +144,26 @@ export async function POST(req: NextRequest) {
         return { ok: "digest_updated" as const };
       }
 
+      // Which days this person normally works — see
+      // supabase/staff-workdays.sql. Not a clock, just a schedule an
+      // administrator is recording; the checkbox list can be empty
+      // (nothing checked = not set / doesn't work a fixed schedule).
+      if (action === "set_workdays") {
+        const days = form
+          .getAll("weekday")
+          .map((v) => Number(v))
+          .filter((n) => Number.isInteger(n) && n >= 1 && n <= 7);
+        await sql`
+          update staff.users set workdays = ${sql.array(days)} where id = ${userId}
+        `;
+        await sql`
+          insert into staff.audit_log (org_slug, actor_id, action, entity, entity_id, detail)
+          values (${org}, ${session.uid}, 'workdays_changed', 'user', ${userId},
+                  ${sql.json({ workdays: days })})
+        `;
+        return { ok: "workdays_updated" as const };
+      }
+
       return { error: "bad_action" as const };
     });
 
