@@ -6,6 +6,7 @@ import { teamStatus } from "@/lib/staff/compliance";
 import { signinHistory } from "@/lib/staff/signins";
 import { atLeast, ROLE_LABELS } from "@/lib/staff/roles";
 import { profileGaps } from "@/lib/staff/profile-complete";
+import { WEEKDAY_CHIPS } from "@/lib/staff/labels";
 import SigninHistory from "@/app/components/staff/SigninHistory";
 
 // One team member, from the administrator's side — currently just their
@@ -15,20 +16,6 @@ import SigninHistory from "@/app/components/staff/SigninHistory";
 // row scan, not a new table to keep in sync with staff.users.
 
 export const dynamic = "force-dynamic";
-
-// ISO weekday numbers, matching staff.users.workdays and every other
-// day-of-week column in this codebase (staff.form_templates.due_weekday
-// — see supabase/staff-due-weekday.sql). Monday first, because that's
-// how a work week reads, not how Postgres' own dow numbering does.
-const WEEKDAYS = [
-  { value: 1, label: "Mon" },
-  { value: 2, label: "Tue" },
-  { value: 3, label: "Wed" },
-  { value: 4, label: "Thu" },
-  { value: 5, label: "Fri" },
-  { value: 6, label: "Sat" },
-  { value: 7, label: "Sun" },
-] as const;
 
 export default async function TeamMemberPage({
   params,
@@ -197,7 +184,7 @@ export default async function TeamMemberPage({
             <input type="hidden" name="user_id" value={id} />
             <input type="hidden" name="action" value="set_workdays" />
             <div className="st-workday-picker" role="group" aria-label="Workdays">
-              {WEEKDAYS.map((d) => (
+              {WEEKDAY_CHIPS.map((d) => (
                 <label key={d.value} className="st-workday-chip">
                   <input
                     type="checkbox"

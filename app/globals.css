@@ -7124,6 +7124,21 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
   .st-invite-go { width: 100%; }
 }
 .st-invite-pending { margin-top: 22px; }
+
+/* Shift assignments (lib/staff/shift-assignments.ts) — a plain row
+   list, not a table: three short facts and a remove button, the same
+   weight as a pending invite row rather than the full roster table
+   below it. */
+.st-assignment-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-top: 1px solid var(--rule);
+  list-style: none;
+}
+.st-assignment-row:first-child { border-top: none; }
 .st-flag-admin {
   display: inline-block;
   margin-left: 8px;

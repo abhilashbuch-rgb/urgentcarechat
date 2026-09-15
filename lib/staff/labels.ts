@@ -10,6 +10,44 @@ export const CATEGORY_LABELS: Record<string, string> = {
   operations: "Operations",
 };
 
+// ISO weekday numbers (1=Monday..7=Sunday), matching staff.users.workdays
+// — see supabase/staff-workdays.sql. Full names, for reading a schedule
+// back in a sentence; the short Mon/Tue/... chips on the admin schedule
+// picker (app/staff/team/[id]/page.tsx) are their own, deliberately
+// compact list for a checkbox row, not a duplicate of this one.
+export const WEEKDAY_LABELS: Record<number, string> = {
+  1: "Monday",
+  2: "Tuesday",
+  3: "Wednesday",
+  4: "Thursday",
+  5: "Friday",
+  6: "Saturday",
+  7: "Sunday",
+};
+
+/** "Not set yet" for an empty schedule — see staff-workdays.sql's own
+ *  comment on why empty means unset, not "never works." Otherwise the
+ *  days in order, by name, the way a person reads their own schedule
+ *  back rather than the picker's own Mon/Tue/Wed shorthand. */
+export function workdaysLabel(workdays: number[]): string {
+  if (workdays.length === 0) return "Not set yet";
+  return workdays.map((d) => WEEKDAY_LABELS[d]).filter(Boolean).join(", ");
+}
+
+/** The short chip list the recurring workday picker uses
+ *  (app/staff/team/[id]/page.tsx) — grouped here with WEEKDAY_LABELS
+ *  and workdaysLabel() rather than declared inline, since all three
+ *  read the same 1=Monday..7=Sunday convention. */
+export const WEEKDAY_CHIPS = [
+  { value: 1, label: "Mon" },
+  { value: 2, label: "Tue" },
+  { value: 3, label: "Wed" },
+  { value: 4, label: "Thu" },
+  { value: 5, label: "Fri" },
+  { value: 6, label: "Sat" },
+  { value: 7, label: "Sun" },
+] as const;
+
 // One timezone for every rendered timestamp. The stored value is always
 // UTC; this is only how it is shown.
 const RECORD_TZ = "America/New_York";
