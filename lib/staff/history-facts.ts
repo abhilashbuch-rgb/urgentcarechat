@@ -39,7 +39,7 @@ export const HISTORY_FACTS: string[] = [
 /** Day of the year, 1-366, in the given IANA zone — so a clinic in
  *  Phoenix and one in Narberth are never mid-flip on the same fact at
  *  the same moment their clocks disagree. */
-function dayOfYear(now: Date, timezone: string): number {
+export function dayOfYear(now: Date, timezone: string): number {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: timezone,
     year: "numeric",

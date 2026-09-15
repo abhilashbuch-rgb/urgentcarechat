@@ -163,6 +163,10 @@ export interface TeamMember {
   last_signed_at: string | null;
   last_seen_at: string | null;
   wants_digest: boolean;
+  /** Whether this person gets the 8am morning-huddle email on days they
+   *  work — see supabase/staff-morning-huddle.sql. Default true, unlike
+   *  wants_digest. */
+  wants_morning_huddle: boolean;
   active: boolean;
   mfa_enrolled: boolean;
   mfa_required: boolean;
@@ -189,6 +193,7 @@ export async function teamStatus(sql: StaffSql): Promise<TeamMember[]> {
            u.active,
            u.last_seen_at::text as last_seen_at,
            u.wants_digest,
+           u.wants_morning_huddle,
            (u.totp_confirmed_at is not null) as mfa_enrolled,
            (u.role = any (o.mfa_required_roles)) as mfa_required,
            (u.person_key <> u.id) as is_linked,
