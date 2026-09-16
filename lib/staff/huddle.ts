@@ -1,5 +1,5 @@
 import type { StaffSql } from "@/lib/staff/db";
-import { renderEmailHtml, type EmailSection } from "@/lib/staff/email-html";
+import { renderHuddleEmailHtml } from "@/lib/staff/email-html";
 import { jobLabel } from "@/lib/staff/roles";
 import { dayOfYear } from "@/lib/staff/history-facts";
 import { listBulletins } from "@/lib/staff/bulletins";
@@ -144,33 +144,17 @@ export async function huddleFor(
   }
   lines.push("", quote);
 
-  const sections: EmailSection[] = [
-    {
-      heading: agendaHeading,
-      tone: late.length > 0 ? "critical" : dueOnly.length > 0 ? "warn" : "good",
-      items:
-        late.length + dueOnly.length === 0
-          ? [{ primary: "Nothing due for you right now." }]
-          : [
-              ...late.map((t) => ({ primary: labelFor(t.name, t.slot), secondary: "Late — not filed" })),
-              ...dueOnly.map((t) => ({ primary: labelFor(t.name, t.slot), secondary: "Due today" })),
-            ],
-    },
-    {
-      heading: "Notes from the center admin",
-      tone: "muted",
-      items: notes.map((n) => ({
-        primary: n.body,
-        secondary: n.author_name ?? n.author_email,
-      })),
-    },
-  ];
-
-  const html = renderEmailHtml({
-    title: `Good morning, ${first}`,
-    intro: quote,
-    sections,
-    footerLines: [`${org} · times in ${timezone}`],
+  const html = renderHuddleEmailHtml({
+    firstName: first,
+    org,
+    agendaHeading,
+    rows: [
+      ...late.map((t) => ({ task: t.name, time: t.slot.toUpperCase(), status: "Late" as const })),
+      ...dueOnly.map((t) => ({ task: t.name, time: t.slot.toUpperCase(), status: "Due" as const })),
+    ],
+    notes: notes.map((n) => ({ body: n.body, author: n.author_name ?? n.author_email })),
+    quote,
+    timezone,
   });
 
   return {
