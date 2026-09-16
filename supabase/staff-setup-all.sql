@@ -1347,16 +1347,16 @@ $json$::jsonb),
  'clinical', 'per_shift', array['am','pm'], 20,
 $json$
 {
-  "standard": "Vaccine storage 36-46 °F (2-8 °C). Any excursion means quarantine the stock and call the manufacturer before discarding anything.",
+  "standard": "Vaccine storage 2-8 °C. Any excursion means quarantine the stock and call the manufacturer before discarding anything.",
   "fields": [
     { "id": "unit", "label": "Unit", "type": "select",
       "options": ["Vaccine fridge", "Medication fridge", "Lab reagent fridge"] },
     { "id": "current_f", "label": "Current", "type": "number",
-      "unit": "°F", "min": 36, "max": 46, "step": 0.1, "aiRead": true },
+      "unit": "°C", "min": 2, "max": 8, "step": 0.1, "aiRead": true, "presets": [3.0, 3.2, 3.4, 3.6, 3.8] },
     { "id": "min_24h_f", "label": "24-hour minimum", "type": "number",
-      "unit": "°F", "min": 36, "max": 46, "step": 0.1 },
+      "unit": "°C", "min": 2, "max": 8, "step": 0.1 },
     { "id": "max_24h_f", "label": "24-hour maximum", "type": "number",
-      "unit": "°F", "min": 36, "max": 46, "step": 0.1 },
+      "unit": "°C", "min": 2, "max": 8, "step": 0.1 },
     { "id": "memory_reset", "label": "Min/max memory reset after reading", "type": "boolean",
       "expected": true,
       "help": "Reset it, or tomorrow's numbers are today's all over again." }
@@ -2740,6 +2740,78 @@ alter table staff.users
   drop column if exists wants_morning_huddle;
 
 
+-- ========== staff-task-followups.sql ==========
+
+-- Two escalating "still not done" reminders after the morning huddle,
+-- for anyone who still has something due or late at that hour. See
+-- lib/staff/huddle.ts's followUpFor() and app/api/cron/alerts/route.ts.
+--
+-- NO OPT-OUT, same reasoning as huddle_at (staff-morning-huddle.sql):
+-- the owner was explicit this is an admin decision about how the
+-- clinic runs, not a personal subscription preference. Nobody gets a
+-- switch to turn it off, including the owner's own account.
+--
+-- SILENT WHEN THERE IS NOTHING LEFT TO CHASE. followUpFor() returns
+-- null and nothing is sent when a person has already finished
+-- everything due — this is a chase, not a check-in, and a chase with
+-- nothing to chase is noise.
+--
+-- Same shape as huddle_at / digest_am_at / digest_pm_at: a plain
+-- per-org local time the hourly cron compares itself against, not a
+-- second cron job. Defaults are noon and mid-afternoon, matching what
+-- was actually asked for.
+alter table staff.orgs
+  add column if not exists checkin_1_at time not null default '12:00';
+alter table staff.orgs
+  add column if not exists checkin_2_at time not null default '15:00';
+
+comment on column staff.orgs.checkin_1_at is
+  'Local time the first escalating "still not done" reminder goes out -- only to someone who still has something due or late. See app/api/cron/alerts/route.ts.';
+comment on column staff.orgs.checkin_2_at is
+  'Local time the final, strongest "still not done" reminder goes out. Same targeting as checkin_1_at.';
+
+
+-- ========== staff-reminder-times.sql ==========
+
+-- Owner-only, deliberately stricter than the rest of /staff/settings
+-- (manager-level). staff.orgs' RLS requires a super admin to write the
+-- row directly, so this reaches exactly these five columns through a
+-- SECURITY DEFINER function and nothing else on the row.
+create or replace function staff.update_reminder_times(
+  p_org        text,
+  p_huddle_at  text,
+  p_digest_am  text,
+  p_digest_pm  text,
+  p_checkin_1  text,
+  p_checkin_2  text
+) returns void
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+begin
+  update staff.orgs set
+    huddle_at    = p_huddle_at::time,
+    digest_am_at = p_digest_am::time,
+    digest_pm_at = p_digest_pm::time,
+    checkin_1_at = p_checkin_1::time,
+    checkin_2_at = p_checkin_2::time
+  where slug = p_org;
+
+  if not found then
+    raise exception 'no such organization: %', p_org
+      using errcode = 'no_data_found';
+  end if;
+end $$;
+
+revoke all on function staff.update_reminder_times(
+  text, text, text, text, text, text
+) from public;
+grant execute on function staff.update_reminder_times(
+  text, text, text, text, text, text
+) to staff_app;
+
+
 -- ========== staff-shift-assignments.sql ==========
 
 create table if not exists staff.shift_assignments (
@@ -2917,7 +2989,7 @@ on conflict (org_slug, job_role) do update
 --   2. Seed the standing directives each role works under.
 --
 -- ACCURACY NOTE. The thresholds and intervals here come from the same
--- sources as the log seed: 36-46 degF for vaccine storage, 1000 PSI on
+-- sources as the log seed: 2-8 degC for vaccine storage, 1000 PSI on
 -- an E-cylinder, ANSI Z358.1's weekly eyewash activation, 28-day
 -- beyond-use dating on an opened multi-dose vial. The DIRECTIVES are
 -- practice rules, not regulations, except where a citation is given —
@@ -3051,7 +3123,7 @@ begin
     -- Medical assistant
     ('fridge-excursion', array['medical_assistant']::staff.job_role[],
      'An out-of-range fridge means quarantine first, log second',
-     'If the vaccine fridge reads outside 36-46 degF: do not discard, do not keep using it. Move stock to the backup unit, tag it DO NOT USE, then log the reading and call the manufacturer or the immunisation programme for a viability decision.',
+     'If the vaccine fridge reads outside 2-8 degC: do not discard, do not keep using it. Move stock to the backup unit, tag it DO NOT USE, then log the reading and call the manufacturer or the immunisation programme for a viability decision.',
      'Discarding is expensive and often unnecessary; continuing to use it is the one that reaches a patient. Neither call is yours to make alone, and the manufacturer will ask for the min/max, so read it before you move anything.',
      null, true, 60),
 
@@ -5732,7 +5804,7 @@ grant select on staff.org_theme to staff_app;
 -- --------------
 -- staff-logs.sql required a corrective action on any out-of-range
 -- response, at three characters or more. That stopped an empty field
--- and nothing else. Tested by submitting a vaccine fridge at 52 degF
+-- and nothing else. Tested by submitting a vaccine fridge at 11 degC
 -- with corrective_action "n/a": accepted, flagged, filed.
 --
 -- The gate itself was never the weak part — it is enforced in the
@@ -6912,7 +6984,7 @@ grant execute on function staff.invite_for_email(text) to staff_app;
 -- tap targets in the UI. It changes nothing about what gets stored or
 -- checked: a tapped preset is the same number a typed one would be, run
 -- through the same min/max evaluation in lib/staff/forms.ts, so a chip
--- for 38.4°F still flags red if the template's max is 38. There is no
+-- for 3.6°C still flags red if the template's max is 3. There is no
 -- "confirm all" button anywhere in this file — each reading is still its
 -- own tap, because a single button that signs off a fridge, an AED, two
 -- O2 cylinders and a suction unit at once is the checkbox-sheet problem
@@ -6927,7 +6999,7 @@ update staff.form_templates t
 set schema_json = jsonb_set(
   t.schema_json,
   array['fields', (p.ord - 1)::text],
-  p.value || '{"presets": [37.8, 38.0, 38.2, 38.4, 38.6]}'::jsonb
+  p.value || '{"presets": [3.0, 3.2, 3.4, 3.6, 3.8]}'::jsonb
 )
 from staff.form_templates f
 cross join lateral jsonb_array_elements(f.schema_json->'fields') with ordinality as p(value, ord)
@@ -8382,7 +8454,7 @@ from (values
    array['medical_assistant']::staff.job_role[],
    $json$
    {
-     "standard": "Refrigerated vaccine 2-8 degC (36-46 degF). Frozen vaccine -50 to -15 degC. Record the current, minimum and maximum from the continuous monitor at each reading. An excursion means quarantine and call the manufacturer or the immunization program BEFORE discarding anything.",
+     "standard": "Refrigerated vaccine 2-8 degC. Frozen vaccine -50 to -15 degC. Record the current, minimum and maximum from the continuous monitor at each reading. An excursion means quarantine and call the manufacturer or the immunization program BEFORE discarding anything.",
      "fields": [
        { "id": "unit", "label": "Storage unit", "type": "select",
          "options": ["Refrigerator", "Freezer"] },
@@ -9618,7 +9690,7 @@ grant select on staff.activity_today to staff_app;
 -- supersedes_id, and the oldest — the mistake — is the one with null.
 -- Every read path tested `supersedes_id is null`, which selects the
 -- ORIGINAL. Switch amendments on without this and the board, the
--- surveyor vault and today's log all keep showing 55°F forever while the
+-- surveyor vault and today's log all keep showing 13°C forever while the
 -- correction sits in the table unread.
 --
 -- The head of a chain is the row that nothing supersedes. That cannot be
@@ -10997,8 +11069,8 @@ $json$
     { "id": "cycle_type", "label": "Cycle", "type": "select",
       "options": ["Wrapped goods", "Unwrapped goods", "Pouches", "Immediate-use (flash)"],
       "help": "Immediate-use is for a dropped instrument needed now, not for routine turnover." },
-    { "id": "temperature_f", "label": "Temperature reached", "type": "number", "unit": "degF",
-      "min": 250, "max": 285, "step": 1, "presets": [250, 270, 273],
+    { "id": "temperature_f", "label": "Temperature reached", "type": "number", "unit": "degC",
+      "min": 121, "max": 141, "step": 1, "presets": [121, 132, 134],
       "help": "Off the gauge or the printout, not off the dial setting." },
     { "id": "exposure_minutes", "label": "Exposure time", "type": "number", "unit": "min",
       "min": 3, "max": 90, "step": 1, "presets": [4, 15, 30] },
@@ -11030,7 +11102,7 @@ $json$::jsonb, true, false),
 -- sometimes controls genuinely were not run, and a form that cannot
 -- record that gets an invented "In range" instead. But it flags, so the
 -- filing asks for one line saying why — the same pressure the fridge log
--- puts on a 52-degree reading. A monthly QC record showing both controls
+-- puts on a 11-degree reading. A monthly QC record showing both controls
 -- not run, filed as clean, is exactly the hollow record this product
 -- exists to stop.
 --

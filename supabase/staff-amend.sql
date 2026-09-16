@@ -188,7 +188,7 @@ grant select on staff.activity_today to staff_app;
 -- supersedes_id, and the oldest — the mistake — is the one with null.
 -- Every read path tested `supersedes_id is null`, which selects the
 -- ORIGINAL. Switch amendments on without this and the board, the
--- surveyor vault and today's log all keep showing 55°F forever while the
+-- surveyor vault and today's log all keep showing 13°C forever while the
 -- correction sits in the table unread.
 --
 -- The head of a chain is the row that nothing supersedes. That cannot be

@@ -1373,16 +1373,16 @@ $json$::jsonb),
  'clinical', 'per_shift', array['am','pm'], 20,
 $json$
 {
-  "standard": "Vaccine storage 36-46 °F (2-8 °C). Any excursion means quarantine the stock and call the manufacturer before discarding anything.",
+  "standard": "Vaccine storage 2-8 °C. Any excursion means quarantine the stock and call the manufacturer before discarding anything.",
   "fields": [
     { "id": "unit", "label": "Unit", "type": "select",
       "options": ["Vaccine fridge", "Medication fridge", "Lab reagent fridge"] },
     { "id": "current_f", "label": "Current", "type": "number",
-      "unit": "°F", "min": 36, "max": 46, "step": 0.1, "aiRead": true },
+      "unit": "°C", "min": 2, "max": 8, "step": 0.1, "aiRead": true, "presets": [3.0, 3.2, 3.4, 3.6, 3.8] },
     { "id": "min_24h_f", "label": "24-hour minimum", "type": "number",
-      "unit": "°F", "min": 36, "max": 46, "step": 0.1 },
+      "unit": "°C", "min": 2, "max": 8, "step": 0.1 },
     { "id": "max_24h_f", "label": "24-hour maximum", "type": "number",
-      "unit": "°F", "min": 36, "max": 46, "step": 0.1 },
+      "unit": "°C", "min": 2, "max": 8, "step": 0.1 },
     { "id": "memory_reset", "label": "Min/max memory reset after reading", "type": "boolean",
       "expected": true,
       "help": "Reset it, or tomorrow's numbers are today's all over again." }
@@ -2765,6 +2765,78 @@ comment on column staff.orgs.huddle_at is
 -- report and an excursion alert now, not like the optional digest.
 alter table staff.users
   drop column if exists wants_morning_huddle;
+
+
+-- ========== staff-task-followups.sql ==========
+
+-- Two escalating "still not done" reminders after the morning huddle,
+-- for anyone who still has something due or late at that hour. See
+-- lib/staff/huddle.ts's followUpFor() and app/api/cron/alerts/route.ts.
+--
+-- NO OPT-OUT, same reasoning as huddle_at (staff-morning-huddle.sql):
+-- the owner was explicit this is an admin decision about how the
+-- clinic runs, not a personal subscription preference. Nobody gets a
+-- switch to turn it off, including the owner's own account.
+--
+-- SILENT WHEN THERE IS NOTHING LEFT TO CHASE. followUpFor() returns
+-- null and nothing is sent when a person has already finished
+-- everything due — this is a chase, not a check-in, and a chase with
+-- nothing to chase is noise.
+--
+-- Same shape as huddle_at / digest_am_at / digest_pm_at: a plain
+-- per-org local time the hourly cron compares itself against, not a
+-- second cron job. Defaults are noon and mid-afternoon, matching what
+-- was actually asked for.
+alter table staff.orgs
+  add column if not exists checkin_1_at time not null default '12:00';
+alter table staff.orgs
+  add column if not exists checkin_2_at time not null default '15:00';
+
+comment on column staff.orgs.checkin_1_at is
+  'Local time the first escalating "still not done" reminder goes out -- only to someone who still has something due or late. See app/api/cron/alerts/route.ts.';
+comment on column staff.orgs.checkin_2_at is
+  'Local time the final, strongest "still not done" reminder goes out. Same targeting as checkin_1_at.';
+
+
+-- ========== staff-reminder-times.sql ==========
+
+-- Owner-only, deliberately stricter than the rest of /staff/settings
+-- (manager-level). staff.orgs' RLS requires a super admin to write the
+-- row directly, so this reaches exactly these five columns through a
+-- SECURITY DEFINER function and nothing else on the row.
+create or replace function staff.update_reminder_times(
+  p_org        text,
+  p_huddle_at  text,
+  p_digest_am  text,
+  p_digest_pm  text,
+  p_checkin_1  text,
+  p_checkin_2  text
+) returns void
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+begin
+  update staff.orgs set
+    huddle_at    = p_huddle_at::time,
+    digest_am_at = p_digest_am::time,
+    digest_pm_at = p_digest_pm::time,
+    checkin_1_at = p_checkin_1::time,
+    checkin_2_at = p_checkin_2::time
+  where slug = p_org;
+
+  if not found then
+    raise exception 'no such organization: %', p_org
+      using errcode = 'no_data_found';
+  end if;
+end $$;
+
+revoke all on function staff.update_reminder_times(
+  text, text, text, text, text, text
+) from public;
+grant execute on function staff.update_reminder_times(
+  text, text, text, text, text, text
+) to staff_app;
 
 
 -- ========== staff-shift-assignments.sql ==========

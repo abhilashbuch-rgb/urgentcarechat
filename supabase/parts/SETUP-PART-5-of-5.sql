@@ -436,8 +436,8 @@ $json$
     { "id": "cycle_type", "label": "Cycle", "type": "select",
       "options": ["Wrapped goods", "Unwrapped goods", "Pouches", "Immediate-use (flash)"],
       "help": "Immediate-use is for a dropped instrument needed now, not for routine turnover." },
-    { "id": "temperature_f", "label": "Temperature reached", "type": "number", "unit": "degF",
-      "min": 250, "max": 285, "step": 1, "presets": [250, 270, 273],
+    { "id": "temperature_f", "label": "Temperature reached", "type": "number", "unit": "degC",
+      "min": 121, "max": 141, "step": 1, "presets": [121, 132, 134],
       "help": "Off the gauge or the printout, not off the dial setting." },
     { "id": "exposure_minutes", "label": "Exposure time", "type": "number", "unit": "min",
       "min": 3, "max": 90, "step": 1, "presets": [4, 15, 30] },
@@ -469,7 +469,7 @@ $json$::jsonb, true, false),
 -- sometimes controls genuinely were not run, and a form that cannot
 -- record that gets an invented "In range" instead. But it flags, so the
 -- filing asks for one line saying why — the same pressure the fridge log
--- puts on a 52-degree reading. A monthly QC record showing both controls
+-- puts on a 11-degree reading. A monthly QC record showing both controls
 -- not run, filed as clean, is exactly the hollow record this product
 -- exists to stop.
 --

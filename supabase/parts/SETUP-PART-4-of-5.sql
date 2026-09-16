@@ -604,7 +604,7 @@ from (values
    array['medical_assistant']::staff.job_role[],
    $json$
    {
-     "standard": "Refrigerated vaccine 2-8 degC (36-46 degF). Frozen vaccine -50 to -15 degC. Record the current, minimum and maximum from the continuous monitor at each reading. An excursion means quarantine and call the manufacturer or the immunization program BEFORE discarding anything.",
+     "standard": "Refrigerated vaccine 2-8 degC. Frozen vaccine -50 to -15 degC. Record the current, minimum and maximum from the continuous monitor at each reading. An excursion means quarantine and call the manufacturer or the immunization program BEFORE discarding anything.",
      "fields": [
        { "id": "unit", "label": "Storage unit", "type": "select",
          "options": ["Refrigerator", "Freezer"] },
@@ -1840,7 +1840,7 @@ grant select on staff.activity_today to staff_app;
 -- supersedes_id, and the oldest — the mistake — is the one with null.
 -- Every read path tested `supersedes_id is null`, which selects the
 -- ORIGINAL. Switch amendments on without this and the board, the
--- surveyor vault and today's log all keep showing 55°F forever while the
+-- surveyor vault and today's log all keep showing 13°C forever while the
 -- correction sits in the table unread.
 --
 -- The head of a chain is the row that nothing supersedes. That cannot be

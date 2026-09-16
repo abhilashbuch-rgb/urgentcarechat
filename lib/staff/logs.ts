@@ -286,7 +286,7 @@ export async function recentLogs(
       join staff.users u on u.id = r.submitted_by
      -- The CURRENT version is the row nothing supersedes, not the row
      -- with a null supersedes_id — that one is the original mistake.
-     -- See staff-amend.sql; this read path would otherwise show 55°F
+     -- See staff-amend.sql; this read path would otherwise show 13°C
      -- forever while the correction sat in the table unread.
      where not exists (
        select 1 from staff.form_responses newer where newer.supersedes_id = r.id

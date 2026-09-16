@@ -9,7 +9,7 @@
 -- tap targets in the UI. It changes nothing about what gets stored or
 -- checked: a tapped preset is the same number a typed one would be, run
 -- through the same min/max evaluation in lib/staff/forms.ts, so a chip
--- for 38.4°F still flags red if the template's max is 38. There is no
+-- for 3.6°C still flags red if the template's max is 3. There is no
 -- "confirm all" button anywhere in this file — each reading is still its
 -- own tap, because a single button that signs off a fridge, an AED, two
 -- O2 cylinders and a suction unit at once is the checkbox-sheet problem
@@ -24,7 +24,7 @@ update staff.form_templates t
 set schema_json = jsonb_set(
   t.schema_json,
   array['fields', (p.ord - 1)::text],
-  p.value || '{"presets": [37.8, 38.0, 38.2, 38.4, 38.6]}'::jsonb
+  p.value || '{"presets": [3.0, 3.2, 3.4, 3.6, 3.8]}'::jsonb
 )
 from staff.form_templates f
 cross join lateral jsonb_array_elements(f.schema_json->'fields') with ordinality as p(value, ord)

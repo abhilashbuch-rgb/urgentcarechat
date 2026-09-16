@@ -1,5 +1,5 @@
 import type { StaffSql } from "@/lib/staff/db";
-import { renderHuddleEmailHtml } from "@/lib/staff/email-html";
+import { renderHuddleEmailHtml, renderEmailHtml, type EmailSection } from "@/lib/staff/email-html";
 import { jobLabel } from "@/lib/staff/roles";
 import { dayOfYear } from "@/lib/staff/history-facts";
 import { listBulletins } from "@/lib/staff/bulletins";
@@ -88,6 +88,37 @@ export async function huddleRecipientsToday(
 
 const labelFor = (name: string, slot: string) => (slot ? `${name} (${slot.toUpperCase()})` : name);
 
+interface OutstandingTask {
+  name: string;
+  slot: string;
+}
+
+/** What's still open for one person's job, right now — the same split
+ *  huddleFor() and followUpFor() both need, so a noon check-in and the
+ *  8am huddle can never disagree about what "still due" means. */
+async function outstandingTasks(
+  sql: StaffSql,
+  org: string,
+  jobRole: string | null
+): Promise<{ late: OutstandingTask[]; dueOnly: OutstandingTask[] }> {
+  const outstanding = await sql<OutstandingTask[]>`
+    select name, slot from staff.todays_logs
+     where org_slug = ${org}
+       and staff.brief_matches(job_roles, ${jobRole}::staff.job_role)
+       and response_id is null
+     order by sort_order, slot
+  `;
+  const late = await sql<OutstandingTask[]>`
+    select name, slot from staff.overdue_today
+     where org_slug = ${org}
+       and staff.brief_matches(job_roles, ${jobRole}::staff.job_role)
+     order by slot, name
+  `;
+  const lateKeys = new Set(late.map((l) => `${l.name}:${l.slot}`));
+  const dueOnly = outstanding.filter((o) => !lateKeys.has(`${o.name}:${o.slot}`));
+  return { late, dueOnly };
+}
+
 /**
  * The good-morning email for one person: a greeting, their own agenda
  * for the day (scoped to their job, same as shiftState()'s Today-page
@@ -106,21 +137,7 @@ export async function huddleFor(
   timezone: string,
   facilityType: string | null
 ): Promise<{ subject: string; body: string; html: string }> {
-  const outstanding = await sql<{ name: string; slot: string }[]>`
-    select name, slot from staff.todays_logs
-     where org_slug = ${org}
-       and staff.brief_matches(job_roles, ${recipient.jobRole}::staff.job_role)
-       and response_id is null
-     order by sort_order, slot
-  `;
-  const late = await sql<{ name: string; slot: string }[]>`
-    select name, slot from staff.overdue_today
-     where org_slug = ${org}
-       and staff.brief_matches(job_roles, ${recipient.jobRole}::staff.job_role)
-     order by slot, name
-  `;
-  const lateKeys = new Set(late.map((l) => `${l.name}:${l.slot}`));
-  const dueOnly = outstanding.filter((o) => !lateKeys.has(`${o.name}:${o.slot}`));
+  const { late, dueOnly } = await outstandingTasks(sql, org, recipient.jobRole);
 
   const notes = await listBulletins(sql, 3);
   const quote = quoteOfTheDay(timezone);
@@ -160,6 +177,85 @@ export async function huddleFor(
 
   return {
     subject: `Good morning, ${first} — ${org}`,
+    body: lines.join("\n"),
+    html,
+  };
+}
+
+export type FollowUpTier = "noon" | "afternoon";
+
+const FOLLOWUP_COPY: Record<FollowUpTier, { label: string; intro: (first: string) => string }> = {
+  noon: {
+    label: "SECOND NOTICE",
+    intro: (first) => `${first}, it's midday and this still is not done. Finish it now.`,
+  },
+  afternoon: {
+    label: "FINAL NOTICE",
+    intro: (first) =>
+      `${first}, this is the last reminder today. This has to get done before your shift ends.`,
+  },
+};
+
+const FOLLOWUP_FOOTER =
+  "This is required, not optional. A task that goes unfiled becomes visible to your center administrator.";
+
+/**
+ * The escalating "still not done" check-in — one at checkin_1_at (noon
+ * by default), one at checkin_2_at (mid-afternoon), only to someone who
+ * still has something outstanding at that hour. See
+ * supabase/staff-task-followups.sql for why this has no opt-out: the
+ * owner was explicit that this is an admin decision about how the
+ * clinic runs, not a personal preference to switch off.
+ *
+ * Returns null rather than an empty notice when there is nothing left
+ * to chase — a "good job, nothing due" email at 3pm is not urgency, it
+ * is noise, and noise is exactly what teaches people to stop reading
+ * these. See renderEmailHtml()'s own comment on the same principle.
+ */
+export async function followUpFor(
+  sql: StaffSql,
+  org: string,
+  recipient: HuddleRecipient,
+  tier: FollowUpTier
+): Promise<{ subject: string; body: string; html: string } | null> {
+  const { late, dueOnly } = await outstandingTasks(sql, org, recipient.jobRole);
+  const count = late.length + dueOnly.length;
+  if (count === 0) return null;
+
+  const first = (recipient.legalName ?? "there").split(" ")[0];
+  const copy = FOLLOWUP_COPY[tier];
+
+  const lines = [
+    copy.label,
+    "",
+    copy.intro(first),
+    "",
+    ...late.map((t) => `  LATE — ${labelFor(t.name, t.slot)}`),
+    ...dueOnly.map((t) => `  DUE — ${labelFor(t.name, t.slot)}`),
+    "",
+    FOLLOWUP_FOOTER,
+  ];
+
+  const sections: EmailSection[] = [
+    {
+      heading: copy.label,
+      tone: "critical",
+      items: [
+        ...late.map((t) => ({ primary: labelFor(t.name, t.slot), secondary: "Late — not filed" })),
+        ...dueOnly.map((t) => ({ primary: labelFor(t.name, t.slot), secondary: "Due today — not filed" })),
+      ],
+    },
+  ];
+
+  const html = renderEmailHtml({
+    title: `${copy.label} — ${count} still not done`,
+    intro: copy.intro(first),
+    sections,
+    footerLines: [FOLLOWUP_FOOTER, org],
+  });
+
+  return {
+    subject: `${copy.label} · ${count} still not done · ${org}`,
     body: lines.join("\n"),
     html,
   };

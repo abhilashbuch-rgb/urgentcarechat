@@ -51,16 +51,16 @@ $json$::jsonb),
  'clinical', 'per_shift', array['am','pm'], 20,
 $json$
 {
-  "standard": "Vaccine storage 36-46 °F (2-8 °C). Any excursion means quarantine the stock and call the manufacturer before discarding anything.",
+  "standard": "Vaccine storage 2-8 °C. Any excursion means quarantine the stock and call the manufacturer before discarding anything.",
   "fields": [
     { "id": "unit", "label": "Unit", "type": "select",
       "options": ["Vaccine fridge", "Medication fridge", "Lab reagent fridge"] },
     { "id": "current_f", "label": "Current", "type": "number",
-      "unit": "°F", "min": 36, "max": 46, "step": 0.1, "aiRead": true },
+      "unit": "°C", "min": 2, "max": 8, "step": 0.1, "aiRead": true, "presets": [3.0, 3.2, 3.4, 3.6, 3.8] },
     { "id": "min_24h_f", "label": "24-hour minimum", "type": "number",
-      "unit": "°F", "min": 36, "max": 46, "step": 0.1 },
+      "unit": "°C", "min": 2, "max": 8, "step": 0.1 },
     { "id": "max_24h_f", "label": "24-hour maximum", "type": "number",
-      "unit": "°F", "min": 36, "max": 46, "step": 0.1 },
+      "unit": "°C", "min": 2, "max": 8, "step": 0.1 },
     { "id": "memory_reset", "label": "Min/max memory reset after reading", "type": "boolean",
       "expected": true,
       "help": "Reset it, or tomorrow's numbers are today's all over again." }

@@ -18,7 +18,7 @@ import {
 // Everything on this page used to be writable only by hand in the SQL
 // editor. A clinic that signed up got no coordinates, no alert address
 // and no report subscriber — so the location stamp measured against
-// nothing, an excursion at 55°F emailed nobody, and the digest had no
+// nothing, an excursion at 13°C emailed nobody, and the digest had no
 // recipient. The product looked like it was working and three of its
 // headline features were off.
 //
@@ -51,6 +51,8 @@ const ERRORS: Record<string, string> = {
     "Stripe's billing page isn't configured on this deployment yet.",
   save: "That didn't save. Nothing was changed — try again.",
   forbidden: "Only a manager or administrator can change the clinic's settings.",
+  remindersforbidden: "Only an owner or administrator can change reminder times.",
+  remindertime: "Each reminder time needs an hour and minute, like 08:00.",
 };
 
 interface OrgSettings {
@@ -70,7 +72,16 @@ interface OrgSettings {
   billing_name: string | null;
   card_brand: string | null;
   card_last4: string | null;
+  huddle_at: string;
+  digest_am_at: string;
+  digest_pm_at: string;
+  checkin_1_at: string;
+  checkin_2_at: string;
 }
+
+/** Postgres hands a `time` column back as "08:00:00" — an
+ *  <input type="time"> wants "08:00". */
+const hm = (t: string) => t.slice(0, 5);
 
 export default async function SettingsPage({
   searchParams,
@@ -89,7 +100,9 @@ export default async function SettingsPage({
         select name, timezone, latitude, longitude, geofence_radius_m,
                geofence_mode, owner_alert_email, medical_director_alert_email,
                billing_contact_email, zip, plan, subscription_status,
-               stripe_customer_id, billing_name, card_brand, card_last4
+               stripe_customer_id, billing_name, card_brand, card_last4,
+               huddle_at::text, digest_am_at::text, digest_pm_at::text,
+               checkin_1_at::text, checkin_2_at::text
           from staff.orgs where slug = ${org}
       `
     )[0],
@@ -225,8 +238,8 @@ export default async function SettingsPage({
           <h2 className="st-set-h">Who hears when something is wrong</h2>
           <p className="st-set-b">
             An out-of-range reading is sent immediately, at any hour.
-            Everything else is collected into a digest at 9am and 5pm.
-            Leave an address blank and that person is not told.
+            Everything else is collected into a digest, at the times set
+            below. Leave an address blank and that person is not told.
           </p>
 
           <label className="st-field">
@@ -313,6 +326,98 @@ export default async function SettingsPage({
           Save settings
         </button>
       </form>
+
+      {/* A SEPARATE FORM, POSTING SOMEWHERE ELSE, ON PURPOSE, and
+          owner-only — same reasoning as billing contact further down:
+          a manager can run the rest of this page, but when the
+          morning huddle and both escalating check-ins fire is not a
+          field a manager's own route should be able to touch, and a
+          shared route checked once at the top can only ever be as
+          protected as the loosest thing next to it. Nobody below
+          owner gets a switch for any of these — see
+          supabase/staff-reminder-times.sql. */}
+      {isOwner && (
+        <form
+          className="st-log"
+          method="POST"
+          action="/api/staff/settings/reminders"
+        >
+          <section className="st-set-block">
+            <h2 className="st-set-h">Reminder times</h2>
+            <p className="st-set-b">
+              When these go out — not whether. The morning huddle, both
+              digests, and both escalating &ldquo;still not done&rdquo;
+              check-ins have no opt-out for anyone on this team,
+              including you; this is the one place their timing moves.
+              All times are in the clinic&rsquo;s own timezone, set above.
+            </p>
+
+            <label className="st-field">
+              <span className="st-field-label">Morning huddle</span>
+              <input
+                className="st-input"
+                name="huddle_at"
+                type="time"
+                defaultValue={hm(s.huddle_at)}
+              />
+              <span className="st-field-hint">
+                The good-morning agenda email, to everyone scheduled today.
+              </span>
+            </label>
+
+            <label className="st-field">
+              <span className="st-field-label">Morning digest</span>
+              <input
+                className="st-input"
+                name="digest_am_at"
+                type="time"
+                defaultValue={hm(s.digest_am_at)}
+              />
+            </label>
+
+            <label className="st-field">
+              <span className="st-field-label">Evening digest</span>
+              <input
+                className="st-input"
+                name="digest_pm_at"
+                type="time"
+                defaultValue={hm(s.digest_pm_at)}
+              />
+            </label>
+
+            <label className="st-field">
+              <span className="st-field-label">First check-in</span>
+              <input
+                className="st-input"
+                name="checkin_1_at"
+                type="time"
+                defaultValue={hm(s.checkin_1_at)}
+              />
+              <span className="st-field-hint">
+                &ldquo;SECOND NOTICE&rdquo; — only to whoever still has
+                something due or late at this hour.
+              </span>
+            </label>
+
+            <label className="st-field">
+              <span className="st-field-label">Final check-in</span>
+              <input
+                className="st-input"
+                name="checkin_2_at"
+                type="time"
+                defaultValue={hm(s.checkin_2_at)}
+              />
+              <span className="st-field-hint">
+                &ldquo;FINAL NOTICE&rdquo; — same targeting, later and stronger.
+              </span>
+            </label>
+          </section>
+
+          <button className="st-primary" type="submit">
+            Save reminder times
+          </button>
+        </form>
+      )}
 
       {/* A SEPARATE FORM, POSTING SOMEWHERE ELSE, ON PURPOSE — same
           reason as billing contact below: its own route re-checks

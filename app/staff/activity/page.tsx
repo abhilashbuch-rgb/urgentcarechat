@@ -14,8 +14,8 @@ import ActivityRefresh from "@/app/components/staff/ActivityRefresh";
 // avoid. At a few dozen filings a shift, a twenty-second refresh is
 // indistinguishable from live and costs one query.
 //
-// IT SHOWS AMENDMENTS AS AMENDMENTS. A board that quietly swapped 55°F
-// for 38.5°F would be the same lie as an editable log, just rendered
+// IT SHOWS AMENDMENTS AS AMENDMENTS. A board that quietly swapped 13°C
+// for 3.6°C would be the same lie as an editable log, just rendered
 // rather than stored.
 
 export const dynamic = "force-dynamic";

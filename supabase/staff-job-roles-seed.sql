@@ -9,7 +9,7 @@
 --   2. Seed the standing directives each role works under.
 --
 -- ACCURACY NOTE. The thresholds and intervals here come from the same
--- sources as the log seed: 36-46 degF for vaccine storage, 1000 PSI on
+-- sources as the log seed: 2-8 degC for vaccine storage, 1000 PSI on
 -- an E-cylinder, ANSI Z358.1's weekly eyewash activation, 28-day
 -- beyond-use dating on an opened multi-dose vial. The DIRECTIVES are
 -- practice rules, not regulations, except where a citation is given —
@@ -143,7 +143,7 @@ begin
     -- Medical assistant
     ('fridge-excursion', array['medical_assistant']::staff.job_role[],
      'An out-of-range fridge means quarantine first, log second',
-     'If the vaccine fridge reads outside 36-46 degF: do not discard, do not keep using it. Move stock to the backup unit, tag it DO NOT USE, then log the reading and call the manufacturer or the immunisation programme for a viability decision.',
+     'If the vaccine fridge reads outside 2-8 degC: do not discard, do not keep using it. Move stock to the backup unit, tag it DO NOT USE, then log the reading and call the manufacturer or the immunisation programme for a viability decision.',
      'Discarding is expensive and often unnecessary; continuing to use it is the one that reaches a patient. Neither call is yours to make alone, and the manufacturer will ask for the min/max, so read it before you move anything.',
      null, true, 60),
 

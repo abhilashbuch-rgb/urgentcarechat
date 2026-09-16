@@ -509,7 +509,7 @@ function section3(c: Ctx, b: Binder): void {
       c,
       [
         { label: "Date", width: 70, get: (r) => r.day, mono: true },
-        { label: "Reading", width: 55, get: (r) => (r.current_f != null ? `${r.current_f} F` : "-"), mono: true },
+        { label: "Reading", width: 55, get: (r) => (r.current_f != null ? `${r.current_f} C` : "-"), mono: true },
         { label: "By", width: 110, get: (r) => r.submitted_by ?? "-" },
         { label: "Corrective action", width: 285, get: (r) => r.corrective_action ?? "-" },
       ],
@@ -539,7 +539,7 @@ function section3(c: Ctx, b: Binder): void {
 /**
  * The temperature curve, drawn as vectors.
  *
- * The 36-46F acceptable band is a filled rectangle behind the line, so a
+ * The 2-8C acceptable band is a filled rectangle behind the line, so a
  * surveyor sees at a glance whether the trace ever left it — which is
  * the only question they are asking of this chart.
  */
@@ -560,31 +560,31 @@ function drawTempChart(c: Ctx, b: Binder): void {
   const top = c.y;
   const bottom = top - H;
 
-  // A fixed 30-52F scale rather than one fitted to the data. An
-  // auto-scaled axis makes a 49-degree excursion look identical to a
-  // 38-degree normal day, because both fill the plot.
-  const LO = 30;
-  const HI = 52;
+  // A fixed -2-12C scale rather than one fitted to the data. An
+  // auto-scaled axis makes a 9-degree excursion look identical to a
+  // 3-degree normal day, because both fill the plot.
+  const LO = -2;
+  const HI = 12;
   const yFor = (f: number) => bottom + ((f - LO) / (HI - LO)) * H;
   const xFor = (i: number) => M + (i / (pts.length - 1)) * w;
 
   // Acceptable band.
   c.page.drawRectangle({
     x: M,
-    y: yFor(36),
+    y: yFor(2),
     width: w,
-    height: yFor(46) - yFor(36),
+    height: yFor(8) - yFor(2),
     color: rgb(0.87, 0.93, 0.98),
   });
 
-  for (const f of [36, 46]) {
+  for (const f of [2, 8]) {
     c.page.drawLine({
       start: { x: M, y: yFor(f) },
       end: { x: M + w, y: yFor(f) },
       thickness: 0.6,
       color: rgb(0.55, 0.7, 0.86),
     });
-    c.page.drawText(`${f} F`, {
+    c.page.drawText(`${f} C`, {
       x: M + w + 3,
       y: yFor(f) - 3,
       size: 6.5,
