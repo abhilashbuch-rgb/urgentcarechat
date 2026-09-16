@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withOrg, isDatabaseConfigured } from "@/lib/staff/db";
 import { sweep, digestFor, enqueue, localStamp } from "@/lib/staff/alerts";
 import { SLOT_LABELS } from "@/lib/staff/forms";
-import { huddleRecipientsToday, huddleFor } from "@/lib/staff/huddle";
+import { huddleRecipientsToday, huddleFor, followUpFor, type FollowUpTier } from "@/lib/staff/huddle";
 import { isMailConfigured, send } from "@/lib/mail";
 
 // GET /api/cron/alerts — deliver queued alerts, and file the digests.
@@ -23,6 +23,10 @@ import { isMailConfigured, send } from "@/lib/mail";
 //      good-morning email goes to each person scheduled to work today —
 //      see lib/staff/huddle.ts. Its own time, not digest_am_at: a clinic
 //      can want the huddle at 8 and the digest at 9.
+//   5. If this hour matches checkin_1_at or checkin_2_at, an escalating
+//      "still not done" reminder goes to whoever still has something
+//      due or late at that hour — nobody who has already finished. See
+//      followUpFor() and supabase/staff-task-followups.sql.
 //
 // WHY HOURLY AND NOT EVERY MINUTE. The two things people actually need
 // are "tell me now" for an excursion and "tell me at 9 and at 5" for
@@ -56,6 +60,8 @@ export async function GET(req: NextRequest) {
       due: boolean;
       pmDue: boolean;
       huddleDue: boolean;
+      checkin1Due: boolean;
+      checkin2Due: boolean;
       timezone: string;
       facilityType: string | null;
     }[]>`
@@ -82,7 +88,16 @@ export async function GET(req: NextRequest) {
              (
                date_trunc('hour', now() at time zone timezone)
                  = date_trunc('hour', (now() at time zone timezone)::date + huddle_at)
-             ) as "huddleDue"
+             ) as "huddleDue",
+             -- Same test, against the two escalating check-in times.
+             (
+               date_trunc('hour', now() at time zone timezone)
+                 = date_trunc('hour', (now() at time zone timezone)::date + checkin_1_at)
+             ) as "checkin1Due",
+             (
+               date_trunc('hour', now() at time zone timezone)
+                 = date_trunc('hour', (now() at time zone timezone)::date + checkin_2_at)
+             ) as "checkin2Due"
         from staff.orgs
        where active
     `
@@ -90,7 +105,7 @@ export async function GET(req: NextRequest) {
 
   const results: Record<string, unknown>[] = [];
 
-  for (const { slug, due, pmDue, huddleDue, timezone, facilityType } of orgs) {
+  for (const { slug, due, pmDue, huddleDue, checkin1Due, checkin2Due, timezone, facilityType } of orgs) {
     try {
       const outcome = await withOrg(slug, "platform_super_admin", async (sql) => {
         // Newly-late tasks. The unique index on (org, source_kind,
@@ -203,7 +218,30 @@ export async function GET(req: NextRequest) {
           }
         }
 
-        return { ...(await sweep(sql, slug)), huddled };
+        // The escalating check-ins: same recipient pool as the huddle
+        // (scheduled today), but followUpFor() itself decides who
+        // actually gets one — anyone with nothing outstanding gets
+        // nothing, silently.
+        let checkedIn = 0;
+        const dueTier: FollowUpTier | null = checkin1Due ? "noon" : checkin2Due ? "afternoon" : null;
+        if (dueTier && isMailConfigured()) {
+          const recipients = await huddleRecipientsToday(sql, slug);
+          for (const r of recipients) {
+            try {
+              const f = await followUpFor(sql, slug, r, dueTier);
+              if (!f) continue;
+              await send({ to: r.email, subject: f.subject, text: f.body, html: f.html });
+              checkedIn += 1;
+            } catch (err) {
+              console.error(
+                `[cron-alerts] check-in to ${r.email} failed:`,
+                err instanceof Error ? err.message : "Unknown"
+              );
+            }
+          }
+        }
+
+        return { ...(await sweep(sql, slug)), huddled, checkedIn };
       });
       results.push({ org: slug, ...outcome });
     } catch (err) {
