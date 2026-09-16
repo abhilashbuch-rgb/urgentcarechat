@@ -6,8 +6,8 @@ import { listBulletins } from "@/lib/staff/bulletins";
 
 // The morning huddle: one email at the start of the day, to the people
 // actually scheduled to work it. See supabase/staff-morning-huddle.sql
-// for the two columns behind this (huddle_at, wants_morning_huddle) and
-// app/api/cron/alerts/route.ts for where it is sent from.
+// for huddle_at (the per-org send time) and app/api/cron/alerts/route.ts
+// for where it is sent from. No opt-out — see that file's header.
 //
 // PER PERSON, NOT PER ORG. The AM/PM digest (digestFor, above this file
 // in lib/staff/alerts.ts) is one message about the whole clinic; this is
@@ -61,14 +61,14 @@ export interface HuddleRecipient {
   jobRole: string | null;
 }
 
-/** Everyone who gets today's huddle: active, opted in (default true —
- *  see the column's own comment), and scheduled to work today by their
- *  own workdays. The isodow check is identical to onDutyToday()'s in
- *  lib/staff/roster-today.ts; kept separate because that function
- *  returns a display roster grouped by role, and this one returns
- *  individual send targets — different enough shapes that sharing one
- *  function would mean one of the two callers unpacking data it doesn't
- *  want. */
+/** Everyone who gets today's huddle: active, and scheduled to work
+ *  today by their own workdays — no preference to check, same as an
+ *  excursion alert has none. The isodow check is identical to
+ *  onDutyToday()'s in lib/staff/roster-today.ts; kept separate because
+ *  that function returns a display roster grouped by role, and this one
+ *  returns individual send targets — different enough shapes that
+ *  sharing one function would mean one of the two callers unpacking
+ *  data it doesn't want. */
 export async function huddleRecipientsToday(
   sql: StaffSql,
   org: string
@@ -79,7 +79,6 @@ export async function huddleRecipientsToday(
       join staff.orgs o on o.slug = u.org_slug
      where u.org_slug = ${org}
        and u.active
-       and u.wants_morning_huddle
        and u.job_role is not null
        and extract(isodow from (now() at time zone o.timezone))::smallint = any (u.workdays)
      order by u.legal_name
