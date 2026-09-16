@@ -226,6 +226,21 @@ export const NAV: NavItem[] = [
     operatorOnly: true,
     group: "clinic",
   },
+  // AN ADD-ON, SHOWN REGARDLESS OF WHETHER THIS CLINIC HAS IT ON. The
+  // page itself checks staff.orgs.inventory_addon_enabled and shows a
+  // plain "not turned on yet" state when it's off — see
+  // app/staff/inventory/page.tsx. navFor() has no per-org data to
+  // filter on, only role and job, so hiding the link per-org would mean
+  // widening this function's signature for one item; a visible link
+  // that explains itself costs less and doubles as the way an operator
+  // finds out the add-on exists at all.
+  {
+    href: "/staff/inventory",
+    label: "Inventory",
+    minRole: "staff",
+    operatorOnly: true,
+    group: "clinic",
+  },
   // Billing/subscription itself lives one level deeper, at
   // /staff/settings/clinics, and stays org_admin-only — this page is the
   // clinic's operating settings (alert routing, geofencing, reports),
