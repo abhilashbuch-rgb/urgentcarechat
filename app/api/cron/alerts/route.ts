@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withOrg, isDatabaseConfigured } from "@/lib/staff/db";
 import { sweep, digestFor, enqueue, localStamp } from "@/lib/staff/alerts";
+import { SLOT_LABELS } from "@/lib/staff/forms";
 import { huddleRecipientsToday, huddleFor } from "@/lib/staff/huddle";
 import { isMailConfigured, send } from "@/lib/mail";
 
@@ -102,6 +103,10 @@ export async function GET(req: NextRequest) {
         const nowLocal = localStamp(timezone);
 
         for (const t of late) {
+          // SLOT_LABELS[""] is "Today" — a once-a-day template has no
+          // AM/PM to show, and t.slot.toUpperCase() used to run straight
+          // into the subject/body anyway, producing a blank "()" instead.
+          const slotLabel = SLOT_LABELS[t.slot] ?? t.slot.toUpperCase();
           await enqueue(sql, {
             org: slug,
             kind: "missed_task",
@@ -110,8 +115,8 @@ export async function GET(req: NextRequest) {
             // name, and putting the on-shift staff member's name on
             // "nobody did this" attributes a failure that may not be
             // theirs. The slot and the hour are what an owner acts on.
-            subject: `NOT LOGGED · ${nowLocal} · ${t.name} (${t.slot.toUpperCase()}) · ${slug}`,
-            body: `${t.name} (${t.slot.toUpperCase()}) has not been logged and is now late.`,
+            subject: `NOT LOGGED · ${nowLocal} · ${t.name} (${slotLabel}) · ${slug}`,
+            body: `${t.name} (${slotLabel}) has not been logged and is now late.`,
             sourceKind: "late_template",
             sourceId: t.template_id,
           });

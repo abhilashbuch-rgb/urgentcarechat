@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { chime } from "@/lib/audio/chime";
+import { SLOT_LABELS } from "@/lib/staff/forms";
 
 // The shift reminder: a soft chime and a browser notification when
 // something the person's job owns is due and not done.
@@ -103,13 +104,16 @@ export default function ShiftChime({
       typeof Notification !== "undefined" &&
       Notification.permission === "granted"
     ) {
+      // SLOT_LABELS[""] is "Today" — a once-a-day task has no AM/PM to
+      // show, and .toUpperCase() on its own used to leave blank parens.
+      const slotLabel = (slot: string) => SLOT_LABELS[slot] ?? slot.toUpperCase();
       new Notification(
         fresh.length === 1
-          ? `${fresh[0].name} (${fresh[0].slot.toUpperCase()}) is due`
+          ? `${fresh[0].name} (${slotLabel(fresh[0].slot)}) is due`
           : `${fresh.length} tasks due`,
         {
           body: fresh
-            .map((d) => `${d.name} (${d.slot.toUpperCase()})`)
+            .map((d) => `${d.name} (${slotLabel(d.slot)})`)
             .join(", "),
           tag: "medicin-shift",
         }

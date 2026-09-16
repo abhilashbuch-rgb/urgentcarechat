@@ -3,7 +3,7 @@ import { resolve } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
 import { enqueue, whoAndWhen } from "@/lib/staff/alerts";
 import { loadTemplate, ensureInstance } from "@/lib/staff/logs";
-import { coerce, evaluate, type Answers } from "@/lib/staff/forms";
+import { coerce, evaluate, SLOT_LABELS, type Answers } from "@/lib/staff/forms";
 import {
   classify,
   isPlausible,
@@ -205,6 +205,15 @@ export async function POST(req: NextRequest) {
         geoRow?.timezone ?? "UTC"
       );
 
+      // "am"/"pm" for a twice-daily form, "" for a once-a-day one — and ""
+      // has its own real label ("Today"), not nothing. slot.toUpperCase()
+      // used to run straight into the subject/body for every slot value
+      // including "", which is how a once-a-day check like sharps
+      // containers ended up alerting as "Sharps containers () is out of
+      // range" — blank parens that read like a missing reading, when
+      // nothing was actually missing; the form just has no AM/PM to show.
+      const slotLabel = SLOT_LABELS[slot] ?? slot.toUpperCase();
+
       await enqueue(sql, {
         org,
         kind: flagged ? "excursion" : "log",
@@ -220,13 +229,12 @@ export async function POST(req: NextRequest) {
           : `Logged · ${stamp} · ${template.name} · ${org}`,
         body: flagged
           ? [
-              `${template.name} (${slot.toUpperCase()}) is out of range.`,
-              `Out of range: ${check.outOfRangeLabels.join(", ")}`,
+              `${template.name} (${slotLabel}) is out of range: ${check.outOfRangeLabels.join(", ")}.`,
               `Filed by ${stamp} (${geoRow?.timezone ?? "UTC"})`,
               "",
               `Corrective action recorded: ${corrective}`,
             ].join("\n")
-          : `${template.name} (${slot.toUpperCase()}) logged by ${profileName ?? session.email}. Within range.`,
+          : `${template.name} (${slotLabel}) logged by ${profileName ?? session.email}. Within range.`,
         sourceKind: "form_response",
         sourceId: inserted[0].id,
         submittedBy: session.uid,

@@ -3,6 +3,7 @@ import { renderHuddleEmailHtml } from "@/lib/staff/email-html";
 import { jobLabel } from "@/lib/staff/roles";
 import { dayOfYear } from "@/lib/staff/history-facts";
 import { listBulletins } from "@/lib/staff/bulletins";
+import { SLOT_LABELS } from "@/lib/staff/forms";
 
 // The morning huddle: one email at the start of the day, to the people
 // actually scheduled to work it. See supabase/staff-morning-huddle.sql
@@ -149,8 +150,8 @@ export async function huddleFor(
     org,
     agendaHeading,
     rows: [
-      ...late.map((t) => ({ task: t.name, time: t.slot.toUpperCase(), status: "Late" as const })),
-      ...dueOnly.map((t) => ({ task: t.name, time: t.slot.toUpperCase(), status: "Due" as const })),
+      ...late.map((t) => ({ task: t.name, time: SLOT_LABELS[t.slot] ?? t.slot.toUpperCase(), status: "Late" as const })),
+      ...dueOnly.map((t) => ({ task: t.name, time: SLOT_LABELS[t.slot] ?? t.slot.toUpperCase(), status: "Due" as const })),
     ],
     notes: notes.map((n) => ({ body: n.body, author: n.author_name ?? n.author_email })),
     quote,
