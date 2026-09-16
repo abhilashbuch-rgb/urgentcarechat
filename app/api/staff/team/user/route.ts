@@ -144,21 +144,21 @@ export async function POST(req: NextRequest) {
         return { ok: "digest_updated" as const };
       }
 
-      // The morning huddle — see supabase/staff-morning-huddle.sql. On
-      // by default for everyone, unlike wants_digest; this is the one
-      // person turning it off for themselves, same pattern as the
-      // digest toggle just above.
-      if (action === "toggle_huddle") {
-        const wants = String(form.get("wants") ?? "") === "1";
+      // What this person goes by day to day, if different from their
+      // legal signing name — see supabase/staff-preferred-name.sql.
+      // Purely cosmetic: never touches legal_name, so the e-signature
+      // record stays exactly what they actually signed as.
+      if (action === "set_preferred_name") {
+        const preferredName = String(form.get("preferred_name") ?? "").trim().slice(0, 100);
         await sql`
-          update staff.users set wants_morning_huddle = ${wants} where id = ${userId}
+          update staff.users set preferred_name = ${preferredName || null} where id = ${userId}
         `;
         await sql`
           insert into staff.audit_log (org_slug, actor_id, action, entity, entity_id, detail)
-          values (${org}, ${session.uid}, 'huddle_preference_changed', 'user', ${userId},
-                  ${sql.json({ wants_morning_huddle: wants })})
+          values (${org}, ${session.uid}, 'preferred_name_changed', 'user', ${userId},
+                  ${sql.json({ preferred_name: preferredName || null })})
         `;
-        return { ok: "huddle_updated" as const };
+        return { ok: "preferred_name_updated" as const };
       }
 
       // Which days this person normally works — see
@@ -187,15 +187,15 @@ export async function POST(req: NextRequest) {
     if ("error" in outcome) {
       return redirectAfterPost(`/staff/team?e=${outcome.error}`);
     }
-    // These three are read back on the member page itself, not the
-    // team list — each renders its own confirmation there (see
+    // These are read back on the member page itself, not the team list
+    // — each renders its own confirmation there (see
     // app/staff/team/[id]/page.tsx). Previously only digest_updated took
     // this branch, which meant a saved schedule redirected to the team
     // list with a `done` value nothing on that page recognized.
     if (
       outcome.ok === "digest_updated" ||
-      outcome.ok === "huddle_updated" ||
-      outcome.ok === "workdays_updated"
+      outcome.ok === "workdays_updated" ||
+      outcome.ok === "preferred_name_updated"
     ) {
       return redirectAfterPost(`/staff/team/${userId}?done=${outcome.ok}`);
     }

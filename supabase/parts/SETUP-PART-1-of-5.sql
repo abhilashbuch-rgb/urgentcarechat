@@ -2730,19 +2730,19 @@ comment on column staff.users.workdays is
 -- The morning huddle: a good-morning email at the start of the day for
 -- whoever is actually scheduled to work it. See lib/staff/huddle.ts.
 --
--- DEFAULT ON, unlike wants_digest. The owner was explicit: "it should be
--- default for all that work that day" — this isn't a subscription
--- somebody opts into, it's the morning huddle every shift already has
--- informally, just written down and delivered on time. The actual
--- targeting comes from staff.users.workdays (supabase/staff-workdays.sql),
--- not from this switch — a person not scheduled today gets nothing
--- regardless of this column, and this column exists only so a person who
--- genuinely doesn't want it can turn it off for themselves.
-alter table staff.users
-  add column if not exists wants_morning_huddle boolean not null default true;
-
-comment on column staff.users.wants_morning_huddle is
-  'Whether this person gets the 8am morning-huddle email on days staff.users.workdays says they work. Default on — see the header of staff-morning-huddle.sql.';
+-- NO OPT-OUT, ON PURPOSE. The owner was explicit: "it should be default
+-- for all that work that day" — and, later, explicit again that there
+-- should be no toggle at all, for anyone. This isn't a subscription,
+-- it's the morning huddle every shift already has informally, just
+-- written down and delivered on time — the same "administering the
+-- clinic carries seeing this by default" reasoning the EOD report and
+-- an excursion alert already use, with no switch to disable either.
+-- Targeting is entirely staff.users.workdays (staff-workdays.sql): a
+-- person not scheduled today gets nothing, scheduled means they get it.
+--
+-- (An earlier version of this added a wants_morning_huddle column with
+-- a per-person toggle. Removed — see staff-morning-huddle-no-toggle.sql
+-- — before it reached any real use.)
 
 -- Same shape as digest_am_at / digest_pm_at (staff-alerts.sql): a plain
 -- per-org local time the hourly cron compares itself against, not a
@@ -2754,6 +2754,16 @@ alter table staff.orgs
 
 comment on column staff.orgs.huddle_at is
   'Local time the morning-huddle email goes out to everyone scheduled to work today. See app/api/cron/alerts/route.ts.';
+
+
+-- ========== staff-morning-huddle-no-toggle.sql ==========
+
+-- Removes the per-person morning-huddle opt-out. See the header of
+-- staff-morning-huddle.sql for why: the owner was explicit there should
+-- be no toggle at all, for anyone — the huddle behaves like the EOD
+-- report and an excursion alert now, not like the optional digest.
+alter table staff.users
+  drop column if exists wants_morning_huddle;
 
 
 -- ========== staff-shift-assignments.sql ==========
@@ -2783,3 +2793,12 @@ grant select, insert, delete on staff.shift_assignments to staff_app;
 
 comment on table staff.shift_assignments is
   'One date, one job, one name — no login required. See the header of staff-shift-assignments.sql. Merged into onDutyToday() for today''s date; who may write is app/api/staff/team/assignment/route.ts''s concern, not RLS''s.';
+
+
+-- ========== staff-preferred-name.sql ==========
+
+alter table staff.users
+  add column if not exists preferred_name text;
+
+comment on column staff.users.preferred_name is
+  'What this person goes by day to day, if different from legal_name — shown on the on-duty banner and similar casual displays ONLY. Never read for e-signature, audit, or any compliance document; legal_name remains the record of who signed what.';

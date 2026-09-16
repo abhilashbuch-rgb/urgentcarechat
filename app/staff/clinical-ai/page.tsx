@@ -13,7 +13,15 @@ import { redirect } from "next/navigation";
 //
 // See lib/staff/protocols.ts: there is no model in the path and no
 // column anywhere for a generated answer.
+//
+// POINTS AT /staff/learning#protocols, NOT A STANDALONE /staff/protocols
+// PAGE ANYMORE — the two were folded into one door (see the header of
+// app/staff/learning/page.tsx). The fragment targets the collapsed
+// <details id="protocols"> there; every evergreen browser opens a
+// <details> to reveal a fragment target inside it, so this still lands
+// someone on an expanded protocol search, not a page that no longer
+// exists.
 
 export default function ClinicalAiAlias() {
-  redirect("/staff/protocols");
+  redirect("/staff/learning#protocols");
 }

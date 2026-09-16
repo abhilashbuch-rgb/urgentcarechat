@@ -29,21 +29,23 @@ export async function onDutyToday(
   org: string,
   facilityType: string | null
 ): Promise<OnDutyRole[]> {
-  const rows = await sql<{ job_role: string; legal_name: string | null }[]>`
-    select u.job_role, u.legal_name
+  const rows = await sql<{ job_role: string; display_name: string | null }[]>`
+    select u.job_role, coalesce(u.preferred_name, u.legal_name) as display_name
       from staff.users u
       join staff.orgs o on o.slug = u.org_slug
      where u.org_slug = ${org}
        and u.active
        and u.job_role is not null
        and extract(isodow from (now() at time zone o.timezone))::smallint = any (u.workdays)
-     order by u.job_role, u.legal_name
+     order by u.job_role, coalesce(u.preferred_name, u.legal_name)
   `;
 
   const order = ["front_desk", "medical_assistant", "xray_tech", "provider", "center_admin"];
   const byRole = new Map<string, string[]>();
   for (const r of rows) {
-    const name = r.legal_name ?? "unnamed";
+    // preferred_name over legal_name — see supabase/staff-preferred-name.sql
+    // for why this banner is the one place that's the right call.
+    const name = r.display_name ?? "unnamed";
     const list = byRole.get(r.job_role);
     if (list) list.push(name);
     else byRole.set(r.job_role, [name]);

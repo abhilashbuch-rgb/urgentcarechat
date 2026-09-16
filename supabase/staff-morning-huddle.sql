@@ -1,19 +1,19 @@
 -- The morning huddle: a good-morning email at the start of the day for
 -- whoever is actually scheduled to work it. See lib/staff/huddle.ts.
 --
--- DEFAULT ON, unlike wants_digest. The owner was explicit: "it should be
--- default for all that work that day" — this isn't a subscription
--- somebody opts into, it's the morning huddle every shift already has
--- informally, just written down and delivered on time. The actual
--- targeting comes from staff.users.workdays (supabase/staff-workdays.sql),
--- not from this switch — a person not scheduled today gets nothing
--- regardless of this column, and this column exists only so a person who
--- genuinely doesn't want it can turn it off for themselves.
-alter table staff.users
-  add column if not exists wants_morning_huddle boolean not null default true;
-
-comment on column staff.users.wants_morning_huddle is
-  'Whether this person gets the 8am morning-huddle email on days staff.users.workdays says they work. Default on — see the header of staff-morning-huddle.sql.';
+-- NO OPT-OUT, ON PURPOSE. The owner was explicit: "it should be default
+-- for all that work that day" — and, later, explicit again that there
+-- should be no toggle at all, for anyone. This isn't a subscription,
+-- it's the morning huddle every shift already has informally, just
+-- written down and delivered on time — the same "administering the
+-- clinic carries seeing this by default" reasoning the EOD report and
+-- an excursion alert already use, with no switch to disable either.
+-- Targeting is entirely staff.users.workdays (staff-workdays.sql): a
+-- person not scheduled today gets nothing, scheduled means they get it.
+--
+-- (An earlier version of this added a wants_morning_huddle column with
+-- a per-person toggle. Removed — see staff-morning-huddle-no-toggle.sql
+-- — before it reached any real use.)
 
 -- Same shape as digest_am_at / digest_pm_at (staff-alerts.sql): a plain
 -- per-org local time the hourly cron compares itself against, not a

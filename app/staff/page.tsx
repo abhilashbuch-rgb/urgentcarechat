@@ -4,7 +4,7 @@ import { requireStaff } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
 import { getProfile, outstandingFor } from "@/lib/staff/compliance";
 import { summary, type ObligationSummary } from "@/lib/staff/obligations";
-import { ROLE_LABELS, atLeast, runsClinic, navFor, type NavItem } from "@/lib/staff/roles";
+import { ROLE_LABELS, atLeast, runsClinic, shortcutsFor, type NavItem } from "@/lib/staff/roles";
 import { shiftState, myCredentialWarnings, type ShiftState, type ExpiringCredential } from "@/lib/staff/shift";
 import { factOfTheDay } from "@/lib/staff/history-facts";
 import { firstNameOf, formatSignedAt } from "@/lib/staff/labels";
@@ -56,9 +56,10 @@ interface Overview {
   shift: ShiftState;
   credentials: ExpiringCredential[];
   timezone: string;
-  /** navFor()'s own output for this person — see ShortcutGrid.tsx. Built
-   *  here rather than in the component so it uses the same job_role the
-   *  rest of this page already resolved, instead of a second lookup. */
+  /** shortcutsFor()'s own output for this person — see ShortcutGrid.tsx
+   *  and the job-priority note on shortcutsFor() itself. Built here
+   *  rather than in the component so it uses the same job_role the rest
+   *  of this page already resolved, instead of a second lookup. */
   shortcuts: NavItem[];
   /** Who is scheduled today, by job — see lib/staff/roster-today.ts.
    *  Shown to everyone, not just admin-tier: a front desk hire on their
@@ -113,7 +114,7 @@ export default async function StaffHome() {
           shift: await shiftState(sql, null),
           credentials: [],
           timezone: orgRow[0]?.timezone ?? "America/New_York",
-          shortcuts: navFor(session.role, null),
+          shortcuts: shortcutsFor(session.role, null),
           onDuty: await onDutyToday(sql, org, orgRow[0]?.facility_type ?? null),
         };
       }
@@ -135,7 +136,7 @@ export default async function StaffHome() {
         needsOnboarding: !profile.esign_consented_at || !profile.legal_name,
         obligations: seesObligations ? await summary(sql, org) : null,
         timezone: orgRow?.timezone ?? "America/New_York",
-        shortcuts: navFor(session.role, profile.job_role ?? null),
+        shortcuts: shortcutsFor(session.role, profile.job_role ?? null),
         onDuty: await onDutyToday(sql, org, orgRow?.facility_type ?? null),
       };
     });
@@ -376,13 +377,17 @@ export default async function StaffHome() {
         </section>
       )}
 
-      {/* ADMIN-TIER ONLY. A plain staff account's Today stays exactly the
-          lean, shift-focused screen it already was — see the file header
-          comment on why that was deliberate. An administrator's version
-          of "what do I owe this shift" also includes "who do I need to
-          add or remove," and that answer was two taps into a menu
-          instead of on the screen they land on. */}
-      {hasNavAccess && overview && overview.shortcuts.length > 0 && (
+      {/* EVERYONE, SCOPED BY THE SAME navFor() THE DRAWER USES — see
+          shortcutsFor() in lib/staff/roles.ts. A medical assistant's
+          shortcuts are Logs, Rounds, Record an event, Documents, her
+          own record — the job-relevant handful navFor() already
+          filters down to for a plain staff role, just resequenced per
+          job by shortcutsFor(). Nothing admin-only leaks in here; there
+          is no second list to keep in sync, just the nav's own output
+          laid out as tiles. An administrator's version also includes
+          Team, Settings, and the rest they're entitled to — same
+          mechanism, more items. */}
+      {overview && overview.shortcuts.length > 0 && (
         <section className="st-shortcuts-section">
           <h2 className="st-h2">Shortcuts</h2>
           <ShortcutGrid items={overview.shortcuts} />

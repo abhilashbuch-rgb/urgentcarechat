@@ -87,12 +87,43 @@ export default async function TeamMemberPage({
         </div>
       )}
 
-      {done === "huddle_updated" && (
+      {done === "preferred_name_updated" && (
         <div className="st-notice" role="status">
           <strong>Updated.</strong>
-          <span>Their morning-huddle preference now takes effect on the next send.</span>
+          <span>Shows on the on-duty banner from now on.</span>
         </div>
       )}
+
+      <section className="st-record-section">
+        <h2 className="st-h2">Goes by</h2>
+        <p className="st-page-sub" style={{ marginBottom: 12 }}>
+          Their name on file is <strong>{member.legal_name ?? member.name ?? member.email}</strong>
+          &nbsp;&mdash; that never changes here, it&rsquo;s what they
+          actually sign documents as. If the floor knows them by a
+          different name, put it here and the &ldquo;on duty
+          today&rdquo; banner uses it instead. Leave it blank to just
+          use the name on file.
+        </p>
+        {canManage ? (
+          <form method="POST" action="/api/staff/team/user">
+            <input type="hidden" name="user_id" value={id} />
+            <input type="hidden" name="action" value="set_preferred_name" />
+            <input
+              className="st-input"
+              type="text"
+              name="preferred_name"
+              defaultValue={member.preferred_name ?? ""}
+              placeholder={member.legal_name ?? member.name ?? ""}
+              style={{ maxWidth: 260 }}
+            />
+            <button className="st-btn" type="submit" style={{ marginTop: 12 }}>
+              Save
+            </button>
+          </form>
+        ) : (
+          <p className="st-page-sub">Set by the owner.</p>
+        )}
+      </section>
 
       <section className="st-record-section">
         <h2 className="st-h2">Profile complete?</h2>
@@ -141,43 +172,16 @@ export default async function TeamMemberPage({
       </section>
 
       <section className="st-record-section">
-        <h2 className="st-h2">Morning huddle</h2>
-        <p className="st-page-sub" style={{ marginBottom: 12 }}>
-          A good-morning email at the start of their shift — their agenda
-          for the day, any notes from the center admin, and a quote. On
-          by default for every day their schedule below says they work;
-          turning it off here just means this one person stops getting
-          it, on any day.
-        </p>
-        {canManage ? (
-          <form method="POST" action="/api/staff/team/user">
-            <input type="hidden" name="user_id" value={id} />
-            <input type="hidden" name="action" value="toggle_huddle" />
-            <input
-              type="hidden"
-              name="wants"
-              value={member.wants_morning_huddle ? "0" : "1"}
-            />
-            <button className="st-btn" type="submit">
-              {member.wants_morning_huddle
-                ? "Turn off the morning huddle"
-                : "Turn on the morning huddle"}
-            </button>
-          </form>
-        ) : (
-          <p className="st-page-sub">Set by the owner.</p>
-        )}
-      </section>
-
-      <section className="st-record-section">
         <h2 className="st-h2">Schedule</h2>
         <p className="st-page-sub" style={{ marginBottom: 12 }}>
           Which days this person normally works &mdash; not a clock, just
           a schedule. It drives the &ldquo;On duty today&rdquo; list on
-          the Today page and who gets the morning huddle above, so a
-          shift can see at a glance who today&rsquo;s medical assistant
-          or center admin is expected to be. Leave it blank if this
-          person&rsquo;s days vary too much to say.
+          the Today page and the morning-huddle email (their agenda,
+          center-admin notes, and a quote, every day they&rsquo;re
+          scheduled &mdash; no opt-out, same as an urgent alert has
+          none), so a shift can see at a glance who today&rsquo;s
+          medical assistant or center admin is expected to be. Leave it
+          blank if this person&rsquo;s days vary too much to say.
         </p>
         {canManage ? (
           <form method="POST" action="/api/staff/team/user">
