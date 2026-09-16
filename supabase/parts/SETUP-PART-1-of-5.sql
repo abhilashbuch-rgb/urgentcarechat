@@ -1868,6 +1868,7 @@ grant select, insert on staff.stripe_events to staff_app;
 -- Not org-scoped: a Stripe event arrives before we know which org it is
 -- about, and it holds nothing but an id and a type.
 alter table staff.stripe_events enable row level security;
+alter table staff.stripe_events force row level security;
 drop policy if exists staff_stripe_events_app on staff.stripe_events;
 create policy staff_stripe_events_app on staff.stripe_events for all using (true) with check (true);
 

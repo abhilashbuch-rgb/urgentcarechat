@@ -105,6 +105,11 @@ alter table staff.email_campaign_steps enable row level security;
 alter table staff.email_recipients enable row level security;
 alter table staff.email_sends enable row level security;
 
+alter table staff.email_campaigns force row level security;
+alter table staff.email_campaign_steps force row level security;
+alter table staff.email_recipients force row level security;
+alter table staff.email_sends force row level security;
+
 drop policy if exists staff_email_campaigns_app on staff.email_campaigns;
 create policy staff_email_campaigns_app on staff.email_campaigns
   for all to public using (true) with check (true);
