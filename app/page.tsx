@@ -168,6 +168,9 @@ export default function LandingPage() {
         <section className="mh-hero mh-dark">
           <div className="mh-hero-inner">
             <div className="mh-hero-copy">
+              <p className="mh-kicker">
+                Clinical infrastructure for urgent care, primary care, med spa
+              </p>
               <h1 className="mh-h1">
                 Kill the paper binder.
                 <br />
