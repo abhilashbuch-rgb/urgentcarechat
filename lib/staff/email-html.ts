@@ -109,6 +109,97 @@ export function renderEmailHtml(opts: {
 </div>`;
 }
 
+export interface HuddleTaskRow {
+  task: string;
+  time: string;
+  status: "Late" | "Due";
+}
+
+export interface HuddleNote {
+  body: string;
+  author: string;
+}
+
+/**
+ * The morning huddle's own layout: a bordered box, a greeting, and a
+ * bordered task table — the structure the owner asked for after seeing
+ * a franchise-system reminder email — built from this file's own
+ * brand colors (TONE.critical/warn for Late/Due, TONE.muted's bg for
+ * the table header) rather than that email's teal-and-gray palette.
+ * Every other automated email (alerts, digests, EOD reports) keeps
+ * using renderEmailHtml() above; this is deliberately a separate
+ * function so changing the huddle's look can never silently reskin
+ * those.
+ */
+export function renderHuddleEmailHtml(opts: {
+  firstName: string;
+  org: string;
+  agendaHeading: string;
+  rows: HuddleTaskRow[];
+  notes: HuddleNote[];
+  quote: string;
+  timezone: string;
+}): string {
+  const esc = escapeHtml;
+  const headerColor = "#0e7490"; // --volt-ink — the brand accent's text-safe form on a white ground.
+  const borderColor = "#cbd5e1";
+  const headBg = TONE.muted.bg;
+
+  const rowsHtml =
+    opts.rows.length === 0
+      ? `<tr><td colspan="3" style="padding:10px 12px;border:1px solid ${borderColor};font-size:13.5px;color:#48678a;">Nothing due for you right now.</td></tr>`
+      : opts.rows
+          .map((r) => {
+            const statusColor = r.status === "Late" ? TONE.critical.text : TONE.warn.text;
+            return `
+            <tr>
+              <td style="padding:9px 12px;border:1px solid ${borderColor};font-size:13.5px;color:#1a2733;">${esc(r.task)}</td>
+              <td style="padding:9px 12px;border:1px solid ${borderColor};font-size:13.5px;color:#48678a;">${esc(r.time)}</td>
+              <td style="padding:9px 12px;border:1px solid ${borderColor};font-size:13.5px;font-weight:700;color:${statusColor};">${esc(r.status)}</td>
+            </tr>`;
+          })
+          .join("");
+
+  const notesHtml =
+    opts.notes.length === 0
+      ? ""
+      : `
+    <p style="margin:18px 0 6px;font-size:13px;font-weight:700;color:#1a2733;">Notes from the center admin:</p>
+    ${opts.notes
+      .map(
+        (n) =>
+          `<p style="margin:0 0 8px;font-size:13.5px;line-height:1.5;color:#1a2733;">&ldquo;${esc(n.body)}&rdquo; <span style="color:#8a99a8;">— ${esc(n.author)}</span></p>`
+      )
+      .join("")}`;
+
+  return `
+<div style="max-width:560px;margin:0 auto;font-family:${FONT};color:#1a2733;border:1px solid ${borderColor};border-radius:4px;overflow:hidden;">
+  <div style="padding:20px 24px 14px;border-bottom:2px solid ${headerColor};">
+    <h1 style="margin:0;font-size:18px;font-weight:700;color:${headerColor};">Good morning, ${esc(opts.firstName)}</h1>
+  </div>
+  <div style="padding:20px 24px;">
+    <p style="margin:0 0 14px;font-size:14px;line-height:1.5;">Dear ${esc(opts.firstName)},</p>
+    <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#1a2733;">${esc(opts.agendaHeading)}</p>
+    <table style="width:100%;border-collapse:collapse;margin:6px 0 4px;">
+      <thead>
+        <tr style="background:${headBg};">
+          <th style="text-align:left;padding:9px 12px;border:1px solid ${borderColor};font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:#475569;">Task</th>
+          <th style="text-align:left;padding:9px 12px;border:1px solid ${borderColor};font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:#475569;">Time</th>
+          <th style="text-align:left;padding:9px 12px;border:1px solid ${borderColor};font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:#475569;">Status</th>
+        </tr>
+      </thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+    ${notesHtml}
+    <p style="margin:18px 0 0;font-size:13px;line-height:1.6;font-style:italic;color:#5b7085;">${esc(opts.quote)}</p>
+    <p style="margin:18px 0 0;font-size:14px;line-height:1.5;">Thanks,<br>${esc(opts.org)}</p>
+  </div>
+  <div style="padding:12px 24px;border-top:1px solid #e2e8f0;">
+    <p style="margin:0;font-size:11.5px;color:#8a99a8;">${esc(opts.org)} · times in ${esc(opts.timezone)}</p>
+  </div>
+</div>`;
+}
+
 /** The tone a bare alert kind reads as, for the one-card fallback
  *  below — every enqueue() call that has not been given its own html
  *  still gets a colored card rather than a wall of monospace text. */
