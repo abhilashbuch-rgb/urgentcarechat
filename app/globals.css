@@ -5521,6 +5521,57 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 .st-log-input { min-width: 0; }
 .st-log-help { font-size: 11.5px; line-height: 1.45; color: var(--ink-soft); margin-top: 5px; }
 
+/* The sharps-fill reference diagram — see SharpsFillDiagram.tsx. The
+   fill level itself crosses the three-quarter line on a loop so the
+   threshold being asked about is something staff watch happen, not
+   just a number they have to picture. */
+.st-sharps-diagram {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 8px 0 4px;
+  padding: 10px 0 4px;
+}
+.st-sharps-fill { animation: st-sharps-rise 7s ease-in-out infinite; }
+@keyframes st-sharps-rise {
+  0%, 42% { y: 95; }
+  55%, 88% { y: 45; }
+  100% { y: 95; }
+}
+.st-sharps-caption {
+  font-size: 11.5px;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--ink-soft);
+  margin: 0;
+  height: 0;
+  opacity: 0;
+}
+.st-sharps-caption-ok { animation: st-sharps-caption-ok 7s ease-in-out infinite; }
+.st-sharps-caption-full { opacity: 1; animation: st-sharps-caption-full 7s ease-in-out infinite; }
+@keyframes st-sharps-caption-ok {
+  0%, 40% { opacity: 1; }
+  48%, 90% { opacity: 0; }
+  98%, 100% { opacity: 1; }
+}
+@keyframes st-sharps-caption-full {
+  0%, 40% { opacity: 0; }
+  48%, 90% { opacity: 1; }
+  98%, 100% { opacity: 0; }
+}
+/* Reduced motion gets the flagged frame frozen, not an animation that
+   never resolves into either state — see the component's own comment. */
+@media (prefers-reduced-motion: reduce) {
+  .st-sharps-fill,
+  .st-sharps-caption-ok,
+  .st-sharps-caption-full {
+    animation: none;
+  }
+  .st-sharps-caption-ok { opacity: 0; }
+  .st-sharps-caption-full { opacity: 1; }
+}
+
 .st-num-wrap { position: relative; display: flex; align-items: center; }
 .st-input-num { font-variant-numeric: tabular-nums; padding-right: 46px; }
 .st-num-unit {

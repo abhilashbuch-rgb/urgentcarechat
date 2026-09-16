@@ -13,6 +13,7 @@ import AiPhotoRead from "@/app/components/staff/AiPhotoRead";
 import LocationStamp, { type LocationResult } from "@/app/components/staff/LocationStamp";
 import type { OrgGeofence } from "@/lib/staff/geo";
 import VerifiedMark from "@/app/components/staff/VerifiedMark";
+import SharpsFillDiagram from "@/app/components/staff/SharpsFillDiagram";
 
 // The three logs where a photograph is worth the extra seconds, because
 // the record is a number somebody typed and the evidence is a display
@@ -663,20 +664,26 @@ function FieldRow({
         )}
 
         {field.type === "boolean" && (
-          <div className="st-toggle" role="group" aria-label={field.label}>
-            {[true, false].map((v) => (
-              <button
-                key={String(v)}
-                type="button"
-                data-field={v ? field.id : undefined}
-                className={`st-toggle-btn${value === v ? " st-toggle-on" : ""}`}
-                aria-pressed={value === v}
-                onClick={() => onChange(v)}
-              >
-                {v ? "Yes" : "No"}
-              </button>
-            ))}
-          </div>
+          <>
+            {/* Only sharps has a fill-level threshold that's hard to
+                picture from the label alone; every other boolean field
+                on any template is a plain yes/no with nothing to draw. */}
+            {field.id === "any_over_three_quarters" && <SharpsFillDiagram />}
+            <div className="st-toggle" role="group" aria-label={field.label}>
+              {[true, false].map((v) => (
+                <button
+                  key={String(v)}
+                  type="button"
+                  data-field={v ? field.id : undefined}
+                  className={`st-toggle-btn${value === v ? " st-toggle-on" : ""}`}
+                  aria-pressed={value === v}
+                  onClick={() => onChange(v)}
+                >
+                  {v ? "Yes" : "No"}
+                </button>
+              ))}
+            </div>
+          </>
         )}
 
         {field.type === "select" &&
