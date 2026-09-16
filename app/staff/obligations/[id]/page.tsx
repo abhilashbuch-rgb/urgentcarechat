@@ -10,8 +10,10 @@ import {
   formatDue,
   STATUS_LABELS,
 } from "@/lib/staff/obligations";
+import { calendarLinksFor } from "@/lib/staff/obligation-calendar";
 import { formatSignedAt } from "@/lib/staff/labels";
 import ObligationActions from "@/app/components/staff/ObligationActions";
+import CalendarLinks from "@/app/components/staff/CalendarLinks";
 
 // One obligation, and everything about it that isn't the app's opinion:
 // what it is, the rule behind it, who owns it, when it's due, and — if
@@ -42,11 +44,14 @@ export default async function ObligationPage({
             from staff.users where active order by label
         `
       : [];
-    return { obligation, team };
+    const calendarLinks = atLeast(session.role, "manager")
+      ? await calendarLinksFor(sql, obligation.key)
+      : [];
+    return { obligation, team, calendarLinks };
   });
 
   if (!data) notFound();
-  const { obligation: o, team } = data;
+  const { obligation: o, team, calendarLinks } = data;
 
   const isLead = atLeast(session.role, "clinical_lead");
   const isAdmin = atLeast(session.role, "manager");
@@ -141,6 +146,23 @@ export default async function ObligationPage({
         isAdmin={isAdmin}
         team={team}
       />
+
+      {/* MANAGER AND ABOVE ONLY — same tier as the surveyor link this
+          borrows its shape from. A calendar link discloses this one due
+          date to whoever holds the URL, so deciding who gets handed one
+          is an administrative call, not a clinical one. */}
+      {isAdmin && (
+        <section className="st-record-section">
+          <h2 className="st-h2">Calendar link</h2>
+          <p className="st-page-sub" style={{ marginBottom: 12 }}>
+            A link anyone can subscribe to from Google Calendar, Outlook, or
+            Apple Calendar &mdash; it shows only this one due date, and
+            updates itself whenever the date above is moved. No account
+            needed on their end.
+          </p>
+          <CalendarLinks obligationId={o.id} links={calendarLinks} />
+        </section>
+      )}
     </div>
   );
 }
