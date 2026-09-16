@@ -18,12 +18,7 @@ import SigninHistory from "@/app/components/staff/SigninHistory";
 
 export const dynamic = "force-dynamic";
 
-export default async function MyRecord({
-  searchParams,
-}: {
-  searchParams: Promise<{ done?: string }>;
-}) {
-  const { done } = await searchParams;
+export default async function MyRecord() {
   const { session, org } = await requireStaff();
   const tenant = await getTenantBySlug(org);
 
@@ -42,11 +37,6 @@ export default async function MyRecord({
         select timezone from staff.orgs where slug = ${org}
       `
     )[0]?.timezone,
-    wantsDigest: (
-      await sql<{ wants_digest: boolean }[]>`
-        select wants_digest from staff.users where id = ${session.uid}
-      `
-    )[0]?.wants_digest ?? false,
     // Only your own — see supabase/staff-workdays.sql and the note on
     // /staff/team/[id]/page.tsx. Setting it stays with a manager;
     // reading it back is yours alone, same as everything else on this
@@ -78,13 +68,6 @@ export default async function MyRecord({
           Print
         </button>
       </header>
-
-      {done === "digest_updated" && (
-        <div className="st-notice st-no-print" role="status">
-          <strong>Updated.</strong>
-          <span>Takes effect on the next digest.</span>
-        </div>
-      )}
 
       {/* The photo lives on the record rather than in a settings page.
           This is the screen a person already opens to check their own
@@ -221,21 +204,6 @@ export default async function MyRecord({
           from here, and a manager sets it, not you.
         </p>
         <p className="st-card-value st-card-value-sm">{workdaysLabel(data.workdays)}</p>
-      </section>
-
-      <section className="st-record-section st-no-print">
-        <h2 className="st-h2">Email preferences</h2>
-        <p className="st-page-sub" style={{ marginBottom: 12 }}>
-          The routine digest &mdash; what got done, what did not &mdash; is
-          optional. An out-of-range reading or a missed task always reaches
-          you regardless; there is no switch for those.
-        </p>
-        <form method="POST" action="/api/staff/notifications">
-          <input type="hidden" name="wants" value={data.wantsDigest ? "0" : "1"} />
-          <button className="st-btn" type="submit">
-            {data.wantsDigest ? "Turn off digest emails" : "Turn on digest emails"}
-          </button>
-        </form>
       </section>
 
       <section className="st-record-section st-no-print">

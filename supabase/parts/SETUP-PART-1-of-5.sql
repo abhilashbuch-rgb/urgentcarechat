@@ -2798,6 +2798,47 @@ comment on column staff.orgs.checkin_2_at is
   'Local time the final, strongest "still not done" reminder goes out. Same targeting as checkin_1_at.';
 
 
+-- ========== staff-reminder-times.sql ==========
+
+-- Owner-only, deliberately stricter than the rest of /staff/settings
+-- (manager-level). staff.orgs' RLS requires a super admin to write the
+-- row directly, so this reaches exactly these five columns through a
+-- SECURITY DEFINER function and nothing else on the row.
+create or replace function staff.update_reminder_times(
+  p_org        text,
+  p_huddle_at  text,
+  p_digest_am  text,
+  p_digest_pm  text,
+  p_checkin_1  text,
+  p_checkin_2  text
+) returns void
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+begin
+  update staff.orgs set
+    huddle_at    = p_huddle_at::time,
+    digest_am_at = p_digest_am::time,
+    digest_pm_at = p_digest_pm::time,
+    checkin_1_at = p_checkin_1::time,
+    checkin_2_at = p_checkin_2::time
+  where slug = p_org;
+
+  if not found then
+    raise exception 'no such organization: %', p_org
+      using errcode = 'no_data_found';
+  end if;
+end $$;
+
+revoke all on function staff.update_reminder_times(
+  text, text, text, text, text, text
+) from public;
+grant execute on function staff.update_reminder_times(
+  text, text, text, text, text, text
+) to staff_app;
+
+
 -- ========== staff-shift-assignments.sql ==========
 
 create table if not exists staff.shift_assignments (
