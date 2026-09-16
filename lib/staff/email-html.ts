@@ -36,6 +36,23 @@ export interface EmailSection {
 const FONT =
   "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 
+/**
+ * The wordmark, at the top of every automated email — "medicin." only,
+ * not the full "medicin. / BINDER" lockup (see Wordmark.tsx) and not
+ * "medicin.io": a full stop reads as the finished word without the
+ * site having to print its own URL in its own logo, same reasoning as
+ * the header's. Colors are the same --ground/--volt-ink pair the real
+ * wordmark uses on a white background (Wordmark.tsx's own CSS) —
+ * literal hex here because mail clients strip stylesheets. Serif with
+ * plain fallbacks, since a custom web font never loads in an inbox.
+ */
+function brandBanner(): string {
+  return `
+  <div style="padding:0 2px 14px;margin-bottom:4px;border-bottom:1px solid #e2e8f0;">
+    <span style="font-family:Georgia,'Times New Roman',serif;font-weight:700;font-size:19px;letter-spacing:-.02em;color:#0b1220;">medicin<span style="color:#0e7490;">.</span></span>
+  </div>`;
+}
+
 /** One section: a tone-colored card with a heading and a list of items.
  *  Every string is escaped — the content passed in is staff names, log
  *  names, and free-text notes a clinic's own users typed, not markup
@@ -92,6 +109,7 @@ export function renderEmailHtml(opts: {
 
   return `
 <div style="max-width:560px;margin:0 auto;font-family:${FONT};color:#1a2733;">
+  ${brandBanner()}
   <div style="padding:18px 2px 6px;">
     <h1 style="font-size:17px;font-weight:700;margin:0 0 6px;">${escapeHtml(opts.title)}</h1>
     ${
@@ -173,29 +191,32 @@ export function renderHuddleEmailHtml(opts: {
       .join("")}`;
 
   return `
-<div style="max-width:560px;margin:0 auto;font-family:${FONT};color:#1a2733;border:1px solid ${borderColor};border-radius:4px;overflow:hidden;">
-  <div style="padding:20px 24px 14px;border-bottom:2px solid ${headerColor};">
-    <h1 style="margin:0;font-size:18px;font-weight:700;color:${headerColor};">Good morning, ${esc(opts.firstName)}</h1>
-  </div>
-  <div style="padding:20px 24px;">
-    <p style="margin:0 0 14px;font-size:14px;line-height:1.5;">Dear ${esc(opts.firstName)},</p>
-    <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#1a2733;">${esc(opts.agendaHeading)}</p>
-    <table style="width:100%;border-collapse:collapse;margin:6px 0 4px;">
-      <thead>
-        <tr style="background:${headBg};">
-          <th style="text-align:left;padding:9px 12px;border:1px solid ${borderColor};font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:#475569;">Task</th>
-          <th style="text-align:left;padding:9px 12px;border:1px solid ${borderColor};font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:#475569;">Time</th>
-          <th style="text-align:left;padding:9px 12px;border:1px solid ${borderColor};font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:#475569;">Status</th>
-        </tr>
-      </thead>
-      <tbody>${rowsHtml}</tbody>
-    </table>
-    ${notesHtml}
-    <p style="margin:18px 0 0;font-size:13px;line-height:1.6;font-style:italic;color:#5b7085;">${esc(opts.quote)}</p>
-    <p style="margin:18px 0 0;font-size:14px;line-height:1.5;">Thanks,<br>${esc(opts.org)}</p>
-  </div>
-  <div style="padding:12px 24px;border-top:1px solid #e2e8f0;">
-    <p style="margin:0;font-size:11.5px;color:#8a99a8;">${esc(opts.org)} · times in ${esc(opts.timezone)}</p>
+<div style="max-width:560px;margin:0 auto;font-family:${FONT};color:#1a2733;">
+  ${brandBanner()}
+  <div style="border:1px solid ${borderColor};border-radius:4px;overflow:hidden;">
+    <div style="padding:20px 24px 14px;border-bottom:2px solid ${headerColor};">
+      <h1 style="margin:0;font-size:18px;font-weight:700;color:${headerColor};">Good morning, ${esc(opts.firstName)}</h1>
+    </div>
+    <div style="padding:20px 24px;">
+      <p style="margin:0 0 14px;font-size:14px;line-height:1.5;">Dear ${esc(opts.firstName)},</p>
+      <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#1a2733;">${esc(opts.agendaHeading)}</p>
+      <table style="width:100%;border-collapse:collapse;margin:6px 0 4px;">
+        <thead>
+          <tr style="background:${headBg};">
+            <th style="text-align:left;padding:9px 12px;border:1px solid ${borderColor};font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:#475569;">Task</th>
+            <th style="text-align:left;padding:9px 12px;border:1px solid ${borderColor};font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:#475569;">Time</th>
+            <th style="text-align:left;padding:9px 12px;border:1px solid ${borderColor};font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:#475569;">Status</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+      ${notesHtml}
+      <p style="margin:18px 0 0;font-size:13px;line-height:1.6;font-style:italic;color:#5b7085;">${esc(opts.quote)}</p>
+      <p style="margin:18px 0 0;font-size:14px;line-height:1.5;">Thanks,<br>${esc(opts.org)}</p>
+    </div>
+    <div style="padding:12px 24px;border-top:1px solid #e2e8f0;">
+      <p style="margin:0;font-size:11.5px;color:#8a99a8;">${esc(opts.org)} · times in ${esc(opts.timezone)}</p>
+    </div>
   </div>
 </div>`;
 }
