@@ -5951,9 +5951,16 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
   font-size: 12.5px;
   font-weight: 600;
   letter-spacing: .04em;
-  color: var(--volt);
+  color: rgba(255, 255, 255, .6);
   margin: 0 0 14px;
 }
+
+/* One color per facility type, each picked to hold a 4.5:1 contrast
+   against --ground at this size/weight — see the check run before
+   these were chosen, not eyeballed. */
+.mh-kicker-urgent { color: #e0453a; font-weight: 700; }
+.mh-kicker-primary { color: #3b7dde; }
+.mh-kicker-medspa { color: #9061f2; }
 
 .mh-h1 {
   font-family: var(--serif);

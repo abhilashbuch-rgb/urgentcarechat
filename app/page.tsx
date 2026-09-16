@@ -169,7 +169,10 @@ export default function LandingPage() {
           <div className="mh-hero-inner">
             <div className="mh-hero-copy">
               <p className="mh-kicker">
-                Clinical infrastructure for urgent care, primary care, med spa
+                Clinical infrastructure for{" "}
+                <span className="mh-kicker-urgent">urgent care</span>,{" "}
+                <span className="mh-kicker-primary">primary care</span>,{" "}
+                <span className="mh-kicker-medspa">med spa</span>
               </p>
               <h1 className="mh-h1">
                 Kill the paper binder.
