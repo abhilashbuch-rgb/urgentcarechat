@@ -2777,6 +2777,80 @@ comment on column staff.users.preferred_name is
   'What this person goes by day to day, if different from legal_name — shown on the on-duty banner and similar casual displays ONLY. Never read for e-signature, audit, or any compliance document; legal_name remains the record of who signed what.';
 
 
+-- ========== staff-billing-specialist.sql ==========
+
+alter type staff.job_role add value if not exists 'billing_specialist';
+
+
+-- ========== staff-eod-billing-report.sql ==========
+
+create table if not exists staff.eod_billing_reports (
+  id            uuid primary key default gen_random_uuid(),
+  org_slug      text not null references staff.orgs(slug) on delete cascade,
+  submitted_by  uuid not null references staff.users(id),
+  work_date     date not null,
+  clock_in      text,
+  clock_out     text,
+  general_notes text,
+  general_notes_needs_review boolean not null default false,
+  finalized_at  timestamptz,
+  created_at    timestamptz not null default now(),
+  unique (submitted_by, work_date)
+);
+
+create index if not exists staff_eod_billing_reports_org_date
+  on staff.eod_billing_reports (org_slug, work_date desc);
+
+alter table staff.eod_billing_reports enable row level security;
+alter table staff.eod_billing_reports force row level security;
+drop policy if exists staff_org_isolation on staff.eod_billing_reports;
+create policy staff_org_isolation on staff.eod_billing_reports
+  for all
+  using (staff.is_super_admin() or org_slug = staff.current_org())
+  with check (staff.is_super_admin() or org_slug = staff.current_org());
+
+grant select, insert, update on staff.eod_billing_reports to staff_app;
+
+create table if not exists staff.eod_billing_entries (
+  id                uuid primary key default gen_random_uuid(),
+  org_slug          text not null references staff.orgs(slug) on delete cascade,
+  report_id         uuid not null references staff.eod_billing_reports(id) on delete cascade,
+  reference_number  text not null,
+  action            text not null check (action in (
+    'payment_processed',
+    'write_off',
+    'charge_entry_check',
+    'claim_resubmit',
+    'balance_check',
+    'payment_issue',
+    'insurance_correction',
+    'other'
+  )),
+  amount            numeric(10,2),
+  note              text,
+  needs_review      boolean not null default false,
+  created_at        timestamptz not null default now()
+);
+
+create index if not exists staff_eod_billing_entries_report
+  on staff.eod_billing_entries (report_id);
+
+alter table staff.eod_billing_entries enable row level security;
+alter table staff.eod_billing_entries force row level security;
+drop policy if exists staff_org_isolation on staff.eod_billing_entries;
+create policy staff_org_isolation on staff.eod_billing_entries
+  for all
+  using (staff.is_super_admin() or org_slug = staff.current_org())
+  with check (staff.is_super_admin() or org_slug = staff.current_org());
+
+grant select, insert on staff.eod_billing_entries to staff_app;
+
+comment on table staff.eod_billing_reports is
+  'One row per billing specialist per day. Who may write is app/api/staff/billing-report/route.ts''s concern, not RLS''s.';
+comment on table staff.eod_billing_entries is
+  'Line items on one day''s billing report. reference_number is the account/PID reference — kept, never redacted; note is free text and gets scanned before saving.';
+
+
 -- ========== staff-job-roles-seed.sql ==========
 
 -- ============================================================
