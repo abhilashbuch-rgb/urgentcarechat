@@ -5946,6 +5946,24 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 }
 .mh-hero-copy { flex: 1 1 520px; min-width: 0; }
 
+.mh-kicker {
+  font-family: var(--mono);
+  font-size: clamp(13.5px, 1.7vw, 15px);
+  font-weight: 700;
+  letter-spacing: .01em;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, .82);
+  margin: 0 0 16px;
+  max-width: 40ch;
+}
+
+/* One color per facility type, each picked to hold a 4.5:1 contrast
+   against --ground at this size/weight — see the check run before
+   these were chosen, not eyeballed. */
+.mh-kicker-urgent { color: #e0453a; }
+.mh-kicker-primary { color: #3b7dde; }
+.mh-kicker-medspa { color: #9061f2; }
+
 .mh-h1 {
   font-family: var(--serif);
   font-size: clamp(38px, 8vw, 88px);
@@ -7124,6 +7142,46 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
   .st-invite-go { width: 100%; }
 }
 .st-invite-pending { margin-top: 22px; }
+
+/* The billing specialist's end-of-day report
+   (lib/staff/eod-billing-report.ts) — the add-entry form mirrors
+   .st-invite-form's grid, and the entry/day rows mirror
+   .st-onduty-row's rhythm. */
+.st-billing-form {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(180px, 1fr) minmax(100px, 0.6fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin: 12px 0 0;
+}
+@media (max-width: 780px) {
+  .st-billing-form { grid-template-columns: 1fr; }
+}
+.st-billing-entries { list-style: none; margin: 0 0 8px; padding: 0; }
+.st-billing-entry {
+  padding: 9px 0;
+  border-top: 1px solid var(--rule);
+}
+.st-billing-entry:first-child { border-top: none; }
+.st-billing-entry-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.st-billing-ref { font-weight: 600; color: var(--ink); }
+.st-billing-action { color: var(--ink-soft); font-size: 13px; }
+.st-billing-note {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+  white-space: pre-wrap;
+}
+.st-billing-day {
+  padding: 14px 0;
+  border-top: 1px solid var(--rule);
+}
+.st-billing-day:first-child { border-top: none; }
 
 /* Shift assignments (lib/staff/shift-assignments.ts) — a plain row
    list, not a table: three short facts and a remove button, the same

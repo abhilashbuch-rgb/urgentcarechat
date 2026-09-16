@@ -1,0 +1,13 @@
+-- A new job: someone who works billing and collections, insurance
+-- correction, and patient-account calls — Workers' Comp, follow-up
+-- calls, emails, Solv, the weekly clarification log. Not clinical, not
+-- front desk, not the center admin; none of the five existing jobs fit,
+-- and forcing one onto her would put a caretaker-of-the-fridge task on
+-- someone who has never set foot in the building.
+--
+-- REMOTE IS NOT SPECIAL-CASED HERE. Nothing in staff.job_role knows or
+-- cares where somebody sits — see staff-multisite-worker.sql for the
+-- one place location genuinely matters (a linked account's home
+-- clinic), which this is not. A billing specialist working from
+-- overseas is exactly as much "a job" as one working the front desk.
+alter type staff.job_role add value if not exists 'billing_specialist';

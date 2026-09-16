@@ -24,6 +24,7 @@ export const JOB_LABELS: Record<string, string> = {
   xray_tech: "X-ray tech",
   provider: "Provider",
   center_admin: "Center admin",
+  billing_specialist: "Billing specialist",
 };
 
 /** The same jobs as they appear inside a sentence. A separate map rather
@@ -36,6 +37,7 @@ export const JOB_PHRASES: Record<string, string> = {
   xray_tech: "as an x-ray tech",
   provider: "as a provider",
   center_admin: "as the center admin",
+  billing_specialist: "as a billing specialist",
 };
 
 /** medical_assistant reads as a different job depending on what the
@@ -142,6 +144,14 @@ export interface NavItem {
    *  so gating this on role alone would hide it from exactly the person
    *  it is for. */
   operatorOnly?: boolean;
+  /** Reachable by this exact job, REGARDLESS of minRole — the same
+   *  "job and role are different axes" reasoning as operatorOnly, for a
+   *  case operatorOnly doesn't cover: one specific job (not "whoever
+   *  runs the building") that needs a page an ordinary staff role
+   *  can't otherwise reach. minRole still applies for everyone else —
+   *  an org_admin sees this item on rank alone; a billing specialist,
+   *  plain "staff" by role, sees it only because their job matches. */
+  extraJobRoles?: string[];
   /** Which drawer group this renders under. Absent means standalone,
    *  above the groups — currently only Today. */
   group?: NavGroup;
@@ -224,13 +234,27 @@ export const NAV: NavItem[] = [
   { href: "/staff/accreditation", label: "Accreditation", minRole: "manager", group: "clinic" },
   { href: "/staff/surveyor", label: "Inspection", minRole: "manager", group: "clinic" },
   { href: "/staff/team", label: "Team", minRole: "manager", group: "admin" },
+  // ORG_ADMIN, NOT MANAGER — see RANK's own comment above: a manager
+  // runs the team, not money, and a write-off is money. The billing
+  // specialist herself reaches this through extraJobRoles instead,
+  // since her account role is plain "staff" the same way a centre
+  // admin's usually is.
+  {
+    href: "/staff/billing-report",
+    label: "Billing report",
+    minRole: "org_admin",
+    extraJobRoles: ["billing_specialist"],
+    group: "clinic",
+  },
 ];
 
 export function navFor(role: StaffRole, jobRole?: string | null): NavItem[] {
   const operator = runsClinic(role, jobRole);
 
   return NAV.filter(
-    (item) => atLeast(role, item.minRole) && (!item.operatorOnly || operator)
+    (item) =>
+      (item.extraJobRoles && !!jobRole && item.extraJobRoles.includes(jobRole)) ||
+      (atLeast(role, item.minRole) && (!item.operatorOnly || operator))
   );
 }
 
