@@ -129,7 +129,13 @@ export async function POST(
       }
 
       if (action === "reschedule") {
-        if (!isLead) return { error: "forbidden" as const, status: 403 };
+        // Same reasoning as "complete": whoever it's assigned to is the
+        // one who actually knows a hauler moved the date, and their
+        // account role is very often plain "staff". A lead can move
+        // anyone's; an owner can move their own.
+        if (!isLead && ob.owner_id !== session.uid) {
+          return { error: "forbidden" as const, status: 403 };
+        }
         // Mirrors the trigger. A completed obligation's due date is the
         // half of the record that says whether it was done on time.
         if (ob.completed_at) return { error: "already_done" as const, status: 409 };
