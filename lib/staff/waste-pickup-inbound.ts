@@ -1,3 +1,4 @@
+import type { StaffSql } from "@/lib/staff/db";
 import { withOrg } from "@/lib/staff/db";
 
 // Reading a hauler's confirmation email and moving the pickup obligation
@@ -26,6 +27,28 @@ const SHARPS_SENDER_DOMAIN = "sharpsinc.com";
 // by guessing its key is a much bigger blast radius than the one this
 // was asked to solve.
 const ALLOWED_KEY = "rmw-pickup";
+
+// The domain mail actually lands on. An env var rather than a literal,
+// because which domain this ends up being is still an open question —
+// see the header of app/api/webhooks/resend-inbound/route.ts and the
+// PR this shipped on — and a page telling an administrator to forward
+// mail to the wrong address is worse than one that says setup isn't
+// finished yet.
+const INBOUND_DOMAIN = process.env.WASTE_PICKUP_INBOUND_DOMAIN ?? "inbound.medicin.io";
+
+/** Whether an inbound domain has actually been configured, as opposed
+ *  to the fallback default sitting there unconfigured. The settings
+ *  page uses this to say "not set up yet" instead of handing out an
+ *  address that goes nowhere. */
+export function inboundConfigured(): boolean {
+  return Boolean(process.env.WASTE_PICKUP_INBOUND_DOMAIN);
+}
+
+/** The inverse of orgFromRecipient() — the address an administrator
+ *  should set their email to forward Sharps' confirmations to. */
+export function forwardingAddress(org: string): string {
+  return `waste-pickup+${org}@${INBOUND_DOMAIN}`;
+}
 
 export function isFromSharps(fromHeader: string): boolean {
   const match = fromHeader.match(/[^<\s]+@[^>\s]+/);
@@ -114,3 +137,26 @@ export async function logRejection(
 }
 
 export const ALLOWED_OBLIGATION_KEY = ALLOWED_KEY;
+
+export interface InboundActivity {
+  created_at: string;
+  action: "obligation_rescheduled_auto" | "waste_pickup_email_rejected";
+  detail: Record<string, string | null>;
+}
+
+/** The last few things this pipeline has done to THIS org's mailbox —
+ *  read under the caller's own session, not the platform role the
+ *  writes above use, so it comes back scoped by ordinary RLS same as
+ *  everything else an administrator reads. */
+export async function recentInboundActivity(
+  sql: StaffSql,
+  limit = 10
+): Promise<InboundActivity[]> {
+  return sql<InboundActivity[]>`
+    select created_at::text as created_at, action, detail
+      from staff.audit_log
+     where action in ('obligation_rescheduled_auto', 'waste_pickup_email_rejected')
+     order by created_at desc
+     limit ${limit}
+  `;
+}

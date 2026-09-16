@@ -11,9 +11,16 @@ import {
   STATUS_LABELS,
 } from "@/lib/staff/obligations";
 import { calendarLinksFor } from "@/lib/staff/obligation-calendar";
+import {
+  ALLOWED_OBLIGATION_KEY,
+  forwardingAddress,
+  inboundConfigured,
+  recentInboundActivity,
+} from "@/lib/staff/waste-pickup-inbound";
 import { formatSignedAt } from "@/lib/staff/labels";
 import ObligationActions from "@/app/components/staff/ObligationActions";
 import CalendarLinks from "@/app/components/staff/CalendarLinks";
+import WastePickupForwarding from "@/app/components/staff/WastePickupForwarding";
 
 // One obligation, and everything about it that isn't the app's opinion:
 // what it is, the rule behind it, who owns it, when it's due, and — if
@@ -30,7 +37,7 @@ export default async function ObligationPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { session } = await requireStaff();
+  const { session, org } = await requireStaff();
   const { id } = await params;
 
   const data = await withSession(session, async (sql) => {
@@ -44,14 +51,17 @@ export default async function ObligationPage({
             from staff.users where active order by label
         `
       : [];
-    const calendarLinks = atLeast(session.role, "manager")
-      ? await calendarLinksFor(sql, obligation.key)
-      : [];
-    return { obligation, team, calendarLinks };
+    const isAdminForCalendar = atLeast(session.role, "manager");
+    const calendarLinks = isAdminForCalendar ? await calendarLinksFor(sql, obligation.key) : [];
+    const inboundActivity =
+      isAdminForCalendar && obligation.key === ALLOWED_OBLIGATION_KEY
+        ? await recentInboundActivity(sql)
+        : [];
+    return { obligation, team, calendarLinks, inboundActivity };
   });
 
   if (!data) notFound();
-  const { obligation: o, team, calendarLinks } = data;
+  const { obligation: o, team, calendarLinks, inboundActivity } = data;
 
   const isLead = atLeast(session.role, "clinical_lead");
   const isAdmin = atLeast(session.role, "manager");
@@ -146,6 +156,28 @@ export default async function ObligationPage({
         isAdmin={isAdmin}
         team={team}
       />
+
+      {/* MANAGER AND ABOVE, AND ONLY ON THE ONE OBLIGATION THIS PIPELINE
+          KNOWS ABOUT. Setting this up is exactly the kind of thing an
+          administrator has to configure once and then never think
+          about again — see lib/staff/waste-pickup-inbound.ts for what
+          it will and won't act on. */}
+      {isAdmin && o.key === ALLOWED_OBLIGATION_KEY && (
+        <section className="st-record-section">
+          <h2 className="st-h2">Automatic pickup-date updates</h2>
+          <p className="st-page-sub" style={{ marginBottom: 12 }}>
+            Forward Sharps Compliance&rsquo;s own pickup-confirmation email to
+            the address below, and this due date moves itself &mdash; nobody
+            has to open this page and click Move every time a pickup is
+            confirmed.
+          </p>
+          <WastePickupForwarding
+            address={forwardingAddress(org)}
+            configured={inboundConfigured()}
+            activity={inboundActivity}
+          />
+        </section>
+      )}
 
       {/* MANAGER AND ABOVE ONLY — same tier as the surveyor link this
           borrows its shape from. A calendar link discloses this one due
