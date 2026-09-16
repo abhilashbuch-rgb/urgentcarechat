@@ -66,6 +66,10 @@ export default async function ObligationPage({
   const isLead = atLeast(session.role, "clinical_lead");
   const isAdmin = atLeast(session.role, "manager");
   const canComplete = isLead || o.owner_id === session.uid;
+  // Same reasoning as canComplete: whoever a pickup obligation is
+  // assigned to is the one who actually reads the hauler's email, and
+  // their account role is very often plain "staff".
+  const canReschedule = isLead || o.owner_id === session.uid;
   const repeat = repeatLabel(o.repeat_months);
 
   return (
@@ -152,6 +156,7 @@ export default async function ObligationPage({
         dueOn={o.due_on}
         ownerId={o.owner_id}
         canComplete={canComplete}
+        canReschedule={canReschedule}
         isLead={isLead}
         isAdmin={isAdmin}
         team={team}

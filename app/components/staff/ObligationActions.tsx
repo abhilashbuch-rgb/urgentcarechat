@@ -38,6 +38,7 @@ export default function ObligationActions({
   dueOn,
   ownerId,
   canComplete,
+  canReschedule,
   isLead,
   isAdmin,
   team,
@@ -47,6 +48,11 @@ export default function ObligationActions({
   dueOn: string;
   ownerId: string | null;
   canComplete: boolean;
+  /** isLead, or the person this is assigned to — same reasoning as
+   *  canComplete: whoever it's assigned to is the one who actually
+   *  knows a hauler moved the date, and their account role is very
+   *  often plain "staff". */
+  canReschedule: boolean;
   isLead: boolean;
   isAdmin: boolean;
   team: { id: string; label: string }[];
@@ -128,7 +134,7 @@ export default function ObligationActions({
         </p>
       )}
 
-      {(isLead || isAdmin) && (
+      {(isLead || isAdmin || canReschedule) && (
         <section className="st-ob-more">
           <button
             className="st-ob-disclose"
@@ -136,7 +142,11 @@ export default function ObligationActions({
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
           >
-            {open ? "Hide" : "Change owner, date, or status"}
+            {open
+              ? "Hide"
+              : isLead || isAdmin
+                ? "Change owner, date, or status"
+                : "Change due date"}
           </button>
 
           {open && (
@@ -174,7 +184,7 @@ export default function ObligationActions({
                   obligation is the half of the record that says whether it
                   was on time, and the next occurrence has already been
                   dated from it. Reopening is the way back. */}
-              {isLead && status !== "done" && (
+              {canReschedule && status !== "done" && (
                 <div className="st-ob-field">
                   <label className="st-ob-label" htmlFor="ob-due">
                     Due date
@@ -202,6 +212,12 @@ export default function ObligationActions({
                 </div>
               )}
 
+              {/* Reopening and retiring are both lead/admin calls, same
+                  as reassigning — hidden entirely for someone who can
+                  see this disclosure only because they own the due
+                  date, so they never see a reason box with nothing
+                  underneath it to submit it to. */}
+              {(isLead || isAdmin) && (
               <div className="st-ob-field">
                 <label className="st-ob-label" htmlFor="ob-reason">
                   {status === "done"
@@ -249,6 +265,7 @@ export default function ObligationActions({
                   ask about.
                 </p>
               </div>
+              )}
             </div>
           )}
         </section>
