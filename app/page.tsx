@@ -106,9 +106,9 @@ function HeroVisual() {
           <span className="mh-device-slot">AM check</span>
         </div>
         <div className="mh-device-title">Current temperature</div>
-        <div className="mh-device-sub">36&ndash;46 &deg;F acceptable range</div>
+        <div className="mh-device-sub">2&ndash;8 &deg;C acceptable range</div>
         <div className="mh-device-reading">
-          <span className="mh-device-value">38.4&deg;F</span>
+          <span className="mh-device-value">3.6&deg;C</span>
           <span className="mh-device-pill">In range</span>
         </div>
         <div className="mh-device-sig">

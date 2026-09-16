@@ -18,7 +18,7 @@ import {
 // Everything on this page used to be writable only by hand in the SQL
 // editor. A clinic that signed up got no coordinates, no alert address
 // and no report subscriber — so the location stamp measured against
-// nothing, an excursion at 55°F emailed nobody, and the digest had no
+// nothing, an excursion at 13°C emailed nobody, and the digest had no
 // recipient. The product looked like it was working and three of its
 // headline features were off.
 //

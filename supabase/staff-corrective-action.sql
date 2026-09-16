@@ -7,7 +7,7 @@
 -- --------------
 -- staff-logs.sql required a corrective action on any out-of-range
 -- response, at three characters or more. That stopped an empty field
--- and nothing else. Tested by submitting a vaccine fridge at 52 degF
+-- and nothing else. Tested by submitting a vaccine fridge at 11 degC
 -- with corrective_action "n/a": accepted, flagged, filed.
 --
 -- The gate itself was never the weak part — it is enforced in the

@@ -20,11 +20,11 @@ import { useState } from "react";
 // argument: a binder full of readings nobody acted on is what a surveyor
 // finds, and the whole point is that this software will not let you
 // create one. An evaluator who reads about it is unconvinced; an
-// evaluator who taps 52 degF, tries to type "n/a", and is refused has
+// evaluator who taps 11 degC, tries to type "n/a", and is refused has
 // understood the product. So it is enforced, on the same rules as the
 // real route.
 
-const FRIDGE_PRESETS = [37.8, 38.0, 38.2, 38.4, 38.6];
+const FRIDGE_PRESETS = [3.0, 3.2, 3.4, 3.6, 3.8];
 const O2_PRESETS = [2000, 1800, 1500];
 const MIN_CORRECTIVE = 20;
 
@@ -51,13 +51,13 @@ export default function DemoLogRunner({
   onFiled: (flagged: boolean) => void;
   onCancel: () => void;
 }) {
-  const [fridgeTemp, setFridgeTemp] = useState<number | null>(38.0);
+  const [fridgeTemp, setFridgeTemp] = useState<number | null>(3.4);
   const [o2Psi, setO2Psi] = useState<number | null>(2000);
   const [sealIntact, setSealIntact] = useState<boolean | null>(null);
   const [corrective, setCorrective] = useState("");
   const [refused, setRefused] = useState<string | null>(null);
 
-  const fridgeOut = fridgeTemp !== null && (fridgeTemp < 36 || fridgeTemp > 46);
+  const fridgeOut = fridgeTemp !== null && (fridgeTemp < 2 || fridgeTemp > 8);
   const o2Out = o2Psi !== null && o2Psi < 1000;
   const flagged = fridgeOut || o2Out;
 
@@ -69,7 +69,7 @@ export default function DemoLogRunner({
 
     if (TOKENS.has(trimmed.toLowerCase())) {
       setRefused(
-        "That is one of the answers this field exists to catch. A reading of 52 °F with “n/a” beside it is worse than no note at all — it reads as a complete record, so nobody chases it."
+        "That is one of the answers this field exists to catch. A reading of 11 °C with “n/a” beside it is worse than no note at all — it reads as a complete record, so nobody chases it."
       );
       return;
     }
@@ -93,14 +93,14 @@ export default function DemoLogRunner({
       <h2 className="st-h2">{check.name}</h2>
 
       <p className="st-log-standard">
-        Vaccine storage 36&ndash;46 &deg;F. Both O2 cylinders above 1000 PSI.
+        Vaccine storage 2&ndash;8 &deg;C. Both O2 cylinders above 1000 PSI.
       </p>
 
       <div className="st-log-fields">
         <div className={`st-log-row${fridgeOut ? " st-log-row-flag" : ""}`}>
           <div className="st-log-label">
             <span>Vaccine fridge &mdash; current</span>
-            <span className="st-log-range">36&ndash;46 °F</span>
+            <span className="st-log-range">2&ndash;8 °C</span>
           </div>
           <div className="st-log-input">
             <div className="st-preset-row" role="group" aria-label="Vaccine fridge presets">
@@ -111,13 +111,13 @@ export default function DemoLogRunner({
                   className={`st-preset-chip${fridgeTemp === p ? " st-preset-on" : ""}`}
                   onClick={() => { setFridgeTemp(p); setRefused(null); }}
                 >
-                  {p.toFixed(1)}°F
+                  {p.toFixed(1)}°C
                 </button>
               ))}
               <button
                 type="button"
                 className={`st-preset-chip${fridgeOut ? " st-preset-on" : ""}`}
-                onClick={() => { setFridgeTemp(52); setRefused(null); }}
+                onClick={() => { setFridgeTemp(11); setRefused(null); }}
               >
                 Out of range / other
               </button>

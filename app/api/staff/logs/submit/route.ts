@@ -140,12 +140,12 @@ export async function POST(req: NextRequest) {
       // than a 500 from a violated constraint.
       //
       // TWENTY, not three. Three characters stopped an empty field and
-      // nothing else: a vaccine fridge at 52 degF with "n/a" in this
+      // nothing else: a vaccine fridge at 11 degC with "n/a" in this
       // box was accepted, flagged and filed. That is worse than a
       // missing corrective action, because a missing one reads as an
       // incomplete record and gets chased, while "n/a" reads as a
       // complete one and gets filed — and is what a surveyor finds next
-      // to a 52-degree reading three years later. See
+      // to a 11-degree reading three years later. See
       // supabase/staff-corrective-action.sql.
       if (flagged && corrective.length < MIN_CORRECTIVE) {
         return { error: "corrective_action_required" as const, status: 400 };

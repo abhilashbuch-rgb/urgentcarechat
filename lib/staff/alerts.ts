@@ -54,7 +54,7 @@ export async function enqueue(
   //
   // Long enough for the person who typed 55 instead of 38.5 to notice in
   // the same breath and amend it, which cancels this row before anybody
-  // is woken. Short enough that a fridge that really is at 55°F is still
+  // is woken. Short enough that a fridge that really is at 13°C is still
   // savable: the cost of ten minutes' silence is a vaccine lot and a
   // letter to every patient dosed from it.
   //

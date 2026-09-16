@@ -132,13 +132,13 @@ export default function LogForm({
   const formRef = useRef<HTMLFormElement>(null);
 
   // Recomputed from the same function the server uses, so what the person
-  // sees and what gets stored can't disagree about whether 49 °F is a
+  // sees and what gets stored can't disagree about whether 9 °C is a
   // problem.
   const check = useMemo(() => evaluate(schema, answers), [schema, answers]);
   const flagged = check.outOfRange.length > 0;
   // Twenty characters, matching the CHECK constraint and the route.
   // Three stopped an empty box and nothing else — "n/a" against a
-  // 52-degree fridge was accepted and filed. See
+  // 11-degree fridge was accepted and filed. See
   // supabase/staff-corrective-action.sql.
   const MIN_CORRECTIVE = 20;
   const correctiveLeft = MIN_CORRECTIVE - corrective.trim().length;

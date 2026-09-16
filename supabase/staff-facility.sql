@@ -272,7 +272,7 @@ from (values
    array['medical_assistant']::staff.job_role[],
    $json$
    {
-     "standard": "Refrigerated vaccine 2-8 degC (36-46 degF). Frozen vaccine -50 to -15 degC. Record the current, minimum and maximum from the continuous monitor at each reading. An excursion means quarantine and call the manufacturer or the immunization program BEFORE discarding anything.",
+     "standard": "Refrigerated vaccine 2-8 degC. Frozen vaccine -50 to -15 degC. Record the current, minimum and maximum from the continuous monitor at each reading. An excursion means quarantine and call the manufacturer or the immunization program BEFORE discarding anything.",
      "fields": [
        { "id": "unit", "label": "Storage unit", "type": "select",
          "options": ["Refrigerator", "Freezer"] },
