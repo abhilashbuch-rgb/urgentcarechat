@@ -214,6 +214,41 @@ const CHECKS: Check[] = [
     shape: (v) => (v.length >= 16 ? null : "too short to be worth having"),
   },
 
+  // ATHENAHEALTH INTEGRATION — inert until all three are set. There is
+  // no live athenahealth account behind these yet; see lib/athena/*.
+  {
+    name: "ATHENA_CLIENT_ID",
+    level: "optional",
+    consequence: "athenahealth sync stays off",
+  },
+  {
+    name: "ATHENA_CLIENT_SECRET",
+    level: "optional",
+    consequence: "athenahealth sync stays off",
+  },
+  {
+    name: "ATHENA_TOKEN_ENCRYPTION_KEY",
+    level: "optional",
+    consequence: "athenahealth sync stays off",
+    shape: (v) => {
+      let decoded: Buffer;
+      try {
+        decoded = Buffer.from(v, "base64");
+      } catch {
+        return "not valid base64";
+      }
+      return decoded.length === 32
+        ? null
+        : `decodes to ${decoded.length} bytes, not 32 — generate one with "openssl rand -base64 32"`;
+    },
+  },
+  {
+    name: "ATHENA_ENVIRONMENT",
+    level: "optional",
+    consequence: "defaults to preview",
+    shape: (v) => (v === "preview" || v === "production" ? null : 'expected "preview" or "production"'),
+  },
+
   { name: "NEXT_PUBLIC_SUPABASE_URL", level: "optional", consequence: "no file uploads; documents record dates only", shape: startsWith("https://") },
   {
     name: "SUPABASE_SERVICE_ROLE_KEY",
