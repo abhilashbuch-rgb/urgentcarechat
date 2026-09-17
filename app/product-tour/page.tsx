@@ -1,7 +1,7 @@
 import Link from "next/link";
-import Image from "next/image";
 import BrandLockup from "@/app/components/BrandLockup";
 import ProductTourCarousel from "@/app/components/ProductTourCarousel";
+import ProductTourSteps from "@/app/components/ProductTourSteps";
 import { PRODUCT_NAME, OPERATOR } from "@/lib/site";
 
 export const metadata = {
@@ -112,23 +112,12 @@ export default function ProductTourPage() {
           <ProductTourCarousel shots={SHOTS} />
         </section>
 
-        <section className="sec-block">
+        <section className="sec-block tour-steps-intro">
           <h2 className="sec-h2">Every screen, one at a time</h2>
+          <p className="sec-intro">Scroll — each one lights up as it comes into view.</p>
         </section>
-        <section className="tour-gallery" style={{ paddingTop: 0 }}>
-          {SHOTS.map((shot) => (
-            <figure className="tour-shot" key={shot.src}>
-              <Image
-                src={shot.src}
-                alt={shot.alt}
-                width={2400}
-                height={1800}
-                sizes="(max-width: 800px) 100vw, 760px"
-                priority
-              />
-              <figcaption>{shot.caption}</figcaption>
-            </figure>
-          ))}
+        <section className="tour-steps-section">
+          <ProductTourSteps steps={SHOTS} />
         </section>
 
         <section className="sec-block sec-close">

@@ -1645,6 +1645,21 @@ body {
   transition: background .15s, color .15s, border-color .15s;
 }
 
+/* Screenshots, first in the nav. Outlined like sign-in below —
+   informational, not a commitment, so it still doesn't compete with
+   the demo's filled button — but in the accent hue rather than plain
+   gray, so it reads as a little more worth a look: this is the proof,
+   not just a utility link. */
+.lp-nav-links a[href="/product-tour"] {
+  background: var(--volt-wash);
+  color: var(--volt-ink);
+  border: 1px solid var(--volt-ink);
+}
+.lp-nav-links a[href="/product-tour"]:hover {
+  background: var(--volt-ink);
+  color: #fff;
+}
+
 /* The demo leads. */
 .lp-nav-links a[href="/demo"] {
   background: var(--l-navy);
@@ -2310,36 +2325,167 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 .sec-close { padding-bottom: 88px; }
 .sec-close .lp-btn-primary { margin-top: 6px; }
 
-/* ---------- product tour gallery ---------- */
-.tour-gallery {
+/* ---------- product tour: scroll-revealed steps ---------- */
+/* Replaced a flat figure/figcaption list — a plain white card with a
+   hairline border on a near-white page read as seven PowerPoint
+   slides, not seven captured screens. Real depth (a strong shadow, a
+   browser-chrome bar) instead of a border is what makes something
+   look like a photograph of a screen rather than a graphic of one. */
+.tour-steps-intro { padding-bottom: 0; }
+
+.tour-steps-section {
+  /* A sunk wash behind the whole section, not white-on-white — the
+     one thing that most made this "feel faded": light screenshots on
+     a light page had nothing to sit against. */
+  background: var(--blue-050);
+  border-radius: 20px;
+  padding: 48px 40px 56px;
+  margin: 24px 0 64px;
+}
+
+.tour-steps {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 32px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.tour-steps-rail {
+  position: sticky;
+  top: 96px;
+  align-self: start;
   display: flex;
   flex-direction: column;
-  gap: 40px;
+  align-items: center;
+  gap: 0;
+  height: fit-content;
 }
 
-.tour-shot {
+.tour-steps-dot {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid var(--l-rule);
+  background: #fff;
+  color: var(--l-ink-soft);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background .2s, border-color .2s, color .2s;
+}
+/* The connecting line between bubbles, one segment per gap rather than
+   one continuous line behind everything — so it starts and ends at
+   bubble centers instead of overshooting past the first and last. */
+.tour-steps-dot:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 2px;
+  height: 34px;
+  background: var(--l-rule);
+  transform: translateX(-50%);
+}
+.tour-steps-dot-active {
+  background: var(--volt-ink);
+  border-color: var(--volt-ink);
+  color: #fff;
+}
+
+.tour-steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 64px;
+}
+
+.tour-step {
   margin: 0;
-  background: var(--l-card);
-  border: 1px solid var(--l-rule);
-  border-radius: 14px;
-  padding: 12px;
-  box-shadow: var(--l-shadow);
+  position: relative;
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity .5s ease, transform .5s ease;
+}
+.tour-step-visible { opacity: 1; transform: translateY(0); }
+
+/* Hidden by default — the rail already numbers each screen on desktop,
+   and stacking this right beside the rail's own active dot just
+   doubled up the same number in two bubbles inches apart. Brought
+   back at the mobile breakpoint below, where the rail itself is
+   hidden and this is the only numbering left. */
+.tour-step-number {
+  display: none;
+  position: absolute;
+  top: -14px;
+  left: -14px;
+  z-index: 1;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--volt-ink);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(13,36,54,.25);
 }
 
-.tour-shot img {
+.tour-step-frame {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--l-shadow-lg);
+  background: #fff;
+}
+
+.tour-step-chrome {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 14px;
+  background: #eef2f7;
+  border-bottom: 1px solid var(--l-rule);
+}
+.tour-step-chrome-dot { width: 10px; height: 10px; border-radius: 50%; }
+.tour-step-chrome-dot-red { background: #f0574a; }
+.tour-step-chrome-dot-yellow { background: #f0b429; }
+.tour-step-chrome-dot-green { background: #2fb35c; }
+
+.tour-step-frame img {
   display: block;
   width: 100%;
   height: auto;
-  border-radius: 8px;
-  border: 1px solid var(--l-rule);
 }
 
-.tour-shot figcaption {
-  font-size: 14.5px;
+.tour-step figcaption {
+  font-size: 16px;
+  font-weight: 500;
   line-height: 1.55;
-  color: var(--l-ink-soft);
-  padding: 14px 8px 6px;
+  color: var(--l-ink);
+  padding: 18px 4px 0;
   max-width: 68ch;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-step {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .tour-steps-section { padding: 32px 20px 40px; border-radius: 14px; }
+  .tour-steps { grid-template-columns: 1fr; gap: 0; }
+  .tour-steps-rail { display: none; }
+  .tour-steps-list { gap: 48px; }
+  .tour-step-number { display: flex; }
 }
 
 /* ---------- the quick-look carousel above the static gallery ---------- */
@@ -2401,8 +2547,6 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
   .sec-cert-grid { grid-template-columns: 1fr; }
   .sec-head { padding-top: 44px; }
   .sec-block { padding-top: 34px; }
-  .tour-gallery { gap: 28px; }
-  .tour-shot { padding: 8px; }
   .tour-carousel { margin: 20px 0 40px; }
 }
 
@@ -3253,6 +3397,14 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
   .lp-main > section,
   .lp-footer-note { padding-left: 18px; padding-right: 18px; }
 
+  /* Screenshots, Login and Install now overflowed the viewport by
+     ~23px at 390px wide once Screenshots got a real border/background
+     to match its siblings — the extra 2px of border was not the
+     cause, it was already this tight. Logo-to-nav gap and per-button
+     padding both come down here so three real buttons actually fit
+     beside the wordmark instead of running off the edge. */
+  .lp-nav-inner { gap: 8px; }
+
   /* NOT display:none on everything. That was the earlier bug: a rule
      hid every nav link below 600px except one carrying .lp-nav-cta — a
      class this page's own nav never uses — leaving NOTHING in the
@@ -3264,8 +3416,8 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
      first thing in the hero immediately below, visible without
      scrolling, so nothing becomes unreachable — the nav just stops
      duplicating it on the one width where there isn't room for three. */
-  .lp-nav-links { gap: 8px; font-size: 13px; }
-  .lp-nav-links a { padding: 9px 14px; }
+  .lp-nav-links { gap: 6px; font-size: 12.5px; }
+  .lp-nav-links a { padding: 9px 11px; }
   .lp-nav-links a[href="/demo"] { display: none; }
 
   .lp-hero { padding-top: 40px; padding-bottom: 48px; }

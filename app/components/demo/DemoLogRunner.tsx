@@ -98,7 +98,11 @@ const DEMO_TEMPLATES: Record<string, DemoTemplate> = {
         min: 2,
         max: 8,
         decimals: 1,
-        presets: [3.0, 3.2, 3.4, 3.6, 3.8],
+        // Deliberately NOT an even 0.2° step from a round number — a
+        // real fridge's daily readings drift irregularly within its
+        // band, and 3.0/3.2/3.4/3.6/3.8 read as generated the moment
+        // anyone looked closely.
+        presets: [3.1, 3.4, 3.6, 3.9, 4.2],
         outOfRangeValue: 11,
         outOfRangeLabel: "Out of range / other",
       },
