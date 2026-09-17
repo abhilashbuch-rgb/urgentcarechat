@@ -97,6 +97,27 @@
   --status-warn: #fab219;
   --status-warn-text: var(--gold-700);
   --status-warn-wash: #fff3d6;
+  /* ROLE-IDENTITY COLOUR, THE SECOND NAMED EXCEPTION TO "ONE HUE." The
+     first was --status-good/--status-warn above, for state. This one is
+     for WHO, not what state they're in — asked for by name: provider
+     blue, medical assistant green, front desk yellow, at the top of the
+     staff home screen, so a name is identifiable by role at a glance
+     the way a badge colour works on an actual unit floor. Provider
+     reuses the existing blue ramp; medical assistant and front desk
+     reuse --status-good/--status-warn, already validated above for
+     exactly this dark-text-on-light-wash pairing. Only x-ray tech and
+     centre admin needed genuinely new hues, each computed here the same
+     way as the rest of this file (WCAG relative-luminance contrast,
+     not eyeballed): violet-700 on white is 7.10:1, on its own wash
+     6.34:1; slate-700 on white is 10.35:1, on its own wash 9.14:1. Both
+     comfortably clear the 4.5:1 AA floor for normal text. Reserved for
+     this one badge — not a general-purpose palette anything else on the
+     page should reach for. */
+  --role-violet-100: #f4f0fd;
+  --role-violet-700: #6d28d9;
+  --role-slate-100: #eef1f5;
+  --role-slate-700: #334155;
+
   --rule: #d7e3f0;
   --rule-firm: #b9cee4;
   --shadow: 0 1px 0 rgba(10,37,64,.04), 0 8px 28px -14px rgba(10,37,64,.22);
@@ -4597,6 +4618,88 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 .st-onduty-row:first-child { border-top: none; }
 .st-onduty-role { font-weight: 600; color: var(--ink); }
 .st-onduty-people { color: var(--ink-soft); text-align: right; }
+
+/* Visually hidden, never removed from the accessibility tree — for a
+   solid dot below whose whole point is carrying no VISIBLE text. */
+.st-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- on-duty badges: the top-right glance ---------- */
+/* The compact, always-visible version of .st-onduty above, which sits
+   further down the page and can scroll out of view behind the day's
+   callouts. This is the "who's in, right now, without scrolling"
+   answer — same data (onDutyToday()), read at a glance by colour
+   instead of by reading a list. See globals.css's root-level comment
+   on --role-violet-100/700 and --role-slate-100/700 for why this is
+   allowed to use more than one hue. Wraps under the title on a narrow
+   screen rather than overflowing it, same as .st-page-head-row's
+   existing "Add employee" button.
+
+   TWO SHAPES PER PERSON, ON PURPOSE. A light-wash, named pill
+   (.st-oncall-pill) means "signed in today, actually here." A solid,
+   textless dot (.st-oncall-dot) means "scheduled, not signed in yet" —
+   see OnCallStrip.tsx's own header for why a name is never shown for
+   someone the app can't confirm is in. The two never share a rule: the
+   dot's fill is each role's darker/700 step used SOLID rather than as
+   a wash, precisely so it reads as a different kind of mark, not a
+   paler version of the same pill. */
+.st-oncall-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+  align-content: flex-start;
+}
+.st-oncall-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.st-oncall-pill {
+  display: inline-flex;
+  align-items: baseline;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.st-oncall-dot {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  /* So a dot doesn't visually merge into the pill beside it — the one
+     purely decorative touch on an element with no text of its own. */
+  box-shadow: 0 0 0 2px var(--bg);
+}
+
+/* Fallback for any job role not in the five below — still reads as a
+   pill or a dot, just without a reserved hue of its own. */
+.st-oncall-pill { background: var(--blue-050); color: var(--ink); }
+.st-oncall-dot { background: var(--ink-soft); }
+
+.st-oncall-pill.st-oncall-provider          { background: var(--blue-050);         color: var(--blue-600); }
+.st-oncall-pill.st-oncall-medical_assistant { background: var(--status-good-wash); color: var(--status-good); }
+.st-oncall-pill.st-oncall-front_desk        { background: var(--status-warn-wash); color: var(--status-warn-text); }
+.st-oncall-pill.st-oncall-xray_tech         { background: var(--role-violet-100);  color: var(--role-violet-700); }
+.st-oncall-pill.st-oncall-center_admin      { background: var(--role-slate-100);   color: var(--role-slate-700); }
+
+.st-oncall-dot.st-oncall-provider          { background: var(--blue-600); }
+.st-oncall-dot.st-oncall-medical_assistant { background: var(--status-good); }
+.st-oncall-dot.st-oncall-front_desk        { background: var(--status-warn); }
+.st-oncall-dot.st-oncall-xray_tech         { background: var(--role-violet-700); }
+.st-oncall-dot.st-oncall-center_admin      { background: var(--role-slate-700); }
 
 /* profileGaps() (lib/staff/profile-complete.ts), on the team member
    page — same row rhythm as .st-onduty-list, amber left edge rather

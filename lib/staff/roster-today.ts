@@ -12,10 +12,21 @@ import { assignmentsToday } from "@/lib/staff/shift-assignments";
 // same way: the owner was explicit that whoever is actually covering a
 // job today belongs on this list, real login or not.
 
+export interface OnDutyPerson {
+  name: string;
+  /** Has this person actually signed in today (their own local "today",
+   *  the org's timezone), not merely been scheduled for it. Always
+   *  false for a manual staff.shift_assignments entry — that's a name
+   *  with no account behind it, so there is nothing it could sign into.
+   *  See OnCallStrip.tsx for the one place this is used to tell "here"
+   *  from "expected." */
+  signedInToday: boolean;
+}
+
 export interface OnDutyRole {
   jobRole: string;
   label: string;
-  people: string[];
+  people: OnDutyPerson[];
 }
 
 /** Grouped by job, in the same order the rest of the app lists jobs
@@ -29,8 +40,20 @@ export async function onDutyToday(
   org: string,
   facilityType: string | null
 ): Promise<OnDutyRole[]> {
-  const rows = await sql<{ job_role: string; display_name: string | null }[]>`
-    select u.job_role, coalesce(u.preferred_name, u.legal_name) as display_name
+  const rows = await sql<
+    { job_role: string; display_name: string | null; signed_in_today: boolean }[]
+  >`
+    select u.job_role, coalesce(u.preferred_name, u.legal_name) as display_name,
+           -- "Today" in the CLINIC's day, same boundary every other
+           -- comparison on this page uses — a login at 11pm and a login
+           -- at 6am the same calendar night should not disagree about
+           -- which day they count for just because the device rendering
+           -- this page is in a different timezone from the clinic.
+           (
+             u.last_seen_at is not null
+             and (u.last_seen_at at time zone o.timezone)::date
+               = (now() at time zone o.timezone)::date
+           ) as signed_in_today
       from staff.users u
       join staff.orgs o on o.slug = u.org_slug
      where u.org_slug = ${org}
@@ -41,14 +64,17 @@ export async function onDutyToday(
   `;
 
   const order = ["front_desk", "medical_assistant", "xray_tech", "provider", "center_admin"];
-  const byRole = new Map<string, string[]>();
+  const byRole = new Map<string, OnDutyPerson[]>();
   for (const r of rows) {
     // preferred_name over legal_name — see supabase/staff-preferred-name.sql
     // for why this banner is the one place that's the right call.
-    const name = r.display_name ?? "unnamed";
+    const person: OnDutyPerson = {
+      name: r.display_name ?? "unnamed",
+      signedInToday: r.signed_in_today,
+    };
     const list = byRole.get(r.job_role);
-    if (list) list.push(name);
-    else byRole.set(r.job_role, [name]);
+    if (list) list.push(person);
+    else byRole.set(r.job_role, [person]);
   }
 
   for (const a of await assignmentsToday(sql, org)) {
@@ -58,8 +84,10 @@ export async function onDutyToday(
     // not two, on a screen that's meant to answer "who's in," not
     // "how many sources agree."
     if (list) {
-      if (!list.includes(a.name)) list.push(a.name);
-    } else byRole.set(a.job_role, [a.name]);
+      if (!list.some((p) => p.name === a.name)) {
+        list.push({ name: a.name, signedInToday: false });
+      }
+    } else byRole.set(a.job_role, [{ name: a.name, signedInToday: false }]);
   }
 
   return order
