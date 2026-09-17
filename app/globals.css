@@ -2289,10 +2289,100 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 .sec-close { padding-bottom: 88px; }
 .sec-close .lp-btn-primary { margin-top: 6px; }
 
+/* ---------- product tour gallery ---------- */
+.tour-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.tour-shot {
+  margin: 0;
+  background: var(--l-card);
+  border: 1px solid var(--l-rule);
+  border-radius: 14px;
+  padding: 12px;
+  box-shadow: var(--l-shadow);
+}
+
+.tour-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid var(--l-rule);
+}
+
+.tour-shot figcaption {
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--l-ink-soft);
+  padding: 14px 8px 6px;
+  max-width: 68ch;
+}
+
+/* ---------- the quick-look carousel above the static gallery ---------- */
+.tour-carousel { margin: 28px 0 56px; }
+
+.tour-carousel-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--l-rule);
+  background: var(--l-card);
+  box-shadow: var(--l-shadow);
+}
+
+.tour-carousel-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.7s ease;
+}
+
+.tour-carousel-slide-active { opacity: 1; }
+
+.tour-carousel-slide img { object-fit: cover; object-position: top; }
+
+.tour-carousel-caption {
+  margin: 16px 4px 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--l-ink-soft);
+  min-height: 48px;
+}
+
+.tour-carousel-dots {
+  display: flex;
+  gap: 8px;
+  margin: 10px 4px 0;
+}
+
+.tour-carousel-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  background: var(--l-rule);
+  cursor: pointer;
+}
+
+.tour-carousel-dot-active { background: var(--l-navy); }
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-carousel-slide { transition: none; }
+}
+
 @media (max-width: 780px) {
   .sec-cert-grid { grid-template-columns: 1fr; }
   .sec-head { padding-top: 44px; }
   .sec-block { padding-top: 34px; }
+  .tour-gallery { gap: 28px; }
+  .tour-shot { padding: 8px; }
+  .tour-carousel { margin: 20px 0 40px; }
 }
 
 /* ---------- compliance guides (reuses the .lp shell, same system as

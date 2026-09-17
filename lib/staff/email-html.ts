@@ -53,6 +53,41 @@ function brandBanner(): string {
   </div>`;
 }
 
+/**
+ * At the bottom of every automated email — an adapted version of the
+ * standard confidentiality footer, not a copy of any real
+ * organization's. Two things, deliberately not one: a reminder that
+ * this product isn't built to carry patient health information (see
+ * app/security/page.tsx's own "almost no data about your patients"),
+ * for the one place that claim could quietly stop being true — a
+ * free-text note a person typed themselves (a corrective action, an
+ * evidence note, a huddle comment) — and the ordinary
+ * "wrong inbox, please delete" notice every business email carries.
+ *
+ * NOT ASSERTING LEGAL PRIVILEGE. A real confidentiality template often
+ * claims the message is "legally privileged" under a specific statute
+ * — that is a claim about who is exchanging the email and why, not
+ * something true by virtue of printing it, and it would be flatly
+ * wrong for a routine compliance alert. This says only what is
+ * actually true here: the message may be confidential, and the wrong
+ * reader should not act on it.
+ */
+function confidentialityFooter(): string {
+  return `
+  <div style="margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;">
+    <p style="margin:0 0 6px;font-size:11px;line-height:1.5;color:#8a99a8;">
+      medicin.io is not built to store or transmit patient health information.
+      If anything above was typed by someone at your organization and names a
+      patient, please remove it and let us know.
+    </p>
+    <p style="margin:0;font-size:11px;line-height:1.5;color:#8a99a8;">
+      This message may contain information intended only for the recipient
+      named above. If you received it in error, reply to let the sender know
+      and then delete it &mdash; please don&rsquo;t forward or copy it elsewhere.
+    </p>
+  </div>`;
+}
+
 /** One section: a tone-colored card with a heading and a list of items.
  *  Every string is escaped — the content passed in is staff names, log
  *  names, and free-text notes a clinic's own users typed, not markup
@@ -124,6 +159,7 @@ export function renderEmailHtml(opts: {
       ? `<div style="margin-top:8px;padding-top:12px;border-top:1px solid #e2e8f0;">${footer}</div>`
       : ""
   }
+  ${confidentialityFooter()}
 </div>`;
 }
 
@@ -218,6 +254,7 @@ export function renderHuddleEmailHtml(opts: {
       <p style="margin:0;font-size:11.5px;color:#8a99a8;">${esc(opts.org)} · times in ${esc(opts.timezone)}</p>
     </div>
   </div>
+  ${confidentialityFooter()}
 </div>`;
 }
 

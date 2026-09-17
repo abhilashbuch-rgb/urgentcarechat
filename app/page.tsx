@@ -140,6 +140,7 @@ export default function LandingPage() {
             <BrandLockup />
           </div>
           <nav className="lp-nav-links">
+            <a href="/product-tour">Screenshots</a>
             <a href="/demo">See a live demo</a>
             <a href="/staff/signin">Login</a>
             {/* SAME DESTINATION AS THE HERO CTA, REACHABLE WITHOUT
