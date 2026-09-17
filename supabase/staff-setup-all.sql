@@ -2777,13 +2777,28 @@ comment on column staff.orgs.checkin_2_at is
 -- (manager-level). staff.orgs' RLS requires a super admin to write the
 -- row directly, so this reaches exactly these five columns through a
 -- SECURITY DEFINER function and nothing else on the row.
+-- p_digest_am_enabled / p_digest_pm_enabled added alongside the original
+-- five columns (staff-alerts.sql) for the on/off switch on the two
+-- whole-clinic digests specifically -- the huddle and both check-ins
+-- stay mandatory, so they get no matching boolean here.
+--
+-- DROPPED, NOT JUST REPLACED. Postgres treats a different parameter
+-- list as a different function (overloading), so "create or replace"
+-- alone would leave the original 6-argument version callable and
+-- silently unable to touch either enabled flag. There is exactly one
+-- caller (app/api/staff/settings/reminders/route.ts), already updated
+-- to pass all eight, so the old signature has nothing left calling it.
+drop function if exists staff.update_reminder_times(text, text, text, text, text, text);
+
 create or replace function staff.update_reminder_times(
-  p_org        text,
-  p_huddle_at  text,
-  p_digest_am  text,
-  p_digest_pm  text,
-  p_checkin_1  text,
-  p_checkin_2  text
+  p_org               text,
+  p_huddle_at         text,
+  p_digest_am         text,
+  p_digest_pm         text,
+  p_checkin_1         text,
+  p_checkin_2         text,
+  p_digest_am_enabled boolean,
+  p_digest_pm_enabled boolean
 ) returns void
 language plpgsql
 security definer
@@ -2791,11 +2806,13 @@ set search_path = pg_catalog, public
 as $$
 begin
   update staff.orgs set
-    huddle_at    = p_huddle_at::time,
-    digest_am_at = p_digest_am::time,
-    digest_pm_at = p_digest_pm::time,
-    checkin_1_at = p_checkin_1::time,
-    checkin_2_at = p_checkin_2::time
+    huddle_at          = p_huddle_at::time,
+    digest_am_at        = p_digest_am::time,
+    digest_pm_at        = p_digest_pm::time,
+    checkin_1_at        = p_checkin_1::time,
+    checkin_2_at        = p_checkin_2::time,
+    digest_am_enabled   = p_digest_am_enabled,
+    digest_pm_enabled   = p_digest_pm_enabled
   where slug = p_org;
 
   if not found then
@@ -2805,10 +2822,10 @@ begin
 end $$;
 
 revoke all on function staff.update_reminder_times(
-  text, text, text, text, text, text
+  text, text, text, text, text, text, boolean, boolean
 ) from public;
 grant execute on function staff.update_reminder_times(
-  text, text, text, text, text, text
+  text, text, text, text, text, text, boolean, boolean
 ) to staff_app;
 
 
@@ -6243,6 +6260,30 @@ alter table staff.orgs
 -- the hard way that end-of-day meant 5pm.
 alter table staff.orgs
   alter column digest_pm_at set default '21:00';
+
+-- WHOLE-CLINIC DIGEST, ON/OFF -- deliberately separate from the huddle
+-- and the two check-ins (staff-morning-huddle.sql / staff-task-
+-- followups.sql), which have no opt-out anywhere on purpose. The AM/PM
+-- digest was already the one optional notification in this module
+-- (notify_on_all_logs, wants_digest, above) -- this just lets an owner
+-- turn a whole run off rather than only move its time.
+--
+-- DOES NOT TOUCH THE ADMIN EOD REPORT. sendEodReports() (lib/staff/
+-- eod-report.ts, fired at the same digest_pm_at hour by app/api/cron/
+-- reports/route.ts) is a separate, mandatory compliance record every
+-- org_admin/platform_super_admin gets regardless of this flag -- see
+-- that file's own header for why. digest_pm_enabled only gates the
+-- whole-clinic HTML digest sent from app/api/cron/alerts/route.ts: the
+-- opted-in staff copies and the owner/director alert_queue copy.
+alter table staff.orgs
+  add column if not exists digest_am_enabled boolean not null default true;
+alter table staff.orgs
+  add column if not exists digest_pm_enabled boolean not null default true;
+
+comment on column staff.orgs.digest_am_enabled is
+  'Whether the morning whole-clinic digest fires at all. Off leaves the huddle, both check-ins, and the admin EOD report untouched -- none of those have an opt-out.';
+comment on column staff.orgs.digest_pm_enabled is
+  'Whether the evening whole-clinic digest fires. Off does NOT affect the fuller EOD report every admin gets at the same digest_pm_at hour -- see lib/staff/eod-report.ts.';
 
 -- Both addresses render into an email envelope, so they are shaped here
 -- rather than only in a route.

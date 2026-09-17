@@ -18,8 +18,13 @@ import { redirectAfterPost } from "@/lib/staff/http";
 //
 // STAFF HAVE NO TOGGLE HERE OR ANYWHERE ELSE FOR THESE. The huddle and
 // the two check-ins already have no per-person opt-out (see
-// staff-morning-huddle.sql and staff-task-followups.sql); this route
-// is what an owner uses to move WHEN they fire, not whether.
+// staff-morning-huddle.sql and staff-task-followups.sql) and stay
+// mandatory here too -- this route only moves WHEN they fire, never
+// whether. The two whole-clinic digests are the exception: they can
+// also be switched off entirely (digest_am_enabled/digest_pm_enabled),
+// owner-only, same as their time. Off does not touch the fuller EOD
+// report every admin gets at digest_pm_at -- see staff-alerts.sql's
+// comment on digest_pm_enabled for why.
 
 export const runtime = "nodejs";
 
@@ -42,6 +47,11 @@ export async function POST(req: NextRequest) {
   const digestPm = time("digest_pm_at");
   const checkin1 = time("checkin_1_at");
   const checkin2 = time("checkin_2_at");
+  // Checkboxes only appear in form data when checked -- absence means off.
+  // The huddle and both check-ins have no matching box on purpose: they
+  // stay mandatory, same as ever.
+  const digestAmEnabled = form.get("digest_am_enabled") != null;
+  const digestPmEnabled = form.get("digest_pm_enabled") != null;
 
   for (const t of [huddleAt, digestAm, digestPm, checkin1, checkin2]) {
     if (!TIME_RE.test(t)) {
@@ -53,7 +63,8 @@ export async function POST(req: NextRequest) {
     await withSession(session, async (sql) => {
       await sql`
         select staff.update_reminder_times(
-          ${org}, ${huddleAt}, ${digestAm}, ${digestPm}, ${checkin1}, ${checkin2}
+          ${org}, ${huddleAt}, ${digestAm}, ${digestPm}, ${checkin1}, ${checkin2},
+          ${digestAmEnabled}, ${digestPmEnabled}
         )
       `;
       await sql`
@@ -65,6 +76,8 @@ export async function POST(req: NextRequest) {
                   digest_pm_at: digestPm,
                   checkin_1_at: checkin1,
                   checkin_2_at: checkin2,
+                  digest_am_enabled: digestAmEnabled,
+                  digest_pm_enabled: digestPmEnabled,
                 })})
       `;
     });

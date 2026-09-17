@@ -14,11 +14,14 @@ import { isMailConfigured, send } from "@/lib/mail";
 //   2. Tasks that have become late since the last run are enqueued as
 //      urgent. Derived from the clinic's own clock, so nothing here can
 //      go stale.
-//   3. If this hour matches the clinic's AM or PM digest time, one
-//      whole-clinic summary is enqueued and sent — except to admin
-//      accounts on the PM run, who get the same evening's numbers as
-//      the fuller EOD report instead (see the note where optedIn is
-//      built, below).
+//   3. If this hour matches the clinic's AM or PM digest time, AND that
+//      digest is switched on (digest_am_enabled/digest_pm_enabled —
+//      owner-only, see /staff/settings), one whole-clinic summary is
+//      enqueued and sent — except to admin accounts on the PM run, who
+//      get the same evening's numbers as the fuller EOD report instead
+//      (see the note where optedIn is built, below; that report has its
+//      own cron and its own mandatory delivery, untouched by either
+//      enabled flag).
 //   4. If this hour matches the clinic's morning-huddle time, one
 //      good-morning email goes to each person scheduled to work today —
 //      see lib/staff/huddle.ts. Its own time, not digest_am_at: a clinic
@@ -66,20 +69,34 @@ export async function GET(req: NextRequest) {
       facilityType: string | null;
     }[]>`
       select slug, timezone, facility_type as "facilityType",
-             -- Is this the hour of a digest, in the clinic's own zone?
+             -- Is this the hour of a digest THAT IS SWITCHED ON, in the
+             -- clinic's own zone? digest_am_enabled/digest_pm_enabled
+             -- are ANDed in here rather than checked separately in JS,
+             -- so an owner who has turned a run off gets exactly the
+             -- same result as if that hour never matched at all.
              (
-               date_trunc('hour', now() at time zone timezone)
-                 = date_trunc('hour', (now() at time zone timezone)::date + digest_am_at)
+               (
+                 date_trunc('hour', now() at time zone timezone)
+                   = date_trunc('hour', (now() at time zone timezone)::date + digest_am_at)
+                 and digest_am_enabled
+               )
                or
-               date_trunc('hour', now() at time zone timezone)
-                 = date_trunc('hour', (now() at time zone timezone)::date + digest_pm_at)
+               (
+                 date_trunc('hour', now() at time zone timezone)
+                   = date_trunc('hour', (now() at time zone timezone)::date + digest_pm_at)
+                 and digest_pm_enabled
+               )
              ) as due,
              -- The PM half specifically — see the "admins" branch below
              -- for why this needs to be its own flag rather than folded
-             -- into "due".
+             -- into "due". Turning digest_pm_enabled off here only stops
+             -- THIS whole-clinic digest; sendEodReports() (a separate
+             -- cron, a separate mandatory email) still fires at
+             -- digest_pm_at regardless — see staff-alerts.sql.
              (
                date_trunc('hour', now() at time zone timezone)
                  = date_trunc('hour', (now() at time zone timezone)::date + digest_pm_at)
+               and digest_pm_enabled
              ) as "pmDue",
              -- Same test, against the morning-huddle time. Its own
              -- column rather than reusing digest_am_at: the owner may

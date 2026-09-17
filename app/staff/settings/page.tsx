@@ -77,6 +77,8 @@ interface OrgSettings {
   digest_pm_at: string;
   checkin_1_at: string;
   checkin_2_at: string;
+  digest_am_enabled: boolean;
+  digest_pm_enabled: boolean;
 }
 
 /** Postgres hands a `time` column back as "08:00:00" — an
@@ -102,7 +104,8 @@ export default async function SettingsPage({
                billing_contact_email, zip, plan, subscription_status,
                stripe_customer_id, billing_name, card_brand, card_last4,
                huddle_at::text, digest_am_at::text, digest_pm_at::text,
-               checkin_1_at::text, checkin_2_at::text
+               checkin_1_at::text, checkin_2_at::text,
+               digest_am_enabled, digest_pm_enabled
           from staff.orgs where slug = ${org}
       `
     )[0],
@@ -345,11 +348,12 @@ export default async function SettingsPage({
           <section className="st-set-block">
             <h2 className="st-set-h">Reminder times</h2>
             <p className="st-set-b">
-              When these go out — not whether. The morning huddle, both
-              digests, and both escalating &ldquo;still not done&rdquo;
-              check-ins have no opt-out for anyone on this team,
-              including you; this is the one place their timing moves.
-              All times are in the clinic&rsquo;s own timezone, set above.
+              The morning huddle and both escalating &ldquo;still not
+              done&rdquo; check-ins have no opt-out for anyone on this
+              team, including you — only their timing moves. The two
+              whole-clinic digests can also be switched off entirely,
+              below. All times are in the clinic&rsquo;s own timezone,
+              set above.
             </p>
 
             <label className="st-field">
@@ -365,25 +369,62 @@ export default async function SettingsPage({
               </span>
             </label>
 
-            <label className="st-field">
-              <span className="st-field-label">Morning digest</span>
-              <input
-                className="st-input"
-                name="digest_am_at"
-                type="time"
-                defaultValue={hm(s.digest_am_at)}
-              />
-            </label>
+            {/* A DIV, NOT A LABEL, WRAPPING THE PAIR. Labels cannot nest —
+                the checkbox below needs its own <label> for its own
+                <input>, and putting that inside the time field's label
+                would make a click on the checkbox's text also fire the
+                time input, per the HTML spec's implicit-association
+                rule. */}
+            <div className="st-field">
+              <label>
+                <span className="st-field-label">Morning digest</span>
+                <input
+                  className="st-input"
+                  name="digest_am_at"
+                  type="time"
+                  defaultValue={hm(s.digest_am_at)}
+                />
+              </label>
+              <label className="st-set-check" style={{ marginTop: 8 }}>
+                <input
+                  type="checkbox"
+                  name="digest_am_enabled"
+                  defaultChecked={s.digest_am_enabled}
+                />
+                <span>
+                  <em>
+                    Send it at all. Off just skips this one — the huddle,
+                    both check-ins, and the evening digest are unaffected.
+                  </em>
+                </span>
+              </label>
+            </div>
 
-            <label className="st-field">
-              <span className="st-field-label">Evening digest</span>
-              <input
-                className="st-input"
-                name="digest_pm_at"
-                type="time"
-                defaultValue={hm(s.digest_pm_at)}
-              />
-            </label>
+            <div className="st-field">
+              <label>
+                <span className="st-field-label">Evening digest</span>
+                <input
+                  className="st-input"
+                  name="digest_pm_at"
+                  type="time"
+                  defaultValue={hm(s.digest_pm_at)}
+                />
+              </label>
+              <label className="st-set-check" style={{ marginTop: 8 }}>
+                <input
+                  type="checkbox"
+                  name="digest_pm_enabled"
+                  defaultChecked={s.digest_pm_enabled}
+                />
+                <span>
+                  <em>
+                    Send it at all. Off does not touch the fuller end-of-day
+                    report every admin gets at this same hour — that one
+                    has no off switch.
+                  </em>
+                </span>
+              </label>
+            </div>
 
             <label className="st-field">
               <span className="st-field-label">First check-in</span>
