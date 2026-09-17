@@ -4665,13 +4665,6 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
   gap: 5px;
   flex-wrap: wrap;
 }
-.st-oncall-role-label {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 999px 0 0 999px;
-  white-space: nowrap;
-}
 .st-oncall-pill {
   display: inline-flex;
   align-items: baseline;
@@ -4693,18 +4686,13 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 
 /* Fallback for any job role not in the five below — still reads as a
    pill or a dot, just without a reserved hue of its own. */
-.st-oncall-role-label, .st-oncall-pill { background: var(--blue-050); color: var(--ink); }
+.st-oncall-pill { background: var(--blue-050); color: var(--ink); }
 .st-oncall-dot { background: var(--ink-soft); }
 
-.st-oncall-role-label.st-oncall-provider,
 .st-oncall-pill.st-oncall-provider          { background: var(--blue-050);         color: var(--blue-600); }
-.st-oncall-role-label.st-oncall-medical_assistant,
 .st-oncall-pill.st-oncall-medical_assistant { background: var(--status-good-wash); color: var(--status-good); }
-.st-oncall-role-label.st-oncall-front_desk,
 .st-oncall-pill.st-oncall-front_desk        { background: var(--status-warn-wash); color: var(--status-warn-text); }
-.st-oncall-role-label.st-oncall-xray_tech,
 .st-oncall-pill.st-oncall-xray_tech         { background: var(--role-violet-100);  color: var(--role-violet-700); }
-.st-oncall-role-label.st-oncall-center_admin,
 .st-oncall-pill.st-oncall-center_admin      { background: var(--role-slate-100);   color: var(--role-slate-700); }
 
 .st-oncall-dot.st-oncall-provider          { background: var(--blue-600); }
