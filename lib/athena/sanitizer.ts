@@ -40,8 +40,16 @@ const PHI_FIELD_NAMES = [
   "medicalrecordnumber",
   "insuranceid",
   "insurancemember",
-  "guarantorid",
+  // "guarantor" alone, not just "guarantorid" -- catches guarantorname,
+  // guarantorrelationship, etc. too, since the match below is substring.
+  "guarantor",
   "chartid",
+  "clinicalnotes",
+  "vitalsign",
+  "vitals",
+  "diagnosis",
+  "allergies",
+  "medications",
 ];
 
 function isPhiField(key: string): boolean {

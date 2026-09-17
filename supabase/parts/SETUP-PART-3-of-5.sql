@@ -614,6 +614,30 @@ alter table staff.orgs
 alter table staff.orgs
   alter column digest_pm_at set default '21:00';
 
+-- WHOLE-CLINIC DIGEST, ON/OFF -- deliberately separate from the huddle
+-- and the two check-ins (staff-morning-huddle.sql / staff-task-
+-- followups.sql), which have no opt-out anywhere on purpose. The AM/PM
+-- digest was already the one optional notification in this module
+-- (notify_on_all_logs, wants_digest, above) -- this just lets an owner
+-- turn a whole run off rather than only move its time.
+--
+-- DOES NOT TOUCH THE ADMIN EOD REPORT. sendEodReports() (lib/staff/
+-- eod-report.ts, fired at the same digest_pm_at hour by app/api/cron/
+-- reports/route.ts) is a separate, mandatory compliance record every
+-- org_admin/platform_super_admin gets regardless of this flag -- see
+-- that file's own header for why. digest_pm_enabled only gates the
+-- whole-clinic HTML digest sent from app/api/cron/alerts/route.ts: the
+-- opted-in staff copies and the owner/director alert_queue copy.
+alter table staff.orgs
+  add column if not exists digest_am_enabled boolean not null default true;
+alter table staff.orgs
+  add column if not exists digest_pm_enabled boolean not null default true;
+
+comment on column staff.orgs.digest_am_enabled is
+  'Whether the morning whole-clinic digest fires at all. Off leaves the huddle, both check-ins, and the admin EOD report untouched -- none of those have an opt-out.';
+comment on column staff.orgs.digest_pm_enabled is
+  'Whether the evening whole-clinic digest fires. Off does NOT affect the fuller EOD report every admin gets at the same digest_pm_at hour -- see lib/staff/eod-report.ts.';
+
 -- Both addresses render into an email envelope, so they are shaped here
 -- rather than only in a route.
 do $$ begin
