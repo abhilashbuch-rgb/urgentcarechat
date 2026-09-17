@@ -13,6 +13,7 @@ import { listBulletins, type Bulletin } from "@/lib/staff/bulletins";
 import { onDutyToday, type OnDutyRole } from "@/lib/staff/roster-today";
 import StaffClock from "@/app/components/staff/StaffClock";
 import ShortcutGrid from "@/app/components/staff/ShortcutGrid";
+import OnCallStrip from "@/app/components/staff/OnCallStrip";
 
 // The staff landing screen — one shift, from the point of view of the
 // person working it.
@@ -156,11 +157,14 @@ export default async function StaffHome() {
   if (overview && !overview.hasProfile) {
     return (
       <div className="st-page">
-        <header className="st-page-head">
-          <h1 className="st-h1">{overview.orgName}</h1>
-          <p className="st-page-sub">
-            Signed in as {session.email} &middot; {ROLE_LABELS[session.role]}
-          </p>
+        <header className="st-page-head st-page-head-row">
+          <div>
+            <h1 className="st-h1">{overview.orgName}</h1>
+            <p className="st-page-sub">
+              Signed in as {session.email} &middot; {ROLE_LABELS[session.role]}
+            </p>
+          </div>
+          <OnCallStrip onDuty={overview.onDuty} />
         </header>
         <div className="st-notice" role="status">
           <strong>You administer this clinic.</strong>
@@ -190,16 +194,22 @@ export default async function StaffHome() {
 
   return (
     <div className="st-page">
-      <header className="st-page-head">
-        {/* "Today", not the org name — the header above already says which
-            clinic this is, and repeating it here gave the screen two
-            headings that said the same thing. Matching the nav item means
-            the page title and the tab you clicked agree. */}
-        <h1 className="st-h1">Today</h1>
-        <p className="st-page-sub">
-          Signed in as {session.email} &middot; {ROLE_LABELS[session.role]}
-        </p>
-        {overview && <StaffClock timezone={overview.timezone} />}
+      <header className="st-page-head st-page-head-row">
+        <div>
+          {/* "Today", not the org name — the header above already says
+              which clinic this is, and repeating it here gave the screen
+              two headings that said the same thing. Matching the nav item
+              means the page title and the tab you clicked agree. */}
+          <h1 className="st-h1">Today</h1>
+          <p className="st-page-sub">
+            Signed in as {session.email} &middot; {ROLE_LABELS[session.role]}
+          </p>
+          {overview && <StaffClock timezone={overview.timezone} />}
+        </div>
+        {/* Top-right, at a glance, without scrolling past today's
+            callouts to reach .st-onduty further down. Same data, same
+            silent-when-empty rule — see OnCallStrip.tsx. */}
+        <OnCallStrip onDuty={overview?.onDuty ?? []} />
       </header>
 
       {/* One fact, once a day, not a stream. Rotates on the clinic's own
