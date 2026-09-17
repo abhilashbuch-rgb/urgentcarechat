@@ -325,7 +325,9 @@ export default async function StaffHome() {
             {overview.onDuty.map((r) => (
               <li key={r.jobRole} className="st-onduty-row">
                 <span className="st-onduty-role">{r.label}</span>
-                <span className="st-onduty-people">{r.people.join(", ")}</span>
+                <span className="st-onduty-people">
+                  {r.people.map((p) => p.name).join(", ")}
+                </span>
               </li>
             ))}
           </ul>
