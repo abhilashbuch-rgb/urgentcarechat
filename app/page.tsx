@@ -108,7 +108,7 @@ function HeroVisual() {
         <div className="mh-device-title">Current temperature</div>
         <div className="mh-device-sub">2&ndash;8 &deg;C acceptable range</div>
         <div className="mh-device-reading">
-          <span className="mh-device-value">3.6&deg;C</span>
+          <span className="mh-device-value">4.1&deg;C</span>
           <span className="mh-device-pill">In range</span>
         </div>
         <div className="mh-device-sig">
@@ -169,12 +169,6 @@ export default function LandingPage() {
         <section className="mh-hero mh-dark">
           <div className="mh-hero-inner">
             <div className="mh-hero-copy">
-              <p className="mh-kicker">
-                Clinical infrastructure for{" "}
-                <span className="mh-kicker-urgent">urgent care</span>,{" "}
-                <span className="mh-kicker-primary">primary care</span>,{" "}
-                <span className="mh-kicker-medspa">med spa</span>
-              </p>
               <h1 className="mh-h1">
                 Kill the paper binder.
                 <br />
