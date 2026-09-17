@@ -41,6 +41,9 @@ function EmbedDocs() {
           free AI triage + clinic finder, chrome-less and sized to fit
           alongside your content.
         </p>
+        <p className="widget-docs-sub">
+          <Link href="/widget/security">What this widget collects and stores</Link>
+        </p>
 
         <div className="widget-snippet">
           <pre>{SNIPPET}</pre>
