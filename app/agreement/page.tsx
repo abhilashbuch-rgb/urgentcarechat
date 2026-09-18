@@ -72,7 +72,7 @@ export default function AgreementPage() {
           <h2>3. Fees and term</h2>
           <p>
             New clinics get a 30-day trial with no card required. After the
-            trial, the subscription is $149 per clinic per month, or $1,490
+            trial, the subscription is $179 per clinic per month, or $1,790
             per clinic per year paid up front. Each additional clinic under
             the same owner is billed the same way — there is no volume
             discount, because a second clinic is a second full set of logs,

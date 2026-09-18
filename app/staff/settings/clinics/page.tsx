@@ -8,7 +8,7 @@ import SwitchClinicButton from "@/app/components/staff/SwitchClinicButton";
 
 // The clinics an org_admin runs, and the door to add another.
 //
-// $149/clinic/month, same as the first — the landing page has always
+// $179/clinic/month, same as the first — the landing page has always
 // said this ("no volume discount... each clinic at the same price") and
 // staff.add_clinic() now actually enforces it: a new clinic gets its own
 // 30-day trial rather than inheriting the caller's paid status for free.
@@ -52,7 +52,7 @@ export default async function ClinicsPage() {
       <header className="st-page-head">
         <h1 className="st-h1">Clinics</h1>
         <p className="st-page-sub">
-          One login across every clinic you run, $149/month each.
+          One login across every clinic you run, $179/month each.
         </p>
       </header>
 
@@ -93,7 +93,7 @@ export default async function ClinicsPage() {
                   {!current && <SwitchClinicButton slug={c.slug} />}
                   {pay && (
                     <a className="st-board-btn" href={pay}>
-                      Pay $149/month to activate
+                      Pay $179/month to activate
                     </a>
                   )}
                 </div>
