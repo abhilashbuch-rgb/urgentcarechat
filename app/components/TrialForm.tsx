@@ -173,7 +173,7 @@ export default function TrialForm({
             A hospital or a multi-site system cannot be served by this
             form: it needs a BAA negotiated against their template, a
             security review, SSO against their directory, and a contract
-            that is not $149 on a card. Putting it in the picker would
+            that is not $179 on a card. Putting it in the picker would
             take their card details and hand them a single-clinic
             workspace they cannot legally put staff into. So it is
             labelled as what it is and it goes somewhere a person

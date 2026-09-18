@@ -207,10 +207,10 @@ export default function LandingPage() {
           <div className="mh-plan">
             <p className="mh-plan-name">Single location</p>
             <p className="mh-plan-price">
-              $149<span>/clinic/month</span>
+              $179<span>/clinic/month</span>
             </p>
             <p className="mh-plan-annual">
-              or $1,490 a year paid up front — two months free
+              or $1,790 a year paid up front — two months free
             </p>
             <ul className="mh-plan-list">
               {INCLUDED.map((line) => (
@@ -218,7 +218,7 @@ export default function LandingPage() {
               ))}
             </ul>
             <Link className="mh-cta mh-cta-block" href="/start">
-              Start free, then $149
+              Start free, then $179
             </Link>
           </div>
 
@@ -229,7 +229,7 @@ export default function LandingPage() {
               negotiation. Groups are handled by adding clinics, each at
               the same price. */}
           <p className="mh-multi">
-            More than one clinic? Add them from inside the app — $149/month
+            More than one clinic? Add them from inside the app — $179/month
             each, one login across all of them.
           </p>
 

@@ -649,7 +649,7 @@ export default async function SettingsPage({
       )}
 
       {/* BILLING STAYS THE OWNER'S, EVEN THOUGH A MANAGER CAN SEE THIS
-          PAGE NOW. Adding a clinic starts a new $149/month subscription
+          PAGE NOW. Adding a clinic starts a new $179/month subscription
           — the one decision this product keeps reserved for whoever
           answers for the money. The route this links to enforces the
           same check independently. */}

@@ -114,7 +114,7 @@ export default function EnterprisePage() {
           <p className="tr-fine">
             If you are a single clinic — urgent care, primary care, medical
             spa, surgery center or dental — you do not need this page.{" "}
-            <Link href="/start">Start a trial</Link> instead; it is $149 a
+            <Link href="/start">Start a trial</Link> instead; it is $179 a
             month per clinic and takes about a minute.
           </p>
         </div>
