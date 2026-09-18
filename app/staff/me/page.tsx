@@ -215,13 +215,13 @@ export default async function MyRecord() {
       </section>
 
       <section className="st-record-section st-no-print">
-        <h2 className="st-h2">Missed shifts</h2>
+        <h2 className="st-h2">Missed checks</h2>
         <p className="st-page-sub" style={{ marginBottom: 12 }}>
-          Counted only when your whole shift&rsquo;s required logs went
-          unfiled &mdash; not one missed check, all of them. An
-          administrator sees this too, the moment it happens; this is
-          your own copy of the same number, not a separate scoreboard
-          anyone else on staff can see.
+          Counted the moment a single required check goes unfiled while
+          you were the one on duty for it &mdash; not just a whole shift
+          gone empty. An administrator sees this too, the moment it
+          happens; this is your own copy of the same number, not a
+          separate scoreboard anyone else on staff can see.
         </p>
         <p className="st-card-value st-card-value-sm">
           {data.missedShifts} this year

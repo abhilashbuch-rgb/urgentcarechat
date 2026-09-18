@@ -39,17 +39,21 @@ export const AMEND_HOLD_MINUTES = 3;
 
 /** SMS earns its place only where the delay between "email arrives" and
  *  "email is read" is the thing that does the damage — see the header
- *  of supabase/staff-alerts-sms.sql. Two kinds meet that bar:
+ *  of supabase/staff-alerts-sms.sql. excursion is the only kind that
+ *  currently meets that bar.
  *
- *  - excursion: a confirmed out-of-range reading. The original case.
- *  - missed_shift: a whole role's whole slot filed NOTHING — which can
- *    mean the fridge check that would have caught an excursion simply
- *    never happened. This is not "a late task," which stays email-only
- *    (see the sql array below excluding missed_task); it is the same
- *    silent-equipment risk the excursion rule exists for, except worse
- *    — an excursion at least tells somebody something is wrong, and a
- *    total miss tells them nothing at all. */
-export const SMS_ELIGIBLE_KINDS = ["excursion", "missed_shift"] as const;
+ *  missed_shift (lib/staff/shift-miss.ts) was briefly included here on
+ *  the theory that a fully-empty shift could mean the fridge check
+ *  itself never happened. It was redesigned to fire per INDIVIDUAL
+ *  missed check, named to whoever was on duty for it — which can now
+ *  mean several a day for one person, the exact alert-fatigue failure
+ *  mode staff-alerts-sms.sql's own header warns about ("somebody who
+ *  receives an SMS for every log has to turn the channel off
+ *  entirely, and turning it off takes the fridge alert with it"). It
+ *  stays email-only unless a future, narrower rule (e.g. only when the
+ *  specific missed check is itself equipment/vaccine-storage related)
+ *  earns it back. */
+export const SMS_ELIGIBLE_KINDS = ["excursion"] as const;
 
 /** File an alert. Excursions go out after a short hold; clean logs wait
  *  for the digest unless the clinic has asked for every one. */

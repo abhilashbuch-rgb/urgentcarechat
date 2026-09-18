@@ -166,10 +166,12 @@ export async function GET(req: NextRequest) {
           });
         }
 
-        // Entire-shift misses: a role whose whole slot filed nothing at
-        // all today, not just one late template. Idempotent — see the
-        // header of lib/staff/shift-miss.ts — so trying this every hour
-        // costs nothing and records/alerts on each miss exactly once.
+        // Named misses: an overdue check attributed to whoever was
+        // actually on duty for it, "missed by Natalia," not just a
+        // late template with nobody named. Idempotent — see the
+        // header of lib/staff/shift-miss.ts — so trying this every
+        // hour costs nothing and records/alerts on each miss exactly
+        // once, keyed per check rather than per whole shift.
         const missedShifts = await detectAndRecordMissedShifts(sql, slug, facilityType);
 
         if (due) {

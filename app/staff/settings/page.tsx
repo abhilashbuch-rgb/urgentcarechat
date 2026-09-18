@@ -276,10 +276,9 @@ export default async function SettingsPage({
 
           <p className="st-set-b" style={{ marginTop: 16 }}>
             Optional, on top of email &mdash; a phone number here also gets a
-            text, at any hour, but only for the two things that cannot wait
-            for someone to open their inbox: an out-of-range reading, and an
-            entire shift whose logs went completely unfiled. Leave it blank
-            and email alone still does the job.
+            text, at any hour, but only for the one thing that cannot wait
+            for someone to open their inbox: an out-of-range reading. Leave
+            it blank and email alone still does the job.
           </p>
 
           <label className="st-field">
