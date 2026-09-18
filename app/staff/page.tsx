@@ -11,6 +11,7 @@ import { firstNameOf, formatSignedAt } from "@/lib/staff/labels";
 import { currentAnnouncement } from "@/lib/staff/whats-new";
 import { listBulletins, type Bulletin } from "@/lib/staff/bulletins";
 import { onDutyToday, type OnDutyRole } from "@/lib/staff/roster-today";
+import { activeRecallAlerts, CLASSIFICATION_EXPLANATION, type RecallAlert } from "@/lib/staff/recalls";
 import StaffClock from "@/app/components/staff/StaffClock";
 import ShortcutGrid from "@/app/components/staff/ShortcutGrid";
 import OnCallStrip from "@/app/components/staff/OnCallStrip";
@@ -67,6 +68,11 @@ interface Overview {
    *  third shift benefits from knowing who the MA on today is at least
    *  as much as an owner does. */
   onDuty: OnDutyRole[];
+  /** FDA recalls matched against this clinic's own stocked inventory —
+   *  see lib/staff/recalls.ts. Same visibility as onDuty above: a
+   *  property of the clinic and its stock room, not of one person's
+   *  shift, so shown to everyone who opens this board. */
+  recalls: RecallAlert[];
 }
 
 export default async function StaffHome() {
@@ -117,6 +123,7 @@ export default async function StaffHome() {
           timezone: orgRow[0]?.timezone ?? "America/New_York",
           shortcuts: shortcutsFor(session.role, null),
           onDuty: await onDutyToday(sql, org, orgRow[0]?.facility_type ?? null),
+          recalls: await activeRecallAlerts(sql, org),
         };
       }
       const outstanding = await outstandingFor(sql, session.uid);
@@ -139,6 +146,7 @@ export default async function StaffHome() {
         timezone: orgRow?.timezone ?? "America/New_York",
         shortcuts: shortcutsFor(session.role, profile.job_role ?? null),
         onDuty: await onDutyToday(sql, org, orgRow?.facility_type ?? null),
+        recalls: await activeRecallAlerts(sql, org),
       };
     });
   } catch (err) {
@@ -308,6 +316,63 @@ export default async function StaffHome() {
             <span className="st-callout-sub">Open the register &rarr;</span>
           </Link>
         )}
+
+      {/* A RECALL ON SOMETHING THIS CLINIC ACTUALLY STOCKS, NOT A NEWS
+          FEED. See lib/staff/recalls.ts for why this is matched only
+          against named inventory items rather than generic equipment
+          categories — the deliberate scope limit that keeps this list
+          short enough to actually read. Worst classification first;
+          each row explains what that class means rather than assuming
+          the reader has FDA's severity scale memorized, and links to
+          the literal openFDA record rather than a guessed-at public
+          page URL. Shown to everyone on this board, same as On duty
+          below — a recalled vaccine lot in the fridge is exactly as
+          much whoever gives it needs to know as it is an owner's. */}
+      {overview && overview.recalls.length > 0 && (
+        <section className="st-recall-section">
+          <h2 className="st-h2">Recalls on what you stock</h2>
+          <ul className="st-recall-list">
+            {overview.recalls.map((r) => (
+              <li
+                key={r.id}
+                className={`st-recall-row${
+                  r.classification === "Class I" ? " st-recall-row-critical" : " st-recall-row-warn"
+                }`}
+              >
+                <div className="st-recall-main">
+                  <span className="st-recall-item">{r.itemName}</span>
+                  {r.classification && (
+                    <span className="st-recall-badge">{r.classification}</span>
+                  )}
+                </div>
+                {r.classification && CLASSIFICATION_EXPLANATION[r.classification] && (
+                  <p className="st-recall-explain">
+                    {CLASSIFICATION_EXPLANATION[r.classification]}
+                  </p>
+                )}
+                <p className="st-recall-desc">{r.productDescription}</p>
+                {r.reasonForRecall && (
+                  <p className="st-recall-reason">
+                    <strong>Reason:</strong> {r.reasonForRecall}
+                  </p>
+                )}
+                <p className="st-recall-meta">
+                  {r.recallingFirm ?? "Manufacturer not listed"}
+                  {r.reportDate ? ` · reported ${r.reportDate}` : ""}
+                  {r.detailUrl && (
+                    <>
+                      {" · "}
+                      <a href={r.detailUrl} target="_blank" rel="noopener noreferrer">
+                        View the FDA record
+                      </a>
+                    </>
+                  )}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* WHO'S EXPECTED, NOT WHO'S CLOCKED IN. Read from the schedule an
           administrator set on each person's Team page (workdays), not

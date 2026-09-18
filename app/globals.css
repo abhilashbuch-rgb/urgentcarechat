@@ -4750,6 +4750,62 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 /* ---------- on duty today ---------- */
 /* Same card shape as .st-mycreds just above — a short, silent-when-
    empty list, not a new visual language for one more section. */
+/* Worst class gets --danger (already this file's established
+   "expired/overdue/critical" accent — see .st-board-overdue,
+   .sv-state-critical), everything else the same amber left-edge
+   .st-gap-row already uses for "worth noticing, not on fire." No new
+   hue for either. */
+.st-recall-section {
+  background: var(--bg-sunk);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+.st-recall-list { list-style: none; margin: 0; padding: 0; }
+.st-recall-row {
+  padding: 12px 14px;
+  margin-top: 10px;
+  border-left: 3px solid var(--status-warn);
+  background: var(--bg);
+  border-radius: 0 8px 8px 0;
+}
+.st-recall-row:first-child { margin-top: 0; }
+.st-recall-row-critical { border-left-color: var(--danger); }
+.st-recall-main {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.st-recall-item { font-size: 14px; font-weight: 600; color: var(--ink); }
+.st-recall-badge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--blue-050);
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.st-recall-row-critical .st-recall-badge { background: var(--danger); color: #fff; }
+.st-recall-explain,
+.st-recall-desc,
+.st-recall-reason {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  margin: 6px 0 0;
+}
+.st-recall-meta {
+  font-size: 12px;
+  color: var(--ink-faint);
+  margin: 8px 0 0;
+}
+.st-recall-meta a { color: var(--accent); }
+
 .st-onduty {
   background: var(--bg-sunk);
   border: 1px solid var(--rule);
