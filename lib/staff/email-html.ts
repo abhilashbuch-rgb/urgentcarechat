@@ -262,7 +262,7 @@ export function renderHuddleEmailHtml(opts: {
  *  below — every enqueue() call that has not been given its own html
  *  still gets a colored card rather than a wall of monospace text. */
 export function toneForAlertKind(kind: string): EmailTone {
-  if (kind === "excursion" || kind === "missed_task") return "critical";
+  if (kind === "excursion" || kind === "missed_task" || kind === "missed_shift") return "critical";
   if (kind === "credential_expiry") return "warn";
   return "good";
 }

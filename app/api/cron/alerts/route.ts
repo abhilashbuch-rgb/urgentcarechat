@@ -4,6 +4,7 @@ import { sweep, digestFor, enqueue, localStamp } from "@/lib/staff/alerts";
 import { SLOT_LABELS } from "@/lib/staff/forms";
 import { huddleRecipientsToday, huddleFor, followUpFor, type FollowUpTier } from "@/lib/staff/huddle";
 import { isMailConfigured, send } from "@/lib/mail";
+import { detectAndRecordMissedShifts } from "@/lib/staff/shift-miss";
 
 // GET /api/cron/alerts — deliver queued alerts, and file the digests.
 //
@@ -154,6 +155,12 @@ export async function GET(req: NextRequest) {
           });
         }
 
+        // Entire-shift misses: a role whose whole slot filed nothing at
+        // all today, not just one late template. Idempotent — see the
+        // header of lib/staff/shift-miss.ts — so trying this every hour
+        // costs nothing and records/alerts on each miss exactly once.
+        const missedShifts = await detectAndRecordMissedShifts(sql, slug, facilityType);
+
         if (due) {
           const d = await digestFor(sql, slug);
           if (d) {
@@ -258,7 +265,12 @@ export async function GET(req: NextRequest) {
           }
         }
 
-        return { ...(await sweep(sql, slug)), huddled, checkedIn };
+        return {
+          ...(await sweep(sql, slug)),
+          huddled,
+          checkedIn,
+          missedShifts: missedShifts.filter((m) => m.recorded).length,
+        };
       });
       results.push({ org: slug, ...outcome });
     } catch (err) {

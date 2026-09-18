@@ -20,7 +20,7 @@ import { jobLabel } from "@/lib/staff/roles";
 
 export interface AlertInput {
   org: string;
-  kind: "excursion" | "log" | "missed_task" | "credential_expiry";
+  kind: "excursion" | "log" | "missed_task" | "credential_expiry" | "missed_shift";
   subject: string;
   body: string;
   /** Pre-built HTML for this one alert. Only the digest supplies this —
@@ -44,7 +44,7 @@ export async function enqueue(
   input: AlertInput
 ): Promise<void> {
   const urgency =
-    input.kind === "excursion" || input.kind === "missed_task"
+    input.kind === "excursion" || input.kind === "missed_task" || input.kind === "missed_shift"
       ? "now"
       : await wantsEveryLog(sql, input.org)
         ? "now"
