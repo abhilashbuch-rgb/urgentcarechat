@@ -107,8 +107,13 @@ export async function detectAndRecordMissedShifts(
 /** This year's count for one person, AFTER today's miss (if any) is
  *  already recorded — so the number in the email is the number a
  *  reader can act on immediately, not one that reads low by exactly
- *  one until tomorrow's cron pass. */
-async function yearlyMissCount(sql: StaffSql, org: string, personName: string): Promise<number> {
+ *  one until tomorrow's cron pass.
+ *
+ *  Exported for app/staff/me/page.tsx: a person's own record of this
+ *  should be visible to them, not just to admin — the same "it is
+ *  theirs, not the employer's copy of it" rule that page's own header
+ *  already states for everything else on it. */
+export async function yearlyMissCount(sql: StaffSql, org: string, personName: string): Promise<number> {
   const [row] = await sql<{ count: string }[]>`
     select count(*) as count
       from staff.shift_misses m
