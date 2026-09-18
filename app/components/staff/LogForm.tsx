@@ -340,6 +340,7 @@ export default function LogForm({
       <LocationStamp org={geofence} onChange={setLoc} />
 
       {schema.standard && <p className="st-log-standard">{schema.standard}</p>}
+      {schema.vendorTip && <p className="st-log-tip">{schema.vendorTip}</p>}
 
       <div className="st-log-fields">
         {schema.fields.map((f, i) => (

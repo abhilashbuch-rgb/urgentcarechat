@@ -5829,6 +5829,22 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
   margin-bottom: 16px;
 }
 
+/* A resource worth knowing, not a rule to check against — same family
+   as .st-log-standard, deliberately unfilled so it never reads as part
+   of the regulation being cited above it. No new hue: reuses the
+   existing neutral rule/ink tokens rather than adding a third color to
+   this file's "one hue, strictly" palette. */
+.st-log-tip {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 9px 12px;
+  margin-bottom: 16px;
+}
+
 .st-log-fields { display: flex; flex-direction: column; }
 .st-log-row {
   display: grid;

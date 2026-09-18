@@ -80,6 +80,15 @@ export const formSchema = z.object({
   /** Rendered above the fields — the one line of standard the person is
    *  checking against, so nobody has to remember it. */
   standard: z.string().max(400).optional(),
+  /** A secondary, optional note below the standard — a vendor or
+   *  resource worth knowing for THIS log, not a rule to check against.
+   *  Rendered in its own, deliberately quieter style (no fill, unlike
+   *  .st-log-standard's blue wash) so it never reads as part of the
+   *  regulation being cited. Never a place for a claim this codebase
+   *  wouldn't publish elsewhere — see app/page.tsx's own "NO DOLLAR
+   *  FIGURES" note for why a specific price here is hedged, not stated
+   *  as fact. */
+  vendorTip: z.string().max(400).optional(),
   fields: z.array(fieldSchema).min(1).max(40),
 });
 
