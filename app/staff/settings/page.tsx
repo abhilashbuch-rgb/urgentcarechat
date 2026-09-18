@@ -42,6 +42,10 @@ const ERRORS: Record<string, string> = {
     "Requiring on-site filing needs the clinic's coordinates first — otherwise there is nothing to measure against and nobody could file anything.",
   owneremail: "Check the owner's alert address.",
   mdemail: "Check the medical director's alert address.",
+  ownerphone:
+    "Check the owner's alert phone number — E.164, e.g. +12155551234.",
+  mdphone:
+    "Check the medical director's alert phone number — E.164, e.g. +12155551234.",
   reportemail:
     "A scheduled report needs an address to send to.",
   billingemail: "Check the billing contact's address.",
@@ -64,6 +68,8 @@ interface OrgSettings {
   geofence_mode: string;
   owner_alert_email: string | null;
   medical_director_alert_email: string | null;
+  owner_alert_phone: string | null;
+  medical_director_alert_phone: string | null;
   billing_contact_email: string | null;
   zip: string | null;
   plan: string;
@@ -101,6 +107,7 @@ export default async function SettingsPage({
       await sql<OrgSettings[]>`
         select name, timezone, latitude, longitude, geofence_radius_m,
                geofence_mode, owner_alert_email, medical_director_alert_email,
+               owner_alert_phone, medical_director_alert_phone,
                billing_contact_email, zip, plan, subscription_status,
                stripe_customer_id, billing_name, card_brand, card_last4,
                huddle_at::text, digest_am_at::text, digest_pm_at::text,
@@ -264,6 +271,36 @@ export default async function SettingsPage({
               type="email"
               defaultValue={s.medical_director_alert_email ?? ""}
               placeholder="md@clinic.com"
+            />
+          </label>
+
+          <p className="st-set-b" style={{ marginTop: 16 }}>
+            Optional, on top of email &mdash; a phone number here also gets a
+            text, at any hour, but only for the two things that cannot wait
+            for someone to open their inbox: an out-of-range reading, and an
+            entire shift whose logs went completely unfiled. Leave it blank
+            and email alone still does the job.
+          </p>
+
+          <label className="st-field">
+            <span className="st-field-label">Owner&rsquo;s phone</span>
+            <input
+              className="st-input"
+              name="owner_alert_phone"
+              type="tel"
+              defaultValue={s.owner_alert_phone ?? ""}
+              placeholder="+12155551234"
+            />
+          </label>
+
+          <label className="st-field">
+            <span className="st-field-label">Medical director&rsquo;s phone</span>
+            <input
+              className="st-input"
+              name="medical_director_alert_phone"
+              type="tel"
+              defaultValue={s.medical_director_alert_phone ?? ""}
+              placeholder="+12155551234"
             />
           </label>
         </section>

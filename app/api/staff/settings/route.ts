@@ -21,6 +21,10 @@ export const runtime = "nodejs";
 
 const isEmail = (s: string) => /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(s);
 
+// Same shape staff_orgs_alert_phones_e164 enforces on the columns
+// themselves — see supabase/staff-alert-phone-settings.sql.
+const isE164 = (s: string) => /^\+[1-9][0-9]{7,14}$/.test(s);
+
 /** Region/City only. An abbreviation has no daylight-saving rule, so
  *  every reminder and report drifts by an hour for half the year — the
  *  bug this check exists to prevent is 'EST'. */
@@ -92,6 +96,17 @@ export async function POST(req: NextRequest) {
     return redirectAfterPost("/staff/settings?e=mdemail");
   }
 
+  // Optional, on top of email rather than instead of it — a blank
+  // number is a real, valid choice (email alone), not an error.
+  const ownerPhone = str("owner_alert_phone");
+  const mdPhone = str("medical_director_alert_phone");
+  if (ownerPhone && !isE164(ownerPhone)) {
+    return redirectAfterPost("/staff/settings?e=ownerphone");
+  }
+  if (mdPhone && !isE164(mdPhone)) {
+    return redirectAfterPost("/staff/settings?e=mdphone");
+  }
+
   const wantDaily = form.get("report_daily") !== null;
   const wantWeekly = form.get("report_weekly") !== null;
   const wantMonthly = form.get("report_monthly") !== null;
@@ -112,7 +127,8 @@ export async function POST(req: NextRequest) {
         select staff.update_org_settings(
           ${org}, ${timezone}, ${lat}, ${lng},
           ${Math.round(radius)}, ${mode},
-          ${ownerEmail || null}, ${mdEmail || null}
+          ${ownerEmail || null}, ${mdEmail || null},
+          ${ownerPhone || null}, ${mdPhone || null}
         )
       `;
 

@@ -73,6 +73,15 @@ interface Overview {
    *  property of the clinic and its stock room, not of one person's
    *  shift, so shown to everyone who opens this board. */
   recalls: RecallAlert[];
+  /** True once at least one of the four alert contacts (owner/medical
+   *  director, email/phone) is set — see the callout this gates on
+   *  StaffHome. A clinic with all four blank has nobody wired to hear
+   *  about an excursion, a missed shift, or anything else, which is a
+   *  silent failure mode worth nagging about; a clinic with only email
+   *  set is a real, deliberate choice (see the settings page's own
+   *  "leave it blank and email alone still does the job") and gets no
+   *  nag at all. */
+  alertsConfigured: boolean;
 }
 
 export default async function StaffHome() {
@@ -93,6 +102,10 @@ export default async function StaffHome() {
   // else to go until it's done, so that one still bounces straight there.
   const hasNavAccess = atLeast(session.role, "clinical_lead");
 
+  // Only whoever can actually fix it — same gate app/api/staff/settings/
+  // route.ts itself checks before it will save these fields at all.
+  const seesAlertSetup = atLeast(session.role, "manager");
+
   let overview: Overview | null = null;
   let dbError: string | null = null;
 
@@ -105,9 +118,18 @@ export default async function StaffHome() {
         // means anything for this person in this org, so it isn't
         // queried.
         const orgRow = await sql<
-          { name: string; timezone: string; facility_type: string | null }[]
+          {
+            name: string;
+            timezone: string;
+            facility_type: string | null;
+            alerts_configured: boolean;
+          }[]
         >`
-          select name, timezone, facility_type from staff.orgs where slug = ${org}
+          select name, timezone, facility_type,
+                 (owner_alert_email is not null or medical_director_alert_email is not null
+                  or owner_alert_phone is not null or medical_director_alert_phone is not null)
+                   as alerts_configured
+            from staff.orgs where slug = ${org}
         `;
         return {
           hasProfile: false,
@@ -124,13 +146,22 @@ export default async function StaffHome() {
           shortcuts: shortcutsFor(session.role, null),
           onDuty: await onDutyToday(sql, org, orgRow[0]?.facility_type ?? null),
           recalls: await activeRecallAlerts(sql, org),
+          alertsConfigured: orgRow[0]?.alerts_configured ?? false,
         };
       }
       const outstanding = await outstandingFor(sql, session.uid);
       const [orgRow] = await sql<
-        { timezone: string; facility_type: string | null }[]
+        {
+          timezone: string;
+          facility_type: string | null;
+          alerts_configured: boolean;
+        }[]
       >`
-        select timezone, facility_type from staff.orgs where slug = ${org}
+        select timezone, facility_type,
+               (owner_alert_email is not null or medical_director_alert_email is not null
+                or owner_alert_phone is not null or medical_director_alert_phone is not null)
+                 as alerts_configured
+          from staff.orgs where slug = ${org}
       `;
       return {
         hasProfile: true,
@@ -147,6 +178,7 @@ export default async function StaffHome() {
         shortcuts: shortcutsFor(session.role, profile.job_role ?? null),
         onDuty: await onDutyToday(sql, org, orgRow?.facility_type ?? null),
         recalls: await activeRecallAlerts(sql, org),
+        alertsConfigured: orgRow?.alerts_configured ?? false,
       };
     });
   } catch (err) {
@@ -174,6 +206,22 @@ export default async function StaffHome() {
           </div>
           <OnCallStrip onDuty={overview.onDuty} />
         </header>
+
+        {seesAlertSetup && !overview.alertsConfigured && (
+          <div className="st-notice st-notice-warn" role="alert">
+            <strong>Nobody is set up to hear about a problem.</strong>
+            <span>
+              No owner or medical director address or phone number is on
+              file &mdash; an out-of-range reading, a missed shift, or
+              anything else this product catches would currently notify
+              no one at all.
+            </span>
+            <Link className="st-btn st-notice-action" href="/staff/settings">
+              Set it up now &rarr;
+            </Link>
+          </div>
+        )}
+
         <div className="st-notice" role="status">
           <strong>You administer this clinic.</strong>
           <span>
@@ -273,6 +321,30 @@ export default async function StaffHome() {
             are fine &mdash; only the data layer is missing.
           </span>
           <span className="st-notice-detail">{dbError}</span>
+        </div>
+      )}
+
+      {/* SEEN EVERY TIME UNTIL IT'S FIXED, LIKE THE ONBOARDING NOTICE
+          ABOVE — not a dismissible pop-up, because a dismissed reminder
+          about nobody hearing about a problem is exactly how nobody
+          hears about a problem. Gated to manager+ (seesAlertSetup): the
+          same tier app/api/staff/settings/route.ts requires to actually
+          fix this, so a plain staff account is never shown a to-do it
+          has no door to close. Silent once ANY of the four contacts is
+          set — see the Overview.alertsConfigured comment for why "only
+          email, no phone" is a real choice that earns no nag. */}
+      {overview && seesAlertSetup && !overview.alertsConfigured && (
+        <div className="st-notice st-notice-warn" role="alert">
+          <strong>Nobody is set up to hear about a problem.</strong>
+          <span>
+            No owner or medical director address or phone number is on
+            file &mdash; an out-of-range reading, a missed shift, or
+            anything else this product catches would currently notify no
+            one at all.
+          </span>
+          <Link className="st-btn st-notice-action" href="/staff/settings">
+            Set it up now &rarr;
+          </Link>
         </div>
       )}
 
