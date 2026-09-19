@@ -6,6 +6,7 @@ import { yearlyMissCount } from "@/lib/staff/shift-miss";
 import { ROLE_LABELS } from "@/lib/staff/roles";
 import { formatSignedAt, formatDate, workdaysLabel } from "@/lib/staff/labels";
 import { getTenantBySlug } from "@/lib/tenants";
+import { isSmsConfigured } from "@/lib/twilio";
 import AvatarUpload from "@/app/components/staff/AvatarUpload";
 import Avatar from "@/app/components/staff/Avatar";
 import SigninHistory from "@/app/components/staff/SigninHistory";
@@ -75,6 +76,7 @@ export default async function MyRecord() {
     };
   });
   const theme = data.theme;
+  const smsConfigured = isSmsConfigured();
 
   const displayName =
     data.profile?.legal_name ?? data.profile?.name ?? session.email;
@@ -240,7 +242,7 @@ export default async function MyRecord() {
           <p className="st-page-sub">
             {data.phone.phone} <span className="st-pill st-pill-ok">Verified</span>
           </p>
-        ) : (
+        ) : smsConfigured ? (
           <>
             <p className="st-page-sub" style={{ marginBottom: 12 }}>
               {data.phone.phone
@@ -251,6 +253,11 @@ export default async function MyRecord() {
               {data.phone.phone ? "Finish verifying" : "Add a phone number"} &rarr;
             </a>
           </>
+        ) : (
+          <p className="st-page-sub">
+            <span className="st-pill st-pill-new">Coming soon</span> Texting
+            isn&rsquo;t turned on yet.
+          </p>
         )}
       </section>
 
