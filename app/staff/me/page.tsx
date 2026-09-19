@@ -46,6 +46,12 @@ export default async function MyRecord() {
       // legal_name/preferred_name both null) is simply zero, not an
       // error.
       missedShifts: rosterName ? await yearlyMissCount(sql, org, rosterName) : 0,
+      phone: (
+        await sql<{ phone: string | null; phone_verified_at: string | null }[]>`
+          select phone, phone_verified_at::text as phone_verified_at
+            from staff.users where id = ${session.uid}
+        `
+      )[0] ?? { phone: null, phone_verified_at: null },
       theme: (
         await sql<{ brand_color: string }[]>`
           select brand_color from staff.org_theme where slug = ${org}
@@ -211,6 +217,26 @@ export default async function MyRecord() {
               </li>
             ))}
           </ul>
+        )}
+      </section>
+
+      <section className="st-record-section st-no-print">
+        <h2 className="st-h2">Phone number</h2>
+        {data.phone.phone_verified_at ? (
+          <p className="st-page-sub">
+            {data.phone.phone} <span className="st-pill st-pill-ok">Verified</span>
+          </p>
+        ) : (
+          <>
+            <p className="st-page-sub" style={{ marginBottom: 12 }}>
+              {data.phone.phone
+                ? `${data.phone.phone} hasn't been verified yet.`
+                : "Not set — you can't be texted for anything urgent this product catches until you add one."}
+            </p>
+            <a className="st-btn" href="/staff/phone">
+              {data.phone.phone ? "Finish verifying" : "Add a phone number"} &rarr;
+            </a>
+          </>
         )}
       </section>
 

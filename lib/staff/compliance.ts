@@ -177,6 +177,11 @@ export interface TeamMember {
   /** ISO weekdays (1=Monday..7=Sunday) this person normally works —
    *  see supabase/staff-workdays.sql. Empty means not set yet. */
   workdays: number[];
+  /** Self-serve only — see lib/staff/phone-verify.ts. Null means this
+   *  person has never set one, not that it was cleared by an admin;
+   *  there is no admin path that writes staff.users.phone at all. */
+  phone: string | null;
+  phone_verified_at: string | null;
 }
 
 /** The roster, including deactivated people.
@@ -196,7 +201,7 @@ export async function teamStatus(sql: StaffSql): Promise<TeamMember[]> {
            (u.totp_confirmed_at is not null) as mfa_enrolled,
            (u.role = any (o.mfa_required_roles)) as mfa_required,
            (u.person_key <> u.id) as is_linked,
-           u.workdays,
+           u.workdays, u.phone, u.phone_verified_at::text as phone_verified_at,
            coalesce(c.assigned_count, 0)::int as assigned_count,
            coalesce(c.outstanding_count, 0)::int as outstanding_count,
            c.last_signed_at::text as last_signed_at

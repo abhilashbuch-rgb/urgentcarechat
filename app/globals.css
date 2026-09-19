@@ -4169,6 +4169,7 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
   border-radius: 3px;
 }
 .st-notice-warn { border-left-color: var(--accent); }
+.st-todo-section { margin-bottom: 8px; }
 .st-notice-detail {
   font-family: var(--mono);
   font-size: 11px;
