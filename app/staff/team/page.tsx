@@ -212,15 +212,10 @@ export default async function Team({
       <section className="st-invite" id="invite">
         <h2 className="st-h2">Invite someone</h2>
         <p className="st-page-sub">
-          They get a link at this address that works once and expires in{" "}
-          {INVITE_TTL_HOURS} hours. Opening it doesn&rsquo;t sign them in on
-          its own &mdash; they still prove the address is theirs, so a
-          forwarded link is not access.
-        </p>
-        <p className="st-page-sub">
-          Already staff at one of your other clinics? Enter their same
-          address here &mdash; it&rsquo;s linked automatically, at no extra
-          seat, with no invitation to click.
+          One-time link, expires in {INVITE_TTL_HOURS} hours &mdash; they still
+          verify the address themselves, so forwarding it isn&rsquo;t access.
+          Already staff elsewhere? Same address auto-links them here, no
+          extra seat.
         </p>
 
         <form className="st-invite-form" method="POST" action="/api/staff/team/invite">
