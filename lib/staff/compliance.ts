@@ -182,6 +182,9 @@ export interface TeamMember {
    *  there is no admin path that writes staff.users.phone at all. */
   phone: string | null;
   phone_verified_at: string | null;
+  /** Object key for the profile photo, or null — see Profile.avatar_path.
+   *  Never rendered directly; resolved through the signed-link route. */
+  avatar_path: string | null;
 }
 
 /** The roster, including deactivated people.
@@ -202,6 +205,7 @@ export async function teamStatus(sql: StaffSql): Promise<TeamMember[]> {
            (u.role = any (o.mfa_required_roles)) as mfa_required,
            (u.person_key <> u.id) as is_linked,
            u.workdays, u.phone, u.phone_verified_at::text as phone_verified_at,
+           u.avatar_path,
            coalesce(c.assigned_count, 0)::int as assigned_count,
            coalesce(c.outstanding_count, 0)::int as outstanding_count,
            c.last_signed_at::text as last_signed_at
