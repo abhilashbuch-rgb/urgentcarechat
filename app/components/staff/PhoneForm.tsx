@@ -112,9 +112,7 @@ export default function PhoneForm({ currentPhone }: { currentPhone: string | nul
           />
         </label>
         <p className="st-field-hint">
-          Include the country code (the + and the digits before the area
-          code). This is the number that would get a text if something
-          you catch can&rsquo;t wait for email.
+          Include the country code, e.g. +1 for the US.
         </p>
         <button className="st-btn" type="submit" disabled={busy || phone.trim().length === 0}>
           {busy ? "Sending…" : "Send code"}
