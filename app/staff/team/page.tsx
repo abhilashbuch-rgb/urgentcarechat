@@ -31,9 +31,9 @@ const NOTICES: Record<string, string> = {
   not_permitted: "Only the owner can manage another administrator's account.",
   invited: "Invitation sent. The link works once and expires in 72 hours.",
   linked:
-    "Added. They already have an account at one of your other clinics, so this doesn't cost an extra seat, and their credentials carried over — they'll see this clinic listed next time they sign in.",
+    "Added, linked to their existing account at another of your clinics — no extra seat, and this clinic shows up next time they sign in.",
   not_same_group:
-    "That address belongs to an account at a clinic outside your group, so it can't be linked here. Sent as a normal invitation instead would create a separate account — try again if that's what you want.",
+    "That address is at a clinic outside your group, so it can't link here. Try again to send a normal invitation instead, which creates a separate account.",
   already_linked: "That person is already linked into this clinic.",
   invited_no_mail:
     "Invitation created, but this deployment has no mail provider configured, so nothing was sent. Set a mail provider key and invite again.",

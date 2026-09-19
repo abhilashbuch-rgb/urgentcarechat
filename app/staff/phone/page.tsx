@@ -52,9 +52,8 @@ export default async function StaffPhone() {
         <p className="st-signin-eyebrow">Phone number</p>
         <h1 className="st-signin-title">Add and verify your phone number</h1>
         <p className="st-signin-sub">
-          So you can actually be texted &mdash; not just an email an admin
-          reads later. We send a six-digit code to prove it&rsquo;s really
-          your number before it goes on file.
+          So you can actually be texted, not just emailed &mdash; we&rsquo;ll
+          text a code first to prove the number&rsquo;s really yours.
         </p>
         {isSmsConfigured() ? (
           <PhoneForm currentPhone={row.phone} />

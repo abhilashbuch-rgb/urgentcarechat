@@ -39,13 +39,13 @@ function alertGapNotice(
   if (gap === "no_contact") {
     return {
       title: "Nobody is set up to hear about a problem",
-      body: "No owner or medical director address or phone number is on file — an out-of-range reading, a missed check, or anything else this product catches would currently notify no one at all.",
+      body: "No owner or medical director address or phone number is on file, so nothing this product catches would notify anyone.",
     };
   }
   if (gap === "no_phone") {
     return {
       title: "No phone number on file for the owner or medical director",
-      body: "Email alerts are going out, but SMS — the channel that matters when a reading is out of range right now, not whenever someone next opens their inbox — is off until a phone number is added.",
+      body: "Email alerts go out, but SMS — the one that matters right when a reading is out of range — is off until a phone number is added.",
     };
   }
   return null;
