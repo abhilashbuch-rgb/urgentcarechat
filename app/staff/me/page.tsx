@@ -2,6 +2,7 @@ import { requireStaff } from "@/lib/staff/auth";
 import { withSession } from "@/lib/staff/db";
 import { getProfile, outstandingFor, signedBy } from "@/lib/staff/compliance";
 import { signinHistory } from "@/lib/staff/signins";
+import { yearlyMissCount } from "@/lib/staff/shift-miss";
 import { ROLE_LABELS } from "@/lib/staff/roles";
 import { formatSignedAt, formatDate, workdaysLabel } from "@/lib/staff/labels";
 import { getTenantBySlug } from "@/lib/tenants";
@@ -22,31 +23,56 @@ export default async function MyRecord() {
   const { session, org } = await requireStaff();
   const tenant = await getTenantBySlug(org);
 
-  const data = await withSession(session, async (sql) => ({
-    profile: await getProfile(sql, session.uid),
-    outstanding: await outstandingFor(sql, session.uid),
-    signed: await signedBy(sql, session.uid),
-    signins: await signinHistory(sql, org, session.uid),
-    theme: (
-      await sql<{ brand_color: string }[]>`
-        select brand_color from staff.org_theme where slug = ${org}
+  const data = await withSession(session, async (sql) => {
+    // The exact identity string staff.shift_misses stores people
+    // under — coalesce(preferred_name, legal_name), the same as
+    // onDutyToday() in lib/staff/roster-today.ts — so this lookup
+    // matches the roster record byte for byte rather than by whatever
+    // name getProfile() happens to prefer.
+    const rosterName = (
+      await sql<{ display_name: string | null }[]>`
+        select coalesce(preferred_name, legal_name) as display_name
+          from staff.users where id = ${session.uid}
       `
-    )[0] ?? { brand_color: "#173a8a" },
-    timezone: (
-      await sql<{ timezone: string }[]>`
-        select timezone from staff.orgs where slug = ${org}
-      `
-    )[0]?.timezone,
-    // Only your own — see supabase/staff-workdays.sql and the note on
-    // /staff/team/[id]/page.tsx. Setting it stays with a manager;
-    // reading it back is yours alone, same as everything else on this
-    // page.
-    workdays: (
-      await sql<{ workdays: number[] }[]>`
-        select workdays from staff.users where id = ${session.uid}
-      `
-    )[0]?.workdays ?? [],
-  }));
+    )[0]?.display_name;
+
+    return {
+      profile: await getProfile(sql, session.uid),
+      outstanding: await outstandingFor(sql, session.uid),
+      signed: await signedBy(sql, session.uid),
+      signins: await signinHistory(sql, org, session.uid),
+      // Yours alone — see the note on the section below. A name this
+      // account has never been rostered under (a brand-new hire, or
+      // legal_name/preferred_name both null) is simply zero, not an
+      // error.
+      missedShifts: rosterName ? await yearlyMissCount(sql, org, rosterName) : 0,
+      phone: (
+        await sql<{ phone: string | null; phone_verified_at: string | null }[]>`
+          select phone, phone_verified_at::text as phone_verified_at
+            from staff.users where id = ${session.uid}
+        `
+      )[0] ?? { phone: null, phone_verified_at: null },
+      theme: (
+        await sql<{ brand_color: string }[]>`
+          select brand_color from staff.org_theme where slug = ${org}
+        `
+      )[0] ?? { brand_color: "#173a8a" },
+      timezone: (
+        await sql<{ timezone: string }[]>`
+          select timezone from staff.orgs where slug = ${org}
+        `
+      )[0]?.timezone,
+      // Only your own — see supabase/staff-workdays.sql and the note on
+      // /staff/team/[id]/page.tsx. Setting it stays with a manager;
+      // reading it back is yours alone, same as everything else on this
+      // page.
+      workdays: (
+        await sql<{ workdays: number[] }[]>`
+          select workdays from staff.users where id = ${session.uid}
+        `
+      )[0]?.workdays ?? [],
+    };
+  });
   const theme = data.theme;
 
   const displayName =
@@ -192,6 +218,40 @@ export default async function MyRecord() {
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="st-record-section st-no-print">
+        <h2 className="st-h2">Phone number</h2>
+        {data.phone.phone_verified_at ? (
+          <p className="st-page-sub">
+            {data.phone.phone} <span className="st-pill st-pill-ok">Verified</span>
+          </p>
+        ) : (
+          <>
+            <p className="st-page-sub" style={{ marginBottom: 12 }}>
+              {data.phone.phone
+                ? `${data.phone.phone} hasn't been verified yet.`
+                : "Not set — you can't be texted for anything urgent this product catches until you add one."}
+            </p>
+            <a className="st-btn" href="/staff/phone">
+              {data.phone.phone ? "Finish verifying" : "Add a phone number"} &rarr;
+            </a>
+          </>
+        )}
+      </section>
+
+      <section className="st-record-section st-no-print">
+        <h2 className="st-h2">Missed checks</h2>
+        <p className="st-page-sub" style={{ marginBottom: 12 }}>
+          Counted the moment a single required check goes unfiled while
+          you were the one on duty for it &mdash; not just a whole shift
+          gone empty. An administrator sees this too, the moment it
+          happens; this is your own copy of the same number, not a
+          separate scoreboard anyone else on staff can see.
+        </p>
+        <p className="st-card-value st-card-value-sm">
+          {data.missedShifts} this year
+        </p>
       </section>
 
       <section className="st-record-section st-no-print">

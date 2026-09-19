@@ -37,6 +37,24 @@ export interface AlertInput {
  *  note at the insert below for why it is three and not ten. */
 export const AMEND_HOLD_MINUTES = 3;
 
+/** SMS earns its place only where the delay between "email arrives" and
+ *  "email is read" is the thing that does the damage — see the header
+ *  of supabase/staff-alerts-sms.sql. excursion is the only kind that
+ *  currently meets that bar.
+ *
+ *  missed_shift (lib/staff/shift-miss.ts) was briefly included here on
+ *  the theory that a fully-empty shift could mean the fridge check
+ *  itself never happened. It was redesigned to fire per INDIVIDUAL
+ *  missed check, named to whoever was on duty for it — which can now
+ *  mean several a day for one person, the exact alert-fatigue failure
+ *  mode staff-alerts-sms.sql's own header warns about ("somebody who
+ *  receives an SMS for every log has to turn the channel off
+ *  entirely, and turning it off takes the fridge alert with it"). It
+ *  stays email-only unless a future, narrower rule (e.g. only when the
+ *  specific missed check is itself equipment/vaccine-storage related)
+ *  earns it back. */
+export const SMS_ELIGIBLE_KINDS = ["excursion"] as const;
+
 /** File an alert. Excursions go out after a short hold; clean logs wait
  *  for the digest unless the clinic has asked for every one. */
 export async function enqueue(
@@ -102,7 +120,10 @@ export interface SweepResult {
 }
 
 /**
- * The SMS body for an excursion.
+ * The SMS body for any SMS_ELIGIBLE_KINDS row — an excursion or a
+ * missed shift. Both already carry a self-contained, one-line subject
+ * (built at enqueue time by their own alertOnMissedShift()/excursion
+ * caller), so this is generic: trim it to fit, add the same tail.
  *
  * ONE SEGMENT, and that is a hard design constraint rather than a
  * preference. Over 160 GSM-7 characters Twilio splits the message, and a
@@ -110,13 +131,11 @@ export interface SweepResult {
  * half saying "out of range" can arrive after the half saying which
  * fridge. Composed here, capped here.
  *
- * NO PATIENT ANYTHING, EVER. An excursion is about equipment. The body
- * names the clinic, the thing, and the reading, and nothing else has any
- * business in it.
+ * NO PATIENT ANYTHING, EVER. Both kinds this fires for are about
+ * equipment and shift coverage, never a patient. The body names the
+ * clinic and the finding, and nothing else has any business in it.
  */
-export function excursionSms(org: string, subject: string): string {
-  // subject is already "<org>: <template> out of range", built at
-  // enqueue time. Trimmed to leave room for the tail.
+export function alertSms(org: string, subject: string): string {
   const tail = " — check medicin.io/staff";
   const room = 160 - tail.length;
   const head = subject.length > room ? `${subject.slice(0, room - 1)}…` : subject;
@@ -214,14 +233,14 @@ export async function sweep(
          (${orgRow.owner_alert_email}::text is not null and owner_sent_at is null)
          or (${orgRow.medical_director_alert_email}::text is not null
              and director_sent_at is null)
-         -- SMS is excursion-only, so the pending test is too. Without
-         -- the kind filter every digest and late-task row would look
-         -- like it had an outstanding SMS forever and be retried until
-         -- it hit the attempt cap.
-         or (kind = 'excursion'
+         -- SMS is limited to SMS_ELIGIBLE_KINDS, so the pending test is
+         -- too. Without the kind filter every digest and late-task row
+         -- would look like it had an outstanding SMS forever and be
+         -- retried until it hit the attempt cap.
+         or (kind = any(${sql.array([...SMS_ELIGIBLE_KINDS])})
              and ${orgRow.owner_alert_phone}::text is not null
              and owner_sms_sent_at is null)
-         or (kind = 'excursion'
+         or (kind = any(${sql.array([...SMS_ELIGIBLE_KINDS])})
              and ${orgRow.medical_director_alert_phone}::text is not null
              and director_sms_sent_at is null)
        )
@@ -284,14 +303,15 @@ export async function sweep(
       }
     }
 
-    // --- SMS, EXCURSIONS ONLY ---
+    // --- SMS, LIMITED TO SMS_ELIGIBLE_KINDS ---
     //
-    // See the header of supabase/staff-alerts-sms.sql. SMS is the channel
-    // with no filter: somebody who gets a text for every log has to turn
-    // the channel off entirely, and turning it off takes the fridge alert
-    // with it.
-    if (smsOn && row.kind === "excursion") {
-      const text = excursionSms(org, row.subject);
+    // See the header of supabase/staff-alerts-sms.sql and this file's own
+    // SMS_ELIGIBLE_KINDS comment for why missed_shift joined excursion
+    // here. SMS is the channel with no filter: somebody who gets a text
+    // for every log has to turn the channel off entirely, and turning it
+    // off takes the fridge alert with it.
+    if (smsOn && (SMS_ELIGIBLE_KINDS as readonly string[]).includes(row.kind)) {
+      const text = alertSms(org, row.subject);
       for (const [num, already, mark] of [
         [orgRow.owner_alert_phone, ownerSmsOk, "owner"] as const,
         [

@@ -11,6 +11,7 @@ import { firstNameOf, formatSignedAt } from "@/lib/staff/labels";
 import { currentAnnouncement } from "@/lib/staff/whats-new";
 import { listBulletins, type Bulletin } from "@/lib/staff/bulletins";
 import { onDutyToday, type OnDutyRole } from "@/lib/staff/roster-today";
+import { activeRecallAlerts, CLASSIFICATION_EXPLANATION, type RecallAlert } from "@/lib/staff/recalls";
 import StaffClock from "@/app/components/staff/StaffClock";
 import ShortcutGrid from "@/app/components/staff/ShortcutGrid";
 import OnCallStrip from "@/app/components/staff/OnCallStrip";
@@ -26,6 +27,29 @@ import OnCallStrip from "@/app/components/staff/OnCallStrip";
 // theirs rather than the clinic's.
 
 export const dynamic = "force-dynamic";
+
+/** The org-level alert-contact notice for the Things To Do list, or
+ *  null when there's nothing to say — see Overview.alertGap's own
+ *  comment for what each value means. One place so the !hasProfile
+ *  branch and the normal board can't drift into saying this two
+ *  different ways. */
+function alertGapNotice(
+  gap: "no_contact" | "no_phone" | "none"
+): { title: string; body: string } | null {
+  if (gap === "no_contact") {
+    return {
+      title: "Nobody is set up to hear about a problem",
+      body: "No owner or medical director address or phone number is on file — an out-of-range reading, a missed check, or anything else this product catches would currently notify no one at all.",
+    };
+  }
+  if (gap === "no_phone") {
+    return {
+      title: "No phone number on file for the owner or medical director",
+      body: "Email alerts are going out, but SMS — the channel that matters when a reading is out of range right now, not whenever someone next opens their inbox — is off until a phone number is added.",
+    };
+  }
+  return null;
+}
 
 interface Overview {
   // False for a multi-site owner who has switched into a clinic they
@@ -67,6 +91,34 @@ interface Overview {
    *  third shift benefits from knowing who the MA on today is at least
    *  as much as an owner does. */
   onDuty: OnDutyRole[];
+  /** FDA recalls matched against this clinic's own stocked inventory —
+   *  see lib/staff/recalls.ts. Same visibility as onDuty above: a
+   *  property of the clinic and its stock room, not of one person's
+   *  shift, so shown to everyone who opens this board. */
+  recalls: RecallAlert[];
+  /** How badly this clinic's alert contacts are missing — see the
+   *  Things To Do section this drives on StaffHome.
+   *
+   *  "no_contact": all four of owner/medical director × email/phone are
+   *  blank — nobody hears about ANYTHING this product catches. The most
+   *  severe gap, and the only one that used to exist here.
+   *
+   *  "no_phone": at least one email is set, but neither phone is —
+   *  email alerts go out, but SMS (the channel that matters when a
+   *  reading is out of range right now, not whenever an inbox gets
+   *  checked) is off. Previously this was silently accepted as "email
+   *  alone is a real, deliberate choice" and never nagged about at
+   *  all — corrected per explicit feedback: a clinic with email but no
+   *  phone (afc-narberth) should still see this, because the goal is
+   *  every clinic reachable by text, not just by whichever channel
+   *  happened to get set up first.
+   *
+   *  "none": at least one phone is on file. Silent. */
+  alertGap: "no_contact" | "no_phone" | "none";
+  /** This signed-in person's own phone_verified_at, as a boolean — see
+   *  lib/staff/phone-verify.ts. Always false for the !hasProfile view
+   *  (nobody's own number to verify there — see Overview.hasProfile). */
+  phoneVerified: boolean;
 }
 
 export default async function StaffHome() {
@@ -87,6 +139,10 @@ export default async function StaffHome() {
   // else to go until it's done, so that one still bounces straight there.
   const hasNavAccess = atLeast(session.role, "clinical_lead");
 
+  // Only whoever can actually fix it — same gate app/api/staff/settings/
+  // route.ts itself checks before it will save these fields at all.
+  const seesAlertSetup = atLeast(session.role, "manager");
+
   let overview: Overview | null = null;
   let dbError: string | null = null;
 
@@ -99,9 +155,23 @@ export default async function StaffHome() {
         // means anything for this person in this org, so it isn't
         // queried.
         const orgRow = await sql<
-          { name: string; timezone: string; facility_type: string | null }[]
+          {
+            name: string;
+            timezone: string;
+            facility_type: string | null;
+            alert_gap: "no_contact" | "no_phone" | "none";
+          }[]
         >`
-          select name, timezone, facility_type from staff.orgs where slug = ${org}
+          select name, timezone, facility_type,
+                 case
+                   when owner_alert_email is null and medical_director_alert_email is null
+                        and owner_alert_phone is null and medical_director_alert_phone is null
+                     then 'no_contact'
+                   when owner_alert_phone is null and medical_director_alert_phone is null
+                     then 'no_phone'
+                   else 'none'
+                 end as alert_gap
+            from staff.orgs where slug = ${org}
         `;
         return {
           hasProfile: false,
@@ -117,13 +187,33 @@ export default async function StaffHome() {
           timezone: orgRow[0]?.timezone ?? "America/New_York",
           shortcuts: shortcutsFor(session.role, null),
           onDuty: await onDutyToday(sql, org, orgRow[0]?.facility_type ?? null),
+          recalls: await activeRecallAlerts(sql, org),
+          alertGap: orgRow[0]?.alert_gap ?? "none",
+          phoneVerified: false,
         };
       }
       const outstanding = await outstandingFor(sql, session.uid);
       const [orgRow] = await sql<
-        { timezone: string; facility_type: string | null }[]
+        {
+          timezone: string;
+          facility_type: string | null;
+          alert_gap: "no_contact" | "no_phone" | "none";
+        }[]
       >`
-        select timezone, facility_type from staff.orgs where slug = ${org}
+        select timezone, facility_type,
+               case
+                 when owner_alert_email is null and medical_director_alert_email is null
+                      and owner_alert_phone is null and medical_director_alert_phone is null
+                   then 'no_contact'
+                 when owner_alert_phone is null and medical_director_alert_phone is null
+                   then 'no_phone'
+                 else 'none'
+               end as alert_gap
+          from staff.orgs where slug = ${org}
+      `;
+      const [phoneRow] = await sql<{ phone_verified_at: string | null }[]>`
+        select phone_verified_at::text as phone_verified_at
+          from staff.users where id = ${session.uid}
       `;
       return {
         hasProfile: true,
@@ -139,6 +229,9 @@ export default async function StaffHome() {
         timezone: orgRow?.timezone ?? "America/New_York",
         shortcuts: shortcutsFor(session.role, profile.job_role ?? null),
         onDuty: await onDutyToday(sql, org, orgRow?.facility_type ?? null),
+        recalls: await activeRecallAlerts(sql, org),
+        alertGap: orgRow?.alert_gap ?? "none",
+        phoneVerified: phoneRow?.phone_verified_at != null,
       };
     });
   } catch (err) {
@@ -166,6 +259,20 @@ export default async function StaffHome() {
           </div>
           <OnCallStrip onDuty={overview.onDuty} />
         </header>
+
+        {seesAlertSetup && alertGapNotice(overview.alertGap) && (
+          <section className="st-todo-section st-no-print">
+            <h2 className="st-h2">Things to do</h2>
+            <div className="st-notice st-notice-warn" role="alert">
+              <strong>{alertGapNotice(overview.alertGap)!.title}</strong>
+              <span>{alertGapNotice(overview.alertGap)!.body}</span>
+              <Link className="st-btn st-notice-action" href="/staff/settings">
+                {overview.alertGap === "no_contact" ? "Set it up now" : "Add a phone number"} &rarr;
+              </Link>
+            </div>
+          </section>
+        )}
+
         <div className="st-notice" role="status">
           <strong>You administer this clinic.</strong>
           <span>
@@ -238,23 +345,6 @@ export default async function StaffHome() {
         </Link>
       )}
 
-      {/* Only reachable by clinical_lead+ — see hasNavAccess above. A plain
-          staff account with needsOnboarding never gets here; it was
-          redirected before this render. */}
-      {overview?.needsOnboarding && (
-        <div className="st-notice st-notice-warn" role="status">
-          <strong>Your own onboarding packet is still open.</strong>
-          <span>
-            The clinic below is fully usable &mdash; Team, Settings and
-            everything else &mdash; but your consent and signature aren&rsquo;t
-            on file yet.
-          </span>
-          <Link className="st-btn st-notice-action" href="/staff/onboarding">
-            Finish onboarding &rarr;
-          </Link>
-        </div>
-      )}
-
       {dbError && (
         <div className="st-notice st-notice-warn" role="alert">
           <strong>The staff database isn&rsquo;t reachable</strong>
@@ -267,6 +357,68 @@ export default async function StaffHome() {
           <span className="st-notice-detail">{dbError}</span>
         </div>
       )}
+
+      {/* EVERY OUTSTANDING NAG, IN ONE PLACE, LIKE ADP'S OWN "THINGS TO
+          DO" RAIL — not three unrelated banners fighting for the top of
+          the screen. SEEN EVERY TIME UNTIL IT'S FIXED, THE SAME AS
+          BEFORE — none of these dismiss, because a dismissed reminder
+          about nobody hearing about a problem is exactly how nobody
+          hears about a problem. Each item's own gate decides who sees
+          it; an item drops out of the list the instant its condition
+          clears, and the whole section disappears once nothing is
+          outstanding. */}
+      {overview && (() => {
+        const gapNotice = seesAlertSetup ? alertGapNotice(overview.alertGap) : null;
+        // needsOnboarding is only ever true here for clinical_lead+ — a
+        // plain staff account was already redirected to the wizard
+        // before this render (see the redirect above).
+        const showOnboarding = overview.needsOnboarding;
+        const showPhone = overview.hasProfile && !overview.phoneVerified;
+        if (!gapNotice && !showOnboarding && !showPhone) return null;
+
+        return (
+          <section className="st-todo-section st-no-print">
+            <h2 className="st-h2">Things to do</h2>
+
+            {showPhone && (
+              <div className="st-notice st-notice-warn" role="alert">
+                <strong>Add and verify your phone number</strong>
+                <span>
+                  So you can actually be texted &mdash; not just an email an
+                  admin reads later. Takes under a minute.
+                </span>
+                <Link className="st-btn st-notice-action" href="/staff/phone">
+                  Verify now &rarr;
+                </Link>
+              </div>
+            )}
+
+            {showOnboarding && (
+              <div className="st-notice st-notice-warn" role="status">
+                <strong>Your own onboarding packet is still open.</strong>
+                <span>
+                  The clinic below is fully usable &mdash; Team, Settings and
+                  everything else &mdash; but your consent and signature
+                  aren&rsquo;t on file yet.
+                </span>
+                <Link className="st-btn st-notice-action" href="/staff/onboarding">
+                  Finish onboarding &rarr;
+                </Link>
+              </div>
+            )}
+
+            {gapNotice && (
+              <div className="st-notice st-notice-warn" role="alert">
+                <strong>{gapNotice.title}</strong>
+                <span>{gapNotice.body}</span>
+                <Link className="st-btn st-notice-action" href="/staff/settings">
+                  {overview.alertGap === "no_contact" ? "Set it up now" : "Add a phone number"} &rarr;
+                </Link>
+              </div>
+            )}
+          </section>
+        );
+      })()}
 
       {overview && overview.outstanding > 0 && (
         <a className="st-callout" href="/staff/onboarding">
@@ -308,6 +460,63 @@ export default async function StaffHome() {
             <span className="st-callout-sub">Open the register &rarr;</span>
           </Link>
         )}
+
+      {/* A RECALL ON SOMETHING THIS CLINIC ACTUALLY STOCKS, NOT A NEWS
+          FEED. See lib/staff/recalls.ts for why this is matched only
+          against named inventory items rather than generic equipment
+          categories — the deliberate scope limit that keeps this list
+          short enough to actually read. Worst classification first;
+          each row explains what that class means rather than assuming
+          the reader has FDA's severity scale memorized, and links to
+          the literal openFDA record rather than a guessed-at public
+          page URL. Shown to everyone on this board, same as On duty
+          below — a recalled vaccine lot in the fridge is exactly as
+          much whoever gives it needs to know as it is an owner's. */}
+      {overview && overview.recalls.length > 0 && (
+        <section className="st-recall-section">
+          <h2 className="st-h2">Recalls on what you stock</h2>
+          <ul className="st-recall-list">
+            {overview.recalls.map((r) => (
+              <li
+                key={r.id}
+                className={`st-recall-row${
+                  r.classification === "Class I" ? " st-recall-row-critical" : " st-recall-row-warn"
+                }`}
+              >
+                <div className="st-recall-main">
+                  <span className="st-recall-item">{r.itemName}</span>
+                  {r.classification && (
+                    <span className="st-recall-badge">{r.classification}</span>
+                  )}
+                </div>
+                {r.classification && CLASSIFICATION_EXPLANATION[r.classification] && (
+                  <p className="st-recall-explain">
+                    {CLASSIFICATION_EXPLANATION[r.classification]}
+                  </p>
+                )}
+                <p className="st-recall-desc">{r.productDescription}</p>
+                {r.reasonForRecall && (
+                  <p className="st-recall-reason">
+                    <strong>Reason:</strong> {r.reasonForRecall}
+                  </p>
+                )}
+                <p className="st-recall-meta">
+                  {r.recallingFirm ?? "Manufacturer not listed"}
+                  {r.reportDate ? ` · reported ${r.reportDate}` : ""}
+                  {r.detailUrl && (
+                    <>
+                      {" · "}
+                      <a href={r.detailUrl} target="_blank" rel="noopener noreferrer">
+                        View the FDA record
+                      </a>
+                    </>
+                  )}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* WHO'S EXPECTED, NOT WHO'S CLOCKED IN. Read from the schedule an
           administrator set on each person's Team page (workdays), not

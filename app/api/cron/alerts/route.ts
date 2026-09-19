@@ -130,8 +130,19 @@ export async function GET(req: NextRequest) {
         // source_id, kind) means a task that is still late next hour
         // does not generate a second alert — the owner is told once,
         // not once an hour until somebody does it.
+        //
+        // org_slug = ${slug} IS LOAD-BEARING, NOT DEFENSIVE. This runs
+        // under withOrg(slug, "platform_super_admin", ...), and RLS's
+        // own policy is "is_super_admin() OR org_slug = current_org()"
+        // — an OR, so platform_super_admin makes every row visible
+        // regardless of org, on every table this pattern protects.
+        // Without this filter, one clinic's owner was emailed about
+        // every OTHER clinic's late tasks too, mislabeled as their
+        // own — confirmed live against production before this fix,
+        // not a theoretical concern.
         const late = await sql<{ template_id: string; name: string; slot: string }[]>`
           select template_id, name, slot from staff.overdue_today
+           where org_slug = ${slug}
         `;
         const nowLocal = localStamp(timezone);
 
@@ -155,10 +166,12 @@ export async function GET(req: NextRequest) {
           });
         }
 
-        // Entire-shift misses: a role whose whole slot filed nothing at
-        // all today, not just one late template. Idempotent — see the
-        // header of lib/staff/shift-miss.ts — so trying this every hour
-        // costs nothing and records/alerts on each miss exactly once.
+        // Named misses: an overdue check attributed to whoever was
+        // actually on duty for it, "missed by Natalia," not just a
+        // late template with nobody named. Idempotent — see the
+        // header of lib/staff/shift-miss.ts — so trying this every
+        // hour costs nothing and records/alerts on each miss exactly
+        // once, keyed per check rather than per whole shift.
         const missedShifts = await detectAndRecordMissedShifts(sql, slug, facilityType);
 
         if (due) {

@@ -406,6 +406,7 @@ export default async function Team({
               <th className="st-num">Signed</th>
               <th>Status</th>
               <th>2FA</th>
+              <th>Phone</th>
               <th>Last sign-in</th>
               <th>Access</th>
             </tr>
@@ -477,6 +478,16 @@ export default async function Team({
                       <span className="st-pill st-pill-due">Required</span>
                     ) : (
                       <span className="st-pill st-pill-new">Off</span>
+                    )}
+                  </td>
+
+                  <td>
+                    {m.phone_verified_at ? (
+                      <span className="st-pill st-pill-ok">Verified</span>
+                    ) : m.phone ? (
+                      <span className="st-pill st-pill-due">Unverified</span>
+                    ) : (
+                      <span className="st-pill st-pill-new">Not set</span>
                     )}
                   </td>
 
