@@ -6,7 +6,9 @@ import { yearlyMissCount } from "@/lib/staff/shift-miss";
 import { ROLE_LABELS } from "@/lib/staff/roles";
 import { formatSignedAt, formatDate, workdaysLabel } from "@/lib/staff/labels";
 import { getTenantBySlug } from "@/lib/tenants";
+import { isSmsConfigured } from "@/lib/twilio";
 import AvatarUpload from "@/app/components/staff/AvatarUpload";
+import Avatar from "@/app/components/staff/Avatar";
 import SigninHistory from "@/app/components/staff/SigninHistory";
 
 // One employee's complete compliance record — the artifact the whole
@@ -53,10 +55,10 @@ export default async function MyRecord() {
         `
       )[0] ?? { phone: null, phone_verified_at: null },
       theme: (
-        await sql<{ brand_color: string }[]>`
-          select brand_color from staff.org_theme where slug = ${org}
+        await sql<{ brand_color: string; logo_url: string | null }[]>`
+          select brand_color, logo_url from staff.org_theme where slug = ${org}
         `
-      )[0] ?? { brand_color: "#173a8a" },
+      )[0] ?? { brand_color: "#173a8a", logo_url: null },
       timezone: (
         await sql<{ timezone: string }[]>`
           select timezone from staff.orgs where slug = ${org}
@@ -74,6 +76,7 @@ export default async function MyRecord() {
     };
   });
   const theme = data.theme;
+  const smsConfigured = isSmsConfigured();
 
   const displayName =
     data.profile?.legal_name ?? data.profile?.name ?? session.email;
@@ -82,13 +85,26 @@ export default async function MyRecord() {
   return (
     <div className="st-page">
       <header className="st-page-head st-record-head">
-        <div>
-          <h1 className="st-h1">Compliance record</h1>
-          <p className="st-page-sub">
-            {displayName}
-            {data.profile?.job_title ? ` · ${data.profile.job_title}` : ""} ·{" "}
-            {ROLE_LABELS[session.role]} · {tenant?.displayName ?? org}
-          </p>
+        <div className="st-profile-head">
+          <Avatar
+            name={displayName}
+            src={data.profile?.avatar_path ? `/api/staff/avatar/view?u=${session.uid}` : null}
+            brandColor={theme.brand_color}
+            badgeUrl={theme.logo_url}
+            size={64}
+          />
+          <div className="st-profile-identity">
+            <h1 className="st-h1">{displayName}</h1>
+            <p className="st-page-sub">
+              {data.profile?.job_title ? `${data.profile.job_title} · ` : ""}
+              {ROLE_LABELS[session.role]} · {tenant?.displayName ?? org}
+            </p>
+            {data.phone.phone_verified_at && (
+              <div className="st-profile-badges">
+                <span className="st-pill st-pill-ok">Phone verified</span>
+              </div>
+            )}
+          </div>
         </div>
         <button className="st-print" data-print>
           Print
@@ -226,7 +242,7 @@ export default async function MyRecord() {
           <p className="st-page-sub">
             {data.phone.phone} <span className="st-pill st-pill-ok">Verified</span>
           </p>
-        ) : (
+        ) : smsConfigured ? (
           <>
             <p className="st-page-sub" style={{ marginBottom: 12 }}>
               {data.phone.phone
@@ -237,6 +253,11 @@ export default async function MyRecord() {
               {data.phone.phone ? "Finish verifying" : "Add a phone number"} &rarr;
             </a>
           </>
+        ) : (
+          <p className="st-page-sub">
+            <span className="st-pill st-pill-new">Coming soon</span> Texting
+            isn&rsquo;t turned on yet.
+          </p>
         )}
       </section>
 

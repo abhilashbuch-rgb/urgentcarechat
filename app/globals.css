@@ -4963,6 +4963,13 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 /* ---------- the compliance record ---------- */
 
 .st-record-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+
+/* One person's profile: photo, name, and at-a-glance status, together
+   at the top rather than a photo buried in a section below the fold —
+   see app/staff/team/[id]/page.tsx and app/staff/me/page.tsx. */
+.st-profile-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.st-profile-identity { min-width: 0; }
+.st-profile-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .st-print {
   border: 1px solid var(--rule);
   background: #fff;
@@ -4979,7 +4986,14 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
 .st-card-value-sm { font-size: 14px; font-weight: 600; }
 .st-card-note a { color: var(--accent); }
 
-.st-record-section { margin-top: 28px; }
+.st-record-section {
+  margin-top: 16px;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 18px 20px;
+}
+.st-record-section .st-h2 { margin-bottom: 8px; }
 .st-record-list {
   list-style: none;
   background: #fff;
@@ -5744,6 +5758,11 @@ a.lp-eyebrow:hover { background: var(--l-teal-soft); }
   .st { background: #fff; }
   .st-page { padding: 0; max-width: none; }
   .st-record-list, .st-card, .st-table-wrap { border-color: #bbb; }
+  /* Card chrome is a screen affordance — a printed compliance record
+     reads as a document, not a UI, so this flattens back to plain
+     stacked sections rather than wasting ink on borders nobody signs
+     next to. */
+  .st-record-section { padding: 0; border: none; background: transparent; }
   .st-record-row { break-inside: avoid; }
 }
 

@@ -46,6 +46,24 @@ export default async function StaffPhone() {
     );
   }
 
+  if (!isSmsConfigured()) {
+    return (
+      <div className="st-signin">
+        <div className="st-signin-card st-signin-card-wide">
+          <p className="st-signin-eyebrow">Phone number</p>
+          <h1 className="st-signin-title">Coming soon</h1>
+          <p className="st-signin-sub">
+            Texting isn&rsquo;t turned on yet, so there&rsquo;s nothing to
+            verify here for the moment &mdash; check back soon.
+          </p>
+          <Link className="st-btn" href="/staff">
+            Back to Today
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="st-signin">
       <div className="st-signin-card st-signin-card-wide">
@@ -55,14 +73,7 @@ export default async function StaffPhone() {
           So you can actually be texted, not just emailed &mdash; we&rsquo;ll
           text a code first to prove the number&rsquo;s really yours.
         </p>
-        {isSmsConfigured() ? (
-          <PhoneForm currentPhone={row.phone} />
-        ) : (
-          <p className="st-sign-error" role="alert">
-            Texting isn&rsquo;t turned on for this clinic yet &mdash; ask an
-            admin.
-          </p>
-        )}
+        <PhoneForm currentPhone={row.phone} />
       </div>
     </div>
   );

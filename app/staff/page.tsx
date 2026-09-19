@@ -12,6 +12,7 @@ import { currentAnnouncement } from "@/lib/staff/whats-new";
 import { listBulletins, type Bulletin } from "@/lib/staff/bulletins";
 import { onDutyToday, type OnDutyRole } from "@/lib/staff/roster-today";
 import { activeRecallAlerts, CLASSIFICATION_EXPLANATION, type RecallAlert } from "@/lib/staff/recalls";
+import { isSmsConfigured } from "@/lib/twilio";
 import StaffClock from "@/app/components/staff/StaffClock";
 import ShortcutGrid from "@/app/components/staff/ShortcutGrid";
 import OnCallStrip from "@/app/components/staff/OnCallStrip";
@@ -380,7 +381,10 @@ export default async function StaffHome() {
           <section className="st-todo-section st-no-print">
             <h2 className="st-h2">Things to do</h2>
 
-            {showPhone && (
+            {/* Not shown as an urgent nag while texting itself is off —
+                a "to do" nobody can actually do yet is just noise. Still
+                worth a quiet mention so it doesn't look forgotten. */}
+            {showPhone && isSmsConfigured() && (
               <div className="st-notice st-notice-warn" role="alert">
                 <strong>Add and verify your phone number</strong>
                 <span>
@@ -390,6 +394,15 @@ export default async function StaffHome() {
                 <Link className="st-btn st-notice-action" href="/staff/phone">
                   Verify now &rarr;
                 </Link>
+              </div>
+            )}
+            {showPhone && !isSmsConfigured() && (
+              <div className="st-notice" role="status">
+                <strong>Phone number verification &mdash; coming soon</strong>
+                <span>
+                  Texting isn&rsquo;t turned on yet. Once it is, this is
+                  where you&rsquo;ll add and verify your number.
+                </span>
               </div>
             )}
 

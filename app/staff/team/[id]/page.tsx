@@ -8,6 +8,7 @@ import { atLeast, ROLE_LABELS } from "@/lib/staff/roles";
 import { profileGaps } from "@/lib/staff/profile-complete";
 import { WEEKDAY_CHIPS } from "@/lib/staff/labels";
 import SigninHistory from "@/app/components/staff/SigninHistory";
+import Avatar from "@/app/components/staff/Avatar";
 
 // One team member, from the administrator's side — currently just their
 // sign-in history, the one thing the Team table can't show a whole
@@ -30,10 +31,15 @@ export default async function TeamMemberPage({
 
   if (!atLeast(session.role, "manager")) redirect("/staff");
 
-  const { member, signins, timezone, gaps } = await withSession(session, async (sql) => {
+  const { member, signins, timezone, gaps, theme } = await withSession(session, async (sql) => {
     const team = await teamStatus(sql);
     const member = team.find((m) => m.user_id === id) ?? null;
-    if (!member) return { member: null, signins: [], timezone: undefined, gaps: [] };
+    const theme = (
+      await sql<{ brand_color: string; logo_url: string | null }[]>`
+        select brand_color, logo_url from staff.org_theme where slug = ${org}
+      `
+    )[0] ?? { brand_color: "#173a8a", logo_url: null };
+    if (!member) return { member: null, signins: [], timezone: undefined, gaps: [], theme };
     const [orgRow] = await sql<{ timezone: string }[]>`
       select timezone from staff.orgs where slug = ${org}
     `;
@@ -43,6 +49,7 @@ export default async function TeamMemberPage({
       signins: await signinHistory(sql, org, id),
       timezone: orgRow?.timezone,
       gaps: allGaps.get(id) ?? [],
+      theme,
     };
   });
 
@@ -62,15 +69,36 @@ export default async function TeamMemberPage({
   return (
     <div className="st-page">
       <header className="st-page-head">
-        <p className="st-page-sub" style={{ marginBottom: 6 }}>
+        <p className="st-page-sub" style={{ marginBottom: 12 }}>
           <Link href="/staff/team">&larr; Team</Link>
         </p>
-        <h1 className="st-h1">{member.legal_name ?? member.name ?? member.email}</h1>
-        <p className="st-page-sub">
-          {member.email} &middot; {ROLE_LABELS[member.role]}
-          {member.job_title ? ` · ${member.job_title}` : ""}
-          {!member.active && " · Deactivated"}
-        </p>
+        <div className="st-profile-head">
+          <Avatar
+            name={member.legal_name ?? member.name ?? member.email}
+            src={member.avatar_path ? `/api/staff/avatar/view?u=${member.user_id}` : null}
+            brandColor={theme.brand_color}
+            badgeUrl={theme.logo_url}
+            size={64}
+          />
+          <div className="st-profile-identity">
+            <h1 className="st-h1">{member.legal_name ?? member.name ?? member.email}</h1>
+            <p className="st-page-sub">
+              {member.email} &middot; {ROLE_LABELS[member.role]}
+              {member.job_title ? ` · ${member.job_title}` : ""}
+            </p>
+            <div className="st-profile-badges">
+              <span className={`st-pill ${member.active ? "st-pill-ok" : "st-pill-due"}`}>
+                {member.active ? "Active" : "Deactivated"}
+              </span>
+              <span className={`st-pill ${member.mfa_enrolled ? "st-pill-ok" : member.mfa_required ? "st-pill-due" : "st-pill-new"}`}>
+                2FA {member.mfa_enrolled ? "on" : member.mfa_required ? "required" : "off"}
+              </span>
+              <span className={`st-pill ${member.phone_verified_at ? "st-pill-ok" : "st-pill-new"}`}>
+                {member.phone_verified_at ? "Phone verified" : member.phone ? "Phone unverified" : "No phone"}
+              </span>
+            </div>
+          </div>
+        </div>
       </header>
 
       {done === "digest_updated" && (
